@@ -16,6 +16,9 @@ import {
 export function createServer() {
   const app = express();
 
+  // Trust proxy for Netlify (required for secure cookies)
+  app.set("trust proxy", 1);
+
   // Middleware
   app.use(cors());
   app.use(express.json());
@@ -28,7 +31,7 @@ export function createServer() {
       resave: false,
       saveUninitialized: false,
       cookie: {
-        secure: false, // process.env.NODE_ENV === "production", // Set to false for local production build testing
+        secure: process.env.NODE_ENV === "production", // true in production
         httpOnly: true,
         maxAge: 24 * 60 * 60 * 1000, // 24 hours
       },
