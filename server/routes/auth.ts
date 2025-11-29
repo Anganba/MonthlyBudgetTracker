@@ -34,8 +34,15 @@ export const login: RequestHandler = async (req, res) => {
         return res.status(401).json({ success: false, message: "Invalid credentials" });
     } catch (error: any) {
         console.error("Login error:", error);
-        // Return the actual error message for debugging purposes
-        return res.status(500).json({ success: false, message: `Login error: ${error.message}` });
+
+        const state = mongoose.connection.readyState;
+        const states = ["disconnected", "connected", "connecting", "disconnecting"];
+        const stateName = states[state] || "unknown";
+
+        return res.status(500).json({
+            success: false,
+            message: `Login error: ${error.message}. DB State: ${stateName} (${state})`
+        });
     }
 };
 
