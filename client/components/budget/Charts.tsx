@@ -60,15 +60,28 @@ export function BudgetCharts({ budget, currency }: ChartsProps) {
     { name: 'Debt', value: categoryTotals.debt },
   ];
 
-  // Pie chart data for "Allocation"
-  const pieData = [
-    { name: 'Expenses', value: categoryTotals.expenses },
-    { name: 'Bills', value: categoryTotals.bills },
-    { name: 'Savings', value: categoryTotals.savings },
-    { name: 'Debt', value: categoryTotals.debt },
-  ].filter(item => item.value > 0);
+  // Pie chart data for "Allocation" - Individual Items
+  const pieData = budget.transactions
+    .filter(t => t.category !== 'income' && t.actual > 0)
+    .map(t => ({
+      name: t.name,
+      value: t.actual
+    }))
+    .sort((a, b) => b.value - a.value); // Sort by value descending
 
-  const pieColors = ['#ec4899', '#6366f1', '#10b981', '#ef4444'];
+  // Generate colors dynamically based on number of items
+  const generateColors = (count: number) => {
+    const baseColors = [
+      '#ec4899', '#6366f1', '#10b981', '#ef4444', '#f59e0b', '#8b5cf6', '#06b6d4', '#f97316'
+    ];
+    const colors = [];
+    for (let i = 0; i < count; i++) {
+      colors.push(baseColors[i % baseColors.length]);
+    }
+    return colors;
+  };
+
+  const pieColors = generateColors(pieData.length);
 
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
