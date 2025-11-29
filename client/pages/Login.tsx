@@ -17,33 +17,17 @@ export default function Login() {
         setIsLoading(true);
 
         try {
-            const res = await fetch("/api/login", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ username, password }),
+            await login(username, password);
+            toast({
+                title: "Welcome back!",
+                description: "You have successfully logged in.",
             });
-
-            const data = await res.json();
-
-            if (res.ok) {
-                login(data.user);
-                toast({
-                    title: "Welcome back!",
-                    description: "You have successfully logged in.",
-                });
-                navigate("/");
-            } else {
-                toast({
-                    variant: "destructive",
-                    title: "Login failed",
-                    description: data.message || "Invalid credentials",
-                });
-            }
-        } catch (error) {
+            navigate("/");
+        } catch (error: any) {
             toast({
                 variant: "destructive",
-                title: "Error",
-                description: "Something went wrong. Please try again.",
+                title: "Login failed",
+                description: error.message || "Invalid credentials",
             });
         } finally {
             setIsLoading(false);

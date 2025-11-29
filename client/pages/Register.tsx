@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../lib/auth';
-import { useLocation } from 'wouter';
+import { useNavigate } from 'react-router-dom';
 
 export const Register = () => {
     const [username, setUsername] = useState('');
@@ -8,7 +8,7 @@ export const Register = () => {
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const { register } = useAuth();
-    const [, setLocation] = useLocation();
+    const navigate = useNavigate();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -17,7 +17,7 @@ export const Register = () => {
 
         try {
             await register(username, password);
-            setLocation('/');
+            navigate('/');
         } catch (err: any) {
             setError(err.message || 'Registration failed');
         } finally {
@@ -107,7 +107,7 @@ export const Register = () => {
                             Already have an account?{' '}
                             <button
                                 type="button"
-                                onClick={() => setLocation('/login')}
+                                onClick={() => navigate('/login')}
                                 className="font-medium text-purple-600 hover:text-purple-500 dark:text-purple-400"
                             >
                                 Sign in
