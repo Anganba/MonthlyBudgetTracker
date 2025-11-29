@@ -13,8 +13,13 @@ import {
   deleteTransaction,
 } from "./routes/budget";
 
+import { connectDB } from "./db";
+
 export function createServer() {
   const app = express();
+
+  // Connect to Database
+  connectDB();
 
   // Trust proxy for Netlify (required for secure cookies)
   app.set("trust proxy", 1);

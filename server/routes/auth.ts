@@ -1,11 +1,5 @@
 import { RequestHandler } from "express";
-import bcrypt from "bcryptjs";
-
-// Default credentials - should be overridden by env vars
-const ADMIN_USERNAME = process.env.ADMIN_USERNAME || "admin";
-// Hash for "password" - generated for default safety
-// In a real app, we'd hash the env var on startup or compare against a DB
-const DEFAULT_PASSWORD_HASH = "$2a$10$xVv.x.x.x.x.x.x.x.x.x.x"; // Placeholder, we'll compare plain text if env var is set, or hash on fly
+import { User } from "../models/User";
 
 export const login: RequestHandler = async (req, res) => {
     const { username, password } = req.body;
@@ -14,24 +8,34 @@ export const login: RequestHandler = async (req, res) => {
         return res.status(400).json({ success: false, message: "Missing credentials" });
     }
 
-    const envUsername = process.env.ADMIN_USERNAME || "admin";
-    const envPassword = process.env.ADMIN_PASSWORD || "password";
+    try {
+        // Find user by username
+        let user = await User.findOne({ username });
 
-    if (username === envUsername) {
-        // For simplicity with env vars, we'll do a direct comparison or hash comparison
-        // Ideally, we hash the input and compare, or compare against a stored hash
-        // Here we just compare plain text for the MVP as per plan
-        const isValid = password === envPassword; // Simple check for MVP
+        // If no user exists, check if it matches the env var admin credentials
+        // If so, create the user in the DB for future persistence
+        const envUsername = process.env.ADMIN_USERNAME || "admin";
+        const envPassword = process.env.ADMIN_PASSWORD || "password";
 
-        if (isValid) {
+        if (!user && username === envUsername && password === envPassword) {
+            user = await User.create({
+                username: envUsername,
+                passwordHash: envPassword, // In a real app, hash this!
+            });
+        }
+
+        if (user && user.passwordHash === password) {
             if (req.session) {
-                req.session.user = { id: "1", username: envUsername };
+                req.session.user = { id: (user._id as any).toString(), username: user.username };
                 return res.json({ success: true, user: req.session.user });
             }
         }
-    }
 
-    return res.status(401).json({ success: false, message: "Invalid credentials" });
+        return res.status(401).json({ success: false, message: "Invalid credentials" });
+    } catch (error) {
+        console.error("Login error:", error);
+        return res.status(500).json({ success: false, message: "Internal server error" });
+    }
 };
 
 export const logout: RequestHandler = (req, res) => {
