@@ -32,9 +32,10 @@ export const login: RequestHandler = async (req, res) => {
         }
 
         return res.status(401).json({ success: false, message: "Invalid credentials" });
-    } catch (error) {
+    } catch (error: any) {
         console.error("Login error:", error);
-        return res.status(500).json({ success: false, message: "Internal server error" });
+        // Return the actual error message for debugging purposes
+        return res.status(500).json({ success: false, message: `Login error: ${error.message}` });
     }
 };
 
