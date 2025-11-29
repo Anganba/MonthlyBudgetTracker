@@ -9,6 +9,9 @@ export interface BudgetStore {
 const DATA_DIR = path.join(process.cwd(), "data");
 const DATA_FILE = path.join(DATA_DIR, "budget.json");
 
+// In-memory fallback
+let memoryStore: BudgetStore = {};
+
 // Ensure data directory exists
 const ensureDataDir = async () => {
     try {
@@ -19,17 +22,27 @@ const ensureDataDir = async () => {
 };
 
 export const loadData = async (): Promise<BudgetStore> => {
-    await ensureDataDir();
     try {
+        await ensureDataDir();
         const data = await fs.readFile(DATA_FILE, "utf-8");
-        return JSON.parse(data);
+        const fileStore = JSON.parse(data);
+        // Sync memory store with file store
+        memoryStore = { ...memoryStore, ...fileStore };
+        return memoryStore;
     } catch (error) {
-        // If file doesn't exist or is invalid, return empty store
-        return {};
+        console.warn("Failed to load from file, using memory store:", error);
+        return memoryStore;
     }
 };
 
 export const saveData = async (data: BudgetStore): Promise<void> => {
-    await ensureDataDir();
-    await fs.writeFile(DATA_FILE, JSON.stringify(data, null, 2), "utf-8");
+    // Always update memory store first
+    memoryStore = data;
+
+    try {
+        await ensureDataDir();
+        await fs.writeFile(DATA_FILE, JSON.stringify(data, null, 2), "utf-8");
+    } catch (error) {
+        console.warn("Failed to save to file (likely read-only environment), data saved to memory only:", error);
+    }
 };
