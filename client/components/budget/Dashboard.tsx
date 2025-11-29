@@ -133,7 +133,19 @@ export function Dashboard() {
     return getCategoryItems(category).reduce((sum, item) => sum + item.actual, 0);
   };
 
-  const incomeTotal = calculateCategoryTotal('income') + budget.rolloverActual;
+  const getCurrencySymbol = (currency: string) => {
+    const symbols: Record<string, string> = {
+      USD: '$',
+      EUR: '€',
+      GBP: '£',
+      BDT: '৳',
+    };
+    return symbols[currency] || '$';
+  };
+
+  const symbol = getCurrencySymbol(currency);
+
+  const incomeTotal = calculateCategoryTotal('income');
   const expensesTotal = calculateCategoryTotal('expenses');
   const billsTotal = calculateCategoryTotal('bills');
   const savingsTotal = calculateCategoryTotal('savings');
@@ -178,69 +190,48 @@ export function Dashboard() {
                   </thead>
                   <tbody>
                     <tr className="border-b border-gray-200 dark:border-gray-700">
-                      <td className="py-3 px-6 font-sans text-gray-700 dark:text-gray-300">• Rollover</td>
-                      <td className="py-3 px-6 text-right font-sans text-gray-700 dark:text-gray-300 whitespace-nowrap">
-                        <input
-                          type="number"
-                          value={budget.rolloverPlanned}
-                          onChange={(e) => handleUpdateRollover(parseFloat(e.target.value) || 0, budget.rolloverActual)}
-                          step="0.01"
-                          className="w-20 text-right border-0 bg-transparent focus:outline-none focus:ring-0 text-sm font-sans"
-                        />
-                      </td>
-                      <td className="py-3 px-6 text-right font-sans text-gray-700 dark:text-gray-300 whitespace-nowrap">
-                        <input
-                          type="number"
-                          value={budget.rolloverActual}
-                          onChange={(e) => handleUpdateRollover(budget.rolloverPlanned, parseFloat(e.target.value) || 0)}
-                          step="0.01"
-                          className="w-20 text-right border-0 bg-transparent focus:outline-none focus:ring-0 text-sm font-sans"
-                        />
-                      </td>
-                    </tr>
-                    <tr className="border-b border-gray-200 dark:border-gray-700">
                       <td className="py-3 px-6 font-sans text-gray-700 dark:text-gray-300">• Income</td>
                       <td className="py-3 px-6 text-right font-sans text-gray-700 dark:text-gray-300 whitespace-nowrap">
-                        ${getCategoryItems('income').reduce((sum, item) => sum + item.planned, budget.rolloverPlanned).toFixed(2)}
+                        {symbol}{getCategoryItems('income').reduce((sum, item) => sum + item.planned, 0).toFixed(2)}
                       </td>
                       <td className="py-3 px-6 text-right font-sans text-gray-700 dark:text-gray-300 whitespace-nowrap">
-                        ${incomeTotal.toFixed(2)}
+                        {symbol}{incomeTotal.toFixed(2)}
                       </td>
                     </tr>
                     <tr className="border-b border-gray-200 dark:border-gray-700">
                       <td className="py-3 px-6 font-sans text-gray-700 dark:text-gray-300">• Expenses</td>
                       <td className="py-3 px-6 text-right font-sans text-gray-700 dark:text-gray-300 whitespace-nowrap">
-                        ${getCategoryItems('expenses').reduce((sum, item) => sum + item.planned, 0).toFixed(2)}
+                        {symbol}{getCategoryItems('expenses').reduce((sum, item) => sum + item.planned, 0).toFixed(2)}
                       </td>
                       <td className="py-3 px-6 text-right font-sans text-gray-700 dark:text-gray-300 whitespace-nowrap">
-                        ${expensesTotal.toFixed(2)}
+                        {symbol}{expensesTotal.toFixed(2)}
                       </td>
                     </tr>
                     <tr className="border-b border-gray-200 dark:border-gray-700">
                       <td className="py-3 px-6 font-sans text-gray-700 dark:text-gray-300">• Bills</td>
                       <td className="py-3 px-6 text-right font-sans text-gray-700 dark:text-gray-300 whitespace-nowrap">
-                        ${getCategoryItems('bills').reduce((sum, item) => sum + item.planned, 0).toFixed(2)}
+                        {symbol}{getCategoryItems('bills').reduce((sum, item) => sum + item.planned, 0).toFixed(2)}
                       </td>
                       <td className="py-3 px-6 text-right font-sans text-gray-700 dark:text-gray-300 whitespace-nowrap">
-                        ${billsTotal.toFixed(2)}
+                        {symbol}{billsTotal.toFixed(2)}
                       </td>
                     </tr>
                     <tr className="border-b border-gray-200 dark:border-gray-700">
                       <td className="py-3 px-6 font-sans text-gray-700 dark:text-gray-300">• Savings</td>
                       <td className="py-3 px-6 text-right font-sans text-gray-700 dark:text-gray-300 whitespace-nowrap">
-                        ${getCategoryItems('savings').reduce((sum, item) => sum + item.planned, 0).toFixed(2)}
+                        {symbol}{getCategoryItems('savings').reduce((sum, item) => sum + item.planned, 0).toFixed(2)}
                       </td>
                       <td className="py-3 px-6 text-right font-sans text-gray-700 dark:text-gray-300 whitespace-nowrap">
-                        ${savingsTotal.toFixed(2)}
+                        {symbol}{savingsTotal.toFixed(2)}
                       </td>
                     </tr>
                     <tr className="border-b border-gray-200 dark:border-gray-700">
                       <td className="py-3 px-6 font-sans text-gray-700 dark:text-gray-300">• Debt</td>
                       <td className="py-3 px-6 text-right font-sans text-gray-700 dark:text-gray-300 whitespace-nowrap">
-                        ${getCategoryItems('debt').reduce((sum, item) => sum + item.planned, 0).toFixed(2)}
+                        {symbol}{getCategoryItems('debt').reduce((sum, item) => sum + item.planned, 0).toFixed(2)}
                       </td>
                       <td className="py-3 px-6 text-right font-sans text-gray-700 dark:text-gray-300 whitespace-nowrap">
-                        ${debtTotal.toFixed(2)}
+                        {symbol}{debtTotal.toFixed(2)}
                       </td>
                     </tr>
                   </tbody>
@@ -248,11 +239,11 @@ export function Dashboard() {
                     <tr className="border-t-2 border-budget-header/30 bg-gradient-to-r from-budget-header/10 to-transparent">
                       <td className="py-3 px-6 font-sans font-bold text-gray-800 dark:text-gray-200 uppercase text-xs">Left</td>
                       <td className="py-3 px-6 text-right font-sans font-bold text-gray-800 dark:text-gray-200 whitespace-nowrap">
-                        ${(getCategoryItems('income').reduce((sum, item) => sum + item.planned, budget.rolloverPlanned) - (getCategoryItems('expenses').reduce((sum, item) => sum + item.planned, 0) + getCategoryItems('bills').reduce((sum, item) => sum + item.planned, 0) + getCategoryItems('savings').reduce((sum, item) => sum + item.planned, 0) + getCategoryItems('debt').reduce((sum, item) => sum + item.planned, 0))).toFixed(2)}
+                        {symbol}{(getCategoryItems('income').reduce((sum, item) => sum + item.planned, 0) - (getCategoryItems('expenses').reduce((sum, item) => sum + item.planned, 0) + getCategoryItems('bills').reduce((sum, item) => sum + item.planned, 0) + getCategoryItems('savings').reduce((sum, item) => sum + item.planned, 0) + getCategoryItems('debt').reduce((sum, item) => sum + item.planned, 0))).toFixed(2)}
                       </td>
                       <td className="py-3 px-6 text-right font-sans font-bold whitespace-nowrap">
                         <span className={incomeTotal - (expensesTotal + billsTotal + savingsTotal + debtTotal) >= 0 ? 'text-green-600' : 'text-red-600'}>
-                          ${(incomeTotal - (expensesTotal + billsTotal + savingsTotal + debtTotal)).toFixed(2)}
+                          {symbol}{(incomeTotal - (expensesTotal + billsTotal + savingsTotal + debtTotal)).toFixed(2)}
                         </span>
                       </td>
                     </tr>
