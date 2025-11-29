@@ -9,6 +9,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
+import Register from "./pages/Register"; // Added import for Register
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -40,6 +41,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} /> {/* Added route for Register */}
             <Route
               path="/"
               element={

@@ -4,8 +4,8 @@ import { Budget, IBudget } from "../models/Budget";
 
 const generateId = () => Math.random().toString(36).substring(2, 9);
 
-const getOrCreateBudget = async (month: string, year: number): Promise<IBudget> => {
-  let budget = await Budget.findOne({ month, year });
+const getOrCreateBudget = async (month: string, year: number, userId: string): Promise<IBudget> => {
+  let budget = await Budget.findOne({ month, year, userId });
 
   if (!budget) {
     budget = await Budget.create({
@@ -14,6 +14,7 @@ const getOrCreateBudget = async (month: string, year: number): Promise<IBudget> 
       rolloverPlanned: 0,
       rolloverActual: 0,
       transactions: [],
+      userId,
     });
   }
   return budget;
@@ -21,13 +22,18 @@ const getOrCreateBudget = async (month: string, year: number): Promise<IBudget> 
 
 export const getBudget: RequestHandler = async (req, res) => {
   const { month, year } = req.query;
+  const userId = req.session?.user?.id;
 
   if (!month || !year) {
     return res.status(400).json({ success: false, message: "Missing month or year" });
   }
 
+  if (!userId) {
+    return res.status(401).json({ success: false, message: "Not authenticated" });
+  }
+
   try {
-    const budget = await getOrCreateBudget(month as string, parseInt(year as string));
+    const budget = await getOrCreateBudget(month as string, parseInt(year as string), userId);
     res.json({ success: true, data: budget });
   } catch (error) {
     console.error("Error fetching budget:", error);
@@ -38,13 +44,18 @@ export const getBudget: RequestHandler = async (req, res) => {
 export const updateBudget: RequestHandler = async (req, res) => {
   const { month, year } = req.query;
   const { rolloverPlanned, rolloverActual } = req.body;
+  const userId = req.session?.user?.id;
 
   if (!month || !year) {
     return res.status(400).json({ success: false, message: "Missing month or year" });
   }
 
+  if (!userId) {
+    return res.status(401).json({ success: false, message: "Not authenticated" });
+  }
+
   try {
-    const budget = await getOrCreateBudget(month as string, parseInt(year as string));
+    const budget = await getOrCreateBudget(month as string, parseInt(year as string), userId);
 
     if (rolloverPlanned !== undefined) budget.rolloverPlanned = rolloverPlanned;
     if (rolloverActual !== undefined) budget.rolloverActual = rolloverActual;
@@ -60,13 +71,18 @@ export const updateBudget: RequestHandler = async (req, res) => {
 export const addTransaction: RequestHandler = async (req, res) => {
   const { month, year } = req.query;
   const { name, planned, actual, category } = req.body;
+  const userId = req.session?.user?.id;
 
   if (!month || !year || !name || planned === undefined || actual === undefined || !category) {
     return res.status(400).json({ success: false, message: "Missing required fields" });
   }
 
+  if (!userId) {
+    return res.status(401).json({ success: false, message: "Not authenticated" });
+  }
+
   try {
-    const budget = await getOrCreateBudget(month as string, parseInt(year as string));
+    const budget = await getOrCreateBudget(month as string, parseInt(year as string), userId);
 
     const transaction: Transaction = {
       id: generateId(),
@@ -89,13 +105,18 @@ export const addTransaction: RequestHandler = async (req, res) => {
 export const updateTransaction: RequestHandler = async (req, res) => {
   const { month, year, id } = req.query;
   const { name, planned, actual } = req.body;
+  const userId = req.session?.user?.id;
 
   if (!month || !year || !id) {
     return res.status(400).json({ success: false, message: "Missing required fields" });
   }
 
+  if (!userId) {
+    return res.status(401).json({ success: false, message: "Not authenticated" });
+  }
+
   try {
-    const budget = await Budget.findOne({ month, year });
+    const budget = await Budget.findOne({ month: month as string, year: parseInt(year as string), userId });
 
     if (!budget) {
       return res.status(404).json({ success: false, message: "Budget not found" });
@@ -121,13 +142,18 @@ export const updateTransaction: RequestHandler = async (req, res) => {
 
 export const deleteTransaction: RequestHandler = async (req, res) => {
   const { month, year, id } = req.query;
+  const userId = req.session?.user?.id;
 
   if (!month || !year || !id) {
     return res.status(400).json({ success: false, message: "Missing required fields" });
   }
 
+  if (!userId) {
+    return res.status(401).json({ success: false, message: "Not authenticated" });
+  }
+
   try {
-    const budget = await Budget.findOne({ month, year });
+    const budget = await Budget.findOne({ month: month as string, year: parseInt(year as string), userId });
 
     if (!budget) {
       return res.status(404).json({ success: false, message: "Budget not found" });

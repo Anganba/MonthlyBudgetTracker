@@ -1,4 +1,5 @@
 import { RequestHandler } from "express";
+import mongoose from "mongoose";
 import { User } from "../models/User";
 
 export const login: RequestHandler = async (req, res) => {
@@ -43,6 +44,35 @@ export const login: RequestHandler = async (req, res) => {
             success: false,
             message: `Login error: ${error.message}. DB State: ${stateName} (${state})`
         });
+    }
+};
+
+export const register: RequestHandler = async (req, res) => {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+        return res.status(400).json({ success: false, message: "Missing credentials" });
+    }
+
+    try {
+        const existingUser = await User.findOne({ username });
+        if (existingUser) {
+            return res.status(400).json({ success: false, message: "Username already exists" });
+        }
+
+        const user = await User.create({
+            username,
+            passwordHash: password, // In a real app, hash this!
+        });
+
+        if (req.session) {
+            req.session.user = { id: (user._id as any).toString(), username: user.username };
+        }
+
+        res.json({ success: true, user: { id: (user._id as any).toString(), username: user.username } });
+    } catch (error: any) {
+        console.error("Registration error:", error);
+        return res.status(500).json({ success: false, message: `Registration error: ${error.message}` });
     }
 };
 

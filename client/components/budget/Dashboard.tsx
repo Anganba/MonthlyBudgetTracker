@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { BudgetMonth, Transaction } from '@shared/api';
 import { BudgetHeader } from './Header';
-import { SummaryCards } from './SummaryCards';
-import { BudgetTable } from './BudgetTable';
-import { BudgetCharts } from './Charts';
+import { SummaryCards } from "./SummaryCards";
+import { Charts } from "./Charts";
+import { Footer } from "../Footer";
+import { useToast } from "@/components/ui/use-toast";
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',

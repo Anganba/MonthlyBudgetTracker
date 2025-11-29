@@ -3,7 +3,7 @@ import express from "express";
 import cors from "cors";
 import session from "express-session";
 import { handleDemo } from "./routes/demo";
-import { login, logout, getMe } from "./routes/auth";
+import { login, logout, getMe, register } from "./routes/auth";
 import { requireAuth } from "./middleware/auth";
 import {
   getBudget,
@@ -45,6 +45,7 @@ export function createServer() {
 
   // Auth Routes
   app.post("/api/login", login);
+  app.post("/api/register", register);
   app.post("/api/logout", logout);
   app.get("/api/me", getMe);
 
