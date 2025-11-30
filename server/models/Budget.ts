@@ -36,7 +36,7 @@ const BudgetSchema = new Schema<IBudget>(
     { timestamps: true }
 );
 
-// Compound index to ensure unique budget per month/year (per user if we add that later)
-BudgetSchema.index({ month: 1, year: 1 }, { unique: true });
+// Compound index to ensure unique budget per month/year per user
+BudgetSchema.index({ month: 1, year: 1, userId: 1 }, { unique: true });
 
 export const Budget = mongoose.model<IBudget>("Budget", BudgetSchema);
