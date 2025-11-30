@@ -2,6 +2,7 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import session from "express-session";
+import MongoStore from "connect-mongo";
 import { handleDemo } from "./routes/demo";
 import { login, logout, getMe, register } from "./routes/auth";
 import { requireAuth } from "./middleware/auth";
@@ -35,6 +36,10 @@ export function createServer() {
       secret: process.env.SESSION_SECRET || "fusion-starter-secret",
       resave: false,
       saveUninitialized: false,
+      store: MongoStore.create({
+        mongoUrl: process.env.MONGODB_URI,
+        ttl: 24 * 60 * 60, // 1 day
+      }),
       cookie: {
         secure: process.env.NODE_ENV === "production", // true in production
         httpOnly: true,
