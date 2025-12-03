@@ -28,7 +28,15 @@ export const login: RequestHandler = async (req, res) => {
         if (user && user.passwordHash === password) {
             if (req.session) {
                 req.session.user = { id: (user._id as any).toString(), username: user.username };
-                return res.json({ success: true, user: req.session.user });
+
+                return new Promise((resolve, reject) => {
+                    req.session.save((err) => {
+                        if (err) {
+                            return reject(res.status(500).json({ success: false, message: "Session save failed" }));
+                        }
+                        resolve(res.json({ success: true, user: req.session.user }));
+                    });
+                });
             }
         }
 

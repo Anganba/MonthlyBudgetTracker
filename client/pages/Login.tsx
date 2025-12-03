@@ -62,6 +62,7 @@ export default function Login() {
                                 name="username"
                                 type="text"
                                 required
+                                autoComplete="username"
                                 value={username}
                                 onChange={(e) => setUsername(e.target.value)}
                                 className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-budget-header focus:border-budget-header sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-sans"
@@ -80,6 +81,7 @@ export default function Login() {
                                 name="password"
                                 type="password"
                                 required
+                                autoComplete="current-password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-budget-header focus:border-budget-header sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-sans"

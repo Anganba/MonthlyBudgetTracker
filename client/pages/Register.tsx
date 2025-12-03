@@ -53,6 +53,7 @@ const Register = () => {
                                 name="username"
                                 type="text"
                                 required
+                                autoComplete="username"
                                 className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-purple-500 focus:border-purple-500 focus:z-10 sm:text-sm bg-white dark:bg-gray-700"
                                 placeholder="Choose a username"
                                 value={username}
@@ -68,6 +69,7 @@ const Register = () => {
                                 name="password"
                                 type="password"
                                 required
+                                autoComplete="new-password"
                                 className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-purple-500 focus:border-purple-500 focus:z-10 sm:text-sm bg-white dark:bg-gray-700"
                                 placeholder="Choose a password"
                                 value={password}

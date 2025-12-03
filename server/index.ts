@@ -30,6 +30,10 @@ export function createServer() {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
+  if (!process.env.MONGODB_URI) {
+    throw new Error("MONGODB_URI is not defined in environment variables");
+  }
+
   // Session Configuration
   app.use(
     session({
@@ -41,7 +45,7 @@ export function createServer() {
         ttl: 24 * 60 * 60, // 1 day
       }),
       cookie: {
-        secure: process.env.NODE_ENV === "production", // true in production
+        secure: process.env.NODE_ENV === "production" && process.env.NETLIFY === "true", // Only secure on Netlify/Production HTTPS
         httpOnly: true,
         maxAge: 24 * 60 * 60 * 1000, // 24 hours
       },

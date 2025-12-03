@@ -7,6 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from '@/components/ui/dialog';
 
 interface BudgetTableProps {
@@ -165,6 +166,9 @@ export function BudgetTable({
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="font-serif">Add New {title}</DialogTitle>
+            <DialogDescription>
+              Enter the details for the new {title.toLowerCase()} item below.
+            </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleAddSubmit} className="space-y-4">
             <div>
@@ -235,6 +239,9 @@ export function BudgetTable({
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="font-serif">Edit {title}</DialogTitle>
+            <DialogDescription>
+              Update the details for this {title.toLowerCase()} item.
+            </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleEditSubmit} className="space-y-4">
             <div>
