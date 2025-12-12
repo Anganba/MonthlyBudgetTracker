@@ -27,7 +27,11 @@ export const login: RequestHandler = async (req, res) => {
 
         if (user && user.passwordHash === password) {
             if (req.session) {
-                req.session.user = { id: (user._id as any).toString(), username: user.username };
+                req.session.user = {
+                    id: (user._id as any).toString(),
+                    username: user.username,
+                    email: user.email
+                };
 
                 return new Promise((resolve, reject) => {
                     req.session.save((err) => {
@@ -56,7 +60,7 @@ export const login: RequestHandler = async (req, res) => {
 };
 
 export const register: RequestHandler = async (req, res) => {
-    const { username, password } = req.body;
+    const { username, password, email } = req.body;
 
     if (!username || !password) {
         return res.status(400).json({ success: false, message: "Missing credentials" });
@@ -70,14 +74,19 @@ export const register: RequestHandler = async (req, res) => {
 
         const user = await User.create({
             username,
+            email,
             passwordHash: password, // In a real app, hash this!
         });
 
         if (req.session) {
-            req.session.user = { id: (user._id as any).toString(), username: user.username };
+            req.session.user = {
+                id: (user._id as any).toString(),
+                username: user.username,
+                email: user.email
+            };
         }
 
-        res.json({ success: true, user: { id: (user._id as any).toString(), username: user.username } });
+        res.json({ success: true, user: { id: (user._id as any).toString(), username: user.username, email: user.email } });
     } catch (error: any) {
         console.error("Registration error:", error);
         return res.status(500).json({ success: false, message: `Registration error: ${error.message}` });
@@ -98,4 +107,66 @@ export const getMe: RequestHandler = (req, res) => {
         return res.json({ success: true, user: req.session.user });
     }
     return res.status(401).json({ success: false, message: "Not authenticated" });
+};
+
+export const updateProfile: RequestHandler = async (req, res) => {
+    const { username, email } = req.body;
+    console.log("Update Profile Request:", req.body);
+    const userId = req.session?.user?.id;
+    if (!userId) return res.status(401).json({ success: false, message: "Not authenticated" });
+
+    try {
+        if (username) {
+            const existing = await User.findOne({ username, _id: { $ne: userId } });
+            if (existing) return res.status(400).json({ success: false, message: "Username taken" });
+        }
+        if (email) {
+            const existing = await User.findOne({ email, _id: { $ne: userId } });
+            if (existing) return res.status(400).json({ success: false, message: "Email taken" });
+        }
+
+        const user = await User.findById(userId);
+        if (!user) return res.status(404).json({ success: false, message: "User not found" });
+
+        if (username) user.username = username;
+        if (email) user.email = email;
+
+        await user.save();
+        console.log("User Saved:", user);
+
+        if (req.session) {
+            req.session.user = { id: userId, username: user.username, email: user.email };
+            await new Promise<void>((resolve, reject) => {
+                req.session!.save((err) => err ? reject(err) : resolve());
+            });
+        }
+
+        res.json({ success: true, user: req.session?.user });
+    } catch (error: any) {
+        console.error("Update profile error:", error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+export const updatePassword: RequestHandler = async (req, res) => {
+    const { currentPassword, newPassword } = req.body;
+    const userId = req.session?.user?.id;
+    if (!userId) return res.status(401).json({ success: false, message: "Not authenticated" });
+
+    try {
+        const user = await User.findById(userId);
+        if (!user) return res.status(404).json({ success: false, message: "User not found" });
+
+        if (user.passwordHash !== currentPassword) {
+            return res.status(400).json({ success: false, message: "Incorrect current password" });
+        }
+
+        user.passwordHash = newPassword;
+        await user.save();
+
+        res.json({ success: true, message: "Password updated" });
+    } catch (error: any) {
+        console.error("Update password error:", error);
+        res.status(500).json({ success: false, message: error.message });
+    }
 };

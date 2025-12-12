@@ -4,7 +4,7 @@ import cors from "cors";
 import session from "express-session";
 import MongoStore from "connect-mongo";
 import { handleDemo } from "./routes/demo";
-import { login, logout, getMe, register } from "./routes/auth";
+import { login, logout, getMe, register, updateProfile, updatePassword } from "./routes/auth";
 import { requireAuth } from "./middleware/auth";
 import {
   getBudget,
@@ -13,6 +13,12 @@ import {
   updateTransaction,
   deleteTransaction,
 } from "./routes/budget";
+import {
+  getGoals,
+  createGoal,
+  updateGoal,
+  deleteGoal
+} from "./routes/goals";
 
 import { connectDB } from "./db";
 
@@ -42,6 +48,7 @@ export function createServer() {
       saveUninitialized: false,
       store: MongoStore.create({
         mongoUrl: process.env.MONGODB_URI,
+        dbName: 'MBT',
         ttl: 24 * 60 * 60, // 1 day
       }),
       cookie: {
@@ -52,11 +59,15 @@ export function createServer() {
     })
   );
 
+
+
   // Auth Routes
   app.post("/api/login", login);
   app.post("/api/register", register);
   app.post("/api/logout", logout);
   app.get("/api/me", getMe);
+  app.put("/api/profile", requireAuth, updateProfile);
+  app.put("/api/profile/password", requireAuth, updatePassword);
 
   // Example API routes
   app.get("/api/ping", (_req, res) => {
@@ -72,6 +83,12 @@ export function createServer() {
   app.post("/api/budget/transaction", requireAuth, addTransaction);
   app.put("/api/budget/transaction", requireAuth, updateTransaction);
   app.delete("/api/budget/transaction", requireAuth, deleteTransaction);
+
+  // Goals API routes
+  app.get("/api/goals", requireAuth, getGoals);
+  app.post("/api/goals", requireAuth, createGoal);
+  app.put("/api/goals/:id", requireAuth, updateGoal);
+  app.delete("/api/goals/:id", requireAuth, deleteGoal);
 
   return app;
 }

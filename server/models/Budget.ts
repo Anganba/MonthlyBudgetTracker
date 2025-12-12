@@ -6,6 +6,7 @@ export interface IBudget extends Document {
     year: number;
     rolloverPlanned: number;
     rolloverActual: number;
+    categoryLimits?: Map<string, number>;
     transactions: Transaction[];
     userId?: string; // Optional for now, for future multi-user support
     createdAt: Date;
@@ -20,8 +21,9 @@ const TransactionSchema = new Schema<Transaction>({
     category: {
         type: String,
         required: true,
-        enum: ["income", "expenses", "bills", "savings", "debt"]
     },
+    date: { type: String, required: true },
+    goalId: { type: String, required: false },
 });
 
 const BudgetSchema = new Schema<IBudget>(
@@ -30,13 +32,18 @@ const BudgetSchema = new Schema<IBudget>(
         year: { type: Number, required: true },
         rolloverPlanned: { type: Number, default: 0 },
         rolloverActual: { type: Number, default: 0 },
+        categoryLimits: { type: Map, of: Number, default: {} },
         transactions: [TransactionSchema],
         userId: { type: String },
     },
-    { timestamps: true }
+    { timestamps: true, toJSON: { flattenMaps: true } }
 );
 
 // Compound index to ensure unique budget per month/year per user
 BudgetSchema.index({ month: 1, year: 1, userId: 1 }, { unique: true });
+
+if (mongoose.models.Budget) {
+    delete mongoose.models.Budget;
+}
 
 export const Budget = mongoose.model<IBudget>("Budget", BudgetSchema);

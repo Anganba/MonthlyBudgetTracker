@@ -4,6 +4,7 @@ import { useToast } from "@/components/ui/use-toast";
 interface User {
     id: string;
     username: string;
+    email?: string;
 }
 
 interface AuthContextType {
@@ -12,6 +13,8 @@ interface AuthContextType {
     login: (username: string, password: string) => Promise<void>;
     logout: () => Promise<void>;
     register: (username: string, password: string) => Promise<void>;
+    updateProfile: (data: { username?: string; email?: string }) => Promise<void>;
+    updatePassword: (currentPassword: string, newPassword: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -69,8 +72,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
+    const updateProfile = async (data: { username?: string; email?: string }) => {
+        const res = await fetch("/api/profile", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data),
+        });
+        const resData = await res.json();
+        if (!resData.success) throw new Error(resData.message);
+        setUser(resData.user);
+    };
+
+    const updatePassword = async (currentPassword: string, newPassword: string) => {
+        const res = await fetch("/api/profile/password", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ currentPassword, newPassword }),
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.message);
+    };
+
     return (
-        <AuthContext.Provider value={{ user, isLoading, login, logout, register }}>
+        <AuthContext.Provider value={{ user, isLoading, login, logout, register, updateProfile, updatePassword }}>
             {children}
         </AuthContext.Provider>
     );

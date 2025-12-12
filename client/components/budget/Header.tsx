@@ -41,31 +41,33 @@ export function BudgetHeader({ month, year, onMonthChange, currency, onCurrencyC
     window.print();
   };
 
+  const lastDay = new Date(year, currentMonthIndex + 1, 0).getDate();
+
   return (
-    <div className="bg-gradient-to-r from-budget-header/20 to-budget-header/10 border-b border-gray-200 dark:border-gray-700 px-6 py-6">
+    <div className="bg-gradient-to-r from-budget-header/20 to-budget-header/10 border-b border-border px-6 py-6">
       <div className="w-full">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
             <button
               onClick={handlePreviousMonth}
-              className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition no-print"
+              className="p-2 hover:bg-white/10 rounded-lg transition no-print text-foreground"
               aria-label="Previous month"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
 
-            <div className="flex items-baseline gap-2">
+            <div className="flex items-baseline justify-center gap-2 min-w-[200px]">
               <h1 className="text-2xl font-serif font-bold text-budget-header">
                 {month}
               </h1>
-              <span className="text-lg font-sans text-gray-600 dark:text-gray-400">
+              <span className="text-lg font-sans text-muted-foreground">
                 {year}
               </span>
             </div>
 
             <button
               onClick={handleNextMonth}
-              className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition no-print"
+              className="p-2 hover:bg-white/10 rounded-lg transition no-print text-foreground"
               aria-label="Next month"
             >
               <ChevronRight className="w-5 h-5" />
@@ -74,13 +76,13 @@ export function BudgetHeader({ month, year, onMonthChange, currency, onCurrencyC
 
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
-              <label className="text-sm font-sans text-gray-600 dark:text-gray-400">
+              <label className="text-sm font-sans text-muted-foreground">
                 Currency:
               </label>
               <select
                 value={currency}
                 onChange={(e) => onCurrencyChange(e.target.value)}
-                className="px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 rounded-lg text-sm font-sans"
+                className="px-3 py-2 border border-border bg-card text-foreground rounded-lg text-sm font-sans focus:outline-none focus:ring-1 focus:ring-primary"
               >
                 <option value="USD">$ USD</option>
                 <option value="EUR">€ EUR</option>
@@ -91,24 +93,16 @@ export function BudgetHeader({ month, year, onMonthChange, currency, onCurrencyC
 
             <button
               onClick={handlePrint}
-              className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition no-print"
+              className="p-2 hover:bg-white/10 rounded-lg transition no-print text-foreground"
               aria-label="Print"
             >
               <Printer className="w-5 h-5" />
             </button>
-
-            <button
-              onClick={logout}
-              className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg transition no-print"
-              aria-label="Sign out"
-            >
-              <LogOut className="w-5 h-5" />
-            </button>
           </div>
         </div>
 
-        <div className="text-sm text-gray-500 dark:text-gray-400 font-sans">
-          {month} 1 - {month} 30, {year}
+        <div className="text-sm text-muted-foreground font-sans">
+          {month} 1 - {month} {lastDay}, {year}
         </div>
       </div>
     </div>

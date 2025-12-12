@@ -30,6 +30,7 @@ export const connectDB = async () => {
             }
 
             await mongoose.connect(uri, {
+                dbName: 'MBT',
                 serverSelectionTimeoutMS: 5000,
                 socketTimeoutMS: 45000,
             });

@@ -2,7 +2,10 @@ import React, { useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/components/ui/use-toast";
 import { useNavigate } from "react-router-dom";
-import { Lock } from "lucide-react";
+import { Lock, ArrowRight } from "lucide-react"; // Added ArrowRight
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export default function Login() {
     const [username, setUsername] = useState("");
@@ -35,85 +38,94 @@ export default function Login() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4">
-            <div className="max-w-md w-full space-y-8 bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
-                <div className="text-center">
-                    <div className="mx-auto h-12 w-12 bg-budget-header/20 rounded-full flex items-center justify-center mb-4">
-                        <Lock className="h-6 w-6 text-budget-header" />
+        <div className="min-h-screen w-full grid lg:grid-cols-2">
+            {/* Left Panel - Branding */}
+            <div className="hidden lg:flex flex-col justify-between bg-zinc-900 border-r border-border p-12 relative overflow-hidden">
+                {/* Abstract Background Decoration */}
+                <div className="absolute top-0 left-0 w-full h-full bg-grid-white/[0.02] -z-10" />
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-primary/20 rounded-full blur-3xl opacity-20 pointer-events-none" />
+
+                <div className="z-10">
+                    <div className="flex items-center gap-2 text-primary font-bold text-xl font-serif">
+                        <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
+                            <span className="text-primary text-lg">TK</span>
+                        </div>
+                        Amar TK Koi
                     </div>
-                    <h2 className="text-3xl font-serif font-bold text-gray-900 dark:text-white">
-                        Sign in to your account
-                    </h2>
-                    <p className="mt-2 text-sm text-gray-600 dark:text-gray-400 font-sans">
-                        Secure access to your budget dashboard
+                </div>
+
+                <div className="z-10">
+                    <h1 className="text-4xl font-bold font-serif tracking-tight text-white mb-4">
+                        Master Your Money,<br />
+                        <span className="text-primary">Amplify Your Future.</span>
+                    </h1>
+                    <p className="text-muted-foreground text-lg max-w-md">
+                        Track expenses, set goals, and visualize your financial journey with our intuitive dashboard.
                     </p>
                 </div>
-                <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-                    <div className="space-y-4">
-                        <div>
-                            <label
-                                htmlFor="username"
-                                className="block text-sm font-medium text-gray-700 dark:text-gray-300 font-sans"
-                            >
-                                Username
-                            </label>
-                            <input
-                                id="username"
-                                name="username"
-                                type="text"
-                                required
-                                autoComplete="username"
-                                value={username}
-                                onChange={(e) => setUsername(e.target.value)}
-                                className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-budget-header focus:border-budget-header sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-sans"
-                                placeholder="Enter your username"
-                            />
-                        </div>
-                        <div>
-                            <label
-                                htmlFor="password"
-                                className="block text-sm font-medium text-gray-700 dark:text-gray-300 font-sans"
-                            >
-                                Password
-                            </label>
-                            <input
-                                id="password"
-                                name="password"
-                                type="password"
-                                required
-                                autoComplete="current-password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-budget-header focus:border-budget-header sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-sans"
-                                placeholder="Enter your password"
-                            />
-                        </div>
-                    </div>
 
-                    <div>
-                        <button
-                            type="submit"
-                            disabled={isLoading}
-                            className={`group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-budget-header hover:bg-budget-header/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-budget-header transition-colors ${isLoading ? 'opacity-50 cursor-not-allowed' : ''
-                                } font-sans`}
-                        >
-                            {isLoading ? "Signing in..." : "Sign in"}
-                        </button>
-                    </div>
+                <div className="z-10 text-sm text-muted-foreground">
+                    &copy; {new Date().getFullYear()} Monthly Budget Tracker
+                </div>
+            </div>
 
-                    <div className="text-center">
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                            Don't have an account?{" "}
-                            <button
-                                type="button"
-                                onClick={() => navigate('/register')}
-                                className="font-medium text-budget-header hover:text-budget-header/90 dark:text-budget-header/70"
-                            >
-                                Sign up
-                            </button>
+            {/* Right Panel - Form */}
+            <div className="flex items-center justify-center p-8 bg-background">
+                <div className="mx-auto w-full max-w-[350px] space-y-6">
+                    <div className="text-center lg:text-left">
+                        <h1 className="text-2xl font-bold font-serif tracking-tight">Welcome back</h1>
+                        <p className="text-muted-foreground text-sm">
+                            Enter your credentials to access your account
                         </p>
                     </div>
-                </form>
+
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="username">Username</Label>
+                            <Input
+                                id="username"
+                                type="text"
+                                placeholder="Enter your username"
+                                value={username}
+                                onChange={(e) => setUsername(e.target.value)}
+                                required
+                                className="bg-background"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="password">Password</Label>
+                            <Input
+                                id="password"
+                                type="password"
+                                placeholder="••••••••"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                required
+                                className="bg-background"
+                            />
+                        </div>
+
+                        <Button
+                            type="submit"
+                            className="w-full font-bold group"
+                            disabled={isLoading}
+                        >
+                            {isLoading ? "Signing in..." : "Sign in"}
+                            {!isLoading && <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />}
+                        </Button>
+                    </form>
+
+                    <div className="text-center text-sm text-muted-foreground">
+                        Don't have an account?{" "}
+                        <button
+                            type="button"
+                            onClick={() => navigate('/register')}
+                            className="font-medium text-primary hover:text-primary/90 underline-offset-4 hover:underline"
+                        >
+                            Sign up
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     );
