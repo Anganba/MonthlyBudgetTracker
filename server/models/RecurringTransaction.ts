@@ -25,4 +25,4 @@ const RecurringTransactionSchema = new Schema<IRecurringTransaction>(
 RecurringTransactionSchema.index({ userId: 1, active: 1 });
 RecurringTransactionSchema.index({ nextRunDate: 1 });
 
-export const RecurringTransactionModel = mongoose.model<IRecurringTransaction>("RecurringTransaction", RecurringTransactionSchema);
+export const RecurringTransactionModel = mongoose.models.RecurringTransaction || mongoose.model<IRecurringTransaction>("RecurringTransaction", RecurringTransactionSchema);

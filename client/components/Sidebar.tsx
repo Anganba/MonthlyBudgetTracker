@@ -36,15 +36,15 @@ export function Sidebar({ collapsed, setCollapsed, mobile = false }: SidebarProp
                 {!collapsed && (
                     <div className="flex items-center gap-2 overflow-hidden whitespace-nowrap">
                         <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0">
-                            <span className="text-black font-bold">A</span>
+                            <Wallet className="w-5 h-5 text-black" />
                         </div>
-                        <h1 className="text-lg font-bold font-serif">Amar TK Koi</h1>
+                        <h1 className="text-lg font-bold font-serif">Amar Taka Koi</h1>
                     </div>
                 )}
                 {/* Fallback logo when collapsed */}
                 {collapsed && (
                     <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0 mx-auto">
-                        <span className="text-black font-bold">A</span>
+                        <Wallet className="w-5 h-5 text-black" />
                     </div>
                 )}
 
@@ -107,6 +107,12 @@ export function Sidebar({ collapsed, setCollapsed, mobile = false }: SidebarProp
                     );
                 })}
             </nav>
+
+            {!collapsed && (
+                <div className="mt-auto pt-4 text-xs text-gray-400 text-center border-t border-white/5">
+                    &copy; {new Date().getFullYear()} Anganba Singha
+                </div>
+            )}
         </div>
     );
 }

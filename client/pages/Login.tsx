@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/components/ui/use-toast";
 import { useNavigate } from "react-router-dom";
-import { Lock, ArrowRight } from "lucide-react"; // Added ArrowRight
+import { Lock, ArrowRight, Wallet } from "lucide-react"; // Added ArrowRight, Wallet
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -48,9 +48,9 @@ export default function Login() {
                 <div className="z-10">
                     <div className="flex items-center gap-2 text-primary font-bold text-xl font-serif">
                         <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
-                            <span className="text-primary text-lg">TK</span>
+                            <Wallet className="w-5 h-5 text-primary" />
                         </div>
-                        Amar TK Koi
+                        Amar Taka Koi
                     </div>
                 </div>
 
@@ -65,7 +65,7 @@ export default function Login() {
                 </div>
 
                 <div className="z-10 text-sm text-muted-foreground">
-                    &copy; {new Date().getFullYear()} Monthly Budget Tracker
+                    &copy; {new Date().getFullYear()} Anganba Singha
                 </div>
             </div>
 

@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Wallet } from "lucide-react";
 
 const Register = () => {
     const [username, setUsername] = useState('');
@@ -40,9 +40,9 @@ const Register = () => {
                 <div className="z-10">
                     <div className="flex items-center gap-2 text-primary font-bold text-xl font-serif">
                         <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
-                            <span className="text-primary text-lg">TK</span>
+                            <Wallet className="w-5 h-5 text-primary" />
                         </div>
-                        Amar TK Koi
+                        Amar Taka Koi
                     </div>
                 </div>
 
@@ -57,7 +57,7 @@ const Register = () => {
                 </div>
 
                 <div className="z-10 text-sm text-muted-foreground">
-                    &copy; {new Date().getFullYear()} Monthly Budget Tracker
+                    &copy; {new Date().getFullYear()} Anganba Singha
                 </div>
             </div>
 

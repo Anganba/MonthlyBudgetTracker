@@ -185,11 +185,12 @@ export const updateBudget: RequestHandler = async (req, res) => {
 };
 
 export const addTransaction: RequestHandler = async (req, res) => {
-  const { month, year } = req.query;
+  // Ignore query params for target budget, rely on transaction date
+  // const { month, year } = req.query; 
   const { name, planned, actual, category, date, goalId } = req.body;
   const userId = req.session?.user?.id;
 
-  if (!month || !year || !name || planned === undefined || actual === undefined || !category || !date) {
+  if (!name || planned === undefined || actual === undefined || !category || !date) {
     return res.status(400).json({ success: false, message: "Missing required fields" });
   }
 
@@ -198,17 +199,21 @@ export const addTransaction: RequestHandler = async (req, res) => {
   }
 
   try {
-    const budget = await getOrCreateBudget(month as string, parseInt(year as string), userId);
+    const dateObj = new Date(date);
+    const monthNames = ["January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
+    ];
+    const targetMonth = monthNames[dateObj.getMonth()];
+    const targetYear = dateObj.getFullYear();
+
+    const budget = await getOrCreateBudget(targetMonth, targetYear, userId);
 
     if (goalId) {
       // Validate goal exists first
       const { Goal } = await import("../models/Goal");
       const goal = await Goal.findOne({ _id: goalId, userId });
       if (!goal) {
-        // If goal doesn't exist, maybe we shouldn't link it?
-        // Proceeding but setting goalId to undefined is safer, or just let it fail silently at recalc?
-        // Let's keep goalId but recalc will ignore it if not found (or should I check?)
-        // Recalc updates Goal model. If goal deleted, nothing happens.
+        // Goal not found logic
       }
     }
 
@@ -250,40 +255,83 @@ export const updateTransaction: RequestHandler = async (req, res) => {
   }
 
   try {
-    const budget = await Budget.findOne({ month: month as string, year: parseInt(year as string), userId });
+    const sourceBudget = await Budget.findOne({ month: month as string, year: parseInt(year as string), userId });
 
-    if (!budget) {
+    if (!sourceBudget) {
       return res.status(404).json({ success: false, message: "Budget not found" });
     }
 
-    const transaction = budget.transactions.find(t => t.id === id as string);
+    const transaction = sourceBudget.transactions.find(t => t.id === id as string);
 
     if (!transaction) {
       return res.status(404).json({ success: false, message: "Transaction not found" });
     }
 
     const oldGoalId = transaction.goalId;
-    const oldActual = transaction.actual;
-    const oldCategory = transaction.category;
 
-    if (name !== undefined) transaction.name = name;
-    if (planned !== undefined) transaction.planned = planned;
-    if (actual !== undefined) transaction.actual = actual;
-    if (req.body.category !== undefined) transaction.category = req.body.category;
-    if (req.body.date !== undefined) transaction.date = req.body.date;
-    if (req.body.goalId !== undefined) transaction.goalId = req.body.goalId;
+    // Check if we need to move the transaction (date change check)
+    let targetMonth = month as string;
+    let targetYear = parseInt(year as string);
+    const newDate = req.body.date;
 
-    const newGoalId = transaction.goalId;
-    const newActual = transaction.actual;
-    const newCategory = transaction.category;
+    if (newDate) {
+      const dateObj = new Date(newDate);
+      const monthNames = ["January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+      ];
+      targetMonth = monthNames[dateObj.getMonth()];
+      targetYear = dateObj.getFullYear();
+    }
 
-    // Sync with Goals
-    await budget.save();
-
+    // Capture IDs for goal recalculation
     const goalsToUpdate = new Set<string>();
     if (oldGoalId) goalsToUpdate.add(oldGoalId);
-    if (newGoalId) goalsToUpdate.add(newGoalId);
 
+    // If bucket changed, we move the transaction
+    if (targetMonth !== (month as string) || targetYear !== parseInt(year as string)) {
+      // 1. Remove from source
+      const index = sourceBudget.transactions.findIndex(t => t.id === id as string);
+      sourceBudget.transactions.splice(index, 1);
+      await sourceBudget.save();
+
+      // 2. Get/Create Target Budget
+      const targetBudget = await getOrCreateBudget(targetMonth, targetYear, userId);
+
+      // 3. Create updated transaction object (since we are moving it)
+      // We apply updates here
+      const updatedTransaction = { ...(transaction as any).toObject() }; // Clone standard obj
+      // Note: 'transaction' is a Mongoose Document, toObject() gives raw JS obj. 
+      // Ensure we keep the string 'id' but maybe generate new _id to avoid collisions or let Mongoose handle it.
+      // Usually better to let Mongoose gen new _id effectively for subdoc.
+      delete updatedTransaction._id;
+
+      if (name !== undefined) updatedTransaction.name = name;
+      if (planned !== undefined) updatedTransaction.planned = planned;
+      if (actual !== undefined) updatedTransaction.actual = actual;
+      if (req.body.category !== undefined) updatedTransaction.category = req.body.category;
+      if (req.body.date !== undefined) updatedTransaction.date = req.body.date;
+      if (req.body.goalId !== undefined) updatedTransaction.goalId = req.body.goalId;
+
+      targetBudget.transactions.push(updatedTransaction as Transaction);
+      await targetBudget.save();
+
+      if (updatedTransaction.goalId) goalsToUpdate.add(updatedTransaction.goalId);
+
+    } else {
+      // Same bucket, update in place
+      if (name !== undefined) transaction.name = name;
+      if (planned !== undefined) transaction.planned = planned;
+      if (actual !== undefined) transaction.actual = actual;
+      if (req.body.category !== undefined) transaction.category = req.body.category;
+      if (req.body.date !== undefined) transaction.date = req.body.date;
+      if (req.body.goalId !== undefined) transaction.goalId = req.body.goalId;
+
+      await sourceBudget.save();
+
+      if (transaction.goalId) goalsToUpdate.add(transaction.goalId);
+    }
+
+    // Recalculate Goals
     for (const gid of goalsToUpdate) {
       await recalculateGoalTotal(gid, userId);
     }
@@ -398,20 +446,42 @@ export const getMonthlyStats: RequestHandler = async (req, res) => {
     const budgetDoc = await Budget.findOne({ userId, month: m, year: y }).select('rolloverActual');
     const startBalance = budgetDoc ? budgetDoc.rolloverActual : 0;
 
+    // Map month name to number (01-12)
+    const monthNames = ["January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
+    ];
+    const monthIndex = monthNames.indexOf(m);
+    if (monthIndex === -1) throw new Error("Invalid month name");
+
+    const monthNum = (monthIndex + 1).toString().padStart(2, '0');
+    const datePattern = new RegExp(`^${y}-${monthNum}`);
+
     const stats = await Budget.aggregate([
-      { $match: { userId, month: m, year: y } },
+      // Match ALL budgets for the year to catch misplaced transactions
+      { $match: { userId, year: y } },
       {
         $facet: {
           // 1. Group by Category for Pie Chart
           "expensesByCategory": [
             { $unwind: "$transactions" },
-            { $match: { "transactions.category": { $nin: ['income', 'Paycheck', 'Bonus', 'Debt Added', 'Savings'] }, "transactions.actual": { $gt: 0 } } },
+            {
+              $match: {
+                "transactions.category": { $nin: ['income', 'Paycheck', 'Bonus', 'Debt Added', 'Savings'] },
+                "transactions.actual": { $gt: 0 },
+                "transactions.date": { $regex: datePattern }
+              }
+            },
             { $group: { _id: "$transactions.category", value: { $sum: "$transactions.actual" } } },
             { $sort: { value: -1 } }
           ],
           // 2. Daily Flow
           "dailyFlow": [
             { $unwind: "$transactions" },
+            {
+              $match: {
+                "transactions.date": { $regex: datePattern }
+              }
+            },
             {
               $group: {
                 _id: { $dayOfMonth: { $dateFromString: { dateString: "$transactions.date" } } },
