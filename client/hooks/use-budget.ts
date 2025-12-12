@@ -38,6 +38,8 @@ export function useBudget(selectedMonth?: string, selectedYear?: number) {
         enabled: !!userId, // Only fetch if user is logged in
     });
 
+
+
     const { data: prevBudget } = useQuery({
         queryKey: ['budget', prevMonth, prevYear, userId],
         queryFn: () => fetchBudget(prevMonth, prevYear),
@@ -147,9 +149,36 @@ export function useBudget(selectedMonth?: string, selectedYear?: number) {
     };
 
 
+    const { data: yearlyStats, isLoading: isLoadingYearly } = useQuery({
+        queryKey: ['yearlyStats', year, userId],
+        queryFn: async () => {
+            const response = await fetch(`/api/budget/year?year=${year}`);
+            const result = await response.json();
+            if (!result.success) return [];
+            return result.data as { name: string; expense: number }[];
+        },
+        staleTime: 1000 * 60 * 10,
+        enabled: !!userId,
+    });
+
+    // New Monthly Stats Query (Optimized)
+    const { data: monthlyStats, isLoading: isLoadingMonthlyStats } = useQuery({
+        queryKey: ['monthlyStats', month, year, userId],
+        queryFn: async () => {
+            const response = await fetch(`/api/budget/month-stats?month=${month}&year=${year}`);
+            const result = await response.json();
+            if (!result.success) return null;
+            return result.data as { pieData: any[]; dailyData: any[]; startBalance: number };
+        },
+        staleTime: 1000 * 60 * 5,
+        enabled: !!userId,
+    });
+
+
     return {
         budget,
         isLoading: isLoadingCurrent,
+        isLoadingYearly,
         stats: {
             ...currentStats,
             startBalance: budget?.rolloverActual || 0
@@ -161,6 +190,13 @@ export function useBudget(selectedMonth?: string, selectedYear?: number) {
             savings: generateGraphData('savings'),
             balance: generateGraphData('balance'),
         },
-        refreshBudget: () => queryClient.invalidateQueries({ queryKey: ['budget', month, year, userId] })
+        yearlyStats: yearlyStats || [],
+        monthlyStats,
+        isLoadingMonthlyStats,
+        refreshBudget: () => {
+            queryClient.invalidateQueries({ queryKey: ['budget', month, year, userId] });
+            queryClient.invalidateQueries({ queryKey: ['yearlyStats', year, userId] });
+            queryClient.invalidateQueries({ queryKey: ['monthlyStats', month, year, userId] });
+        }
     };
 }

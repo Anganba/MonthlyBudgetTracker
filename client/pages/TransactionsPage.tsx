@@ -136,6 +136,7 @@ export function TransactionsPage() {
             if (result.success) {
                 await fetchBudget(month, year);
                 queryClient.invalidateQueries({ queryKey: ['budget', month, year] });
+                queryClient.invalidateQueries({ queryKey: ['goals'] });
             }
         } catch (error) { console.error('Error saving transaction:', error); }
     };
@@ -158,6 +159,7 @@ export function TransactionsPage() {
             await fetch(`/api/budget/transaction?month=${month}&year=${year}&id=${id}`, { method: 'DELETE' });
             await fetchBudget(month, year);
             queryClient.invalidateQueries({ queryKey: ['budget', month, year] });
+            queryClient.invalidateQueries({ queryKey: ['goals'] });
         } catch (error) { console.error(error); }
     };
 

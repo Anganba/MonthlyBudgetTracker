@@ -71,14 +71,6 @@ const App = () => (
               />
 
               <Route
-                path="/calendar"
-                element={
-                  <ProtectedRoute>
-                    <PlaceholderPage title="Calendar" />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
                 path="/goals"
                 element={
                   <ProtectedRoute>
@@ -107,14 +99,6 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <RecurringPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/notifications"
-                element={
-                  <ProtectedRoute>
-                    <PlaceholderPage title="Notifications" />
                   </ProtectedRoute>
                 }
               />

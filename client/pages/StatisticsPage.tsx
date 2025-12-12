@@ -15,6 +15,7 @@ import {
     BarChart,
     Bar,
     Legend,
+    LabelList,
 } from "recharts";
 import { format, eachDayOfInterval, startOfMonth, endOfMonth, isSameDay, addMonths, subMonths } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,166 +32,126 @@ export default function StatisticsPage() {
     const currentMonthName = monthNames[date.getMonth()];
     const currentYear = date.getFullYear();
 
-    const { budget, isLoading: isLoadingBudget } = useBudget(currentMonthName, currentYear);
+    const { budget, isLoading: isLoadingBudget, yearlyStats, isLoadingYearly, monthlyStats, isLoadingMonthlyStats } = useBudget(currentMonthName, currentYear);
+
+
+
     const { goals, isLoading: isLoadingGoals } = useGoals();
     const currency = "$"; // consistent with app
 
-    const [activeMetric, setActiveMetric] = useState("all");
+    const [showIncome, setShowIncome] = useState(false);
+    const [showExpense, setShowExpense] = useState(true);
+    const [showSavings, setShowSavings] = useState(false);
 
     const handlePrevMonth = () => setDate(subMonths(date, 1));
     const handleNextMonth = () => setDate(addMonths(date, 1));
 
-    // 1. Prepare Daily Trend Data
+    // 1. Prepare Daily Trend Data (Use Optimized Server Data if available)
     const dailyData = useMemo(() => {
-        // Determine start/end of the SELECTED month
-        const start = startOfMonth(date);
-        const end = endOfMonth(date);
-        const days = eachDayOfInterval({ start, end });
-
-        // Aggregate transactions from budget if it exists
-        const incomeCategories = ['Paycheck', 'Bonus', 'Debt Added', 'income'];
-        const transactions = budget?.transactions || [];
-
-        return days.map(day => {
-            let income = 0;
-            let expense = 0;
-            let savings = 0;
-
-            transactions.forEach(t => {
-                const tDate = new Date(t.date);
-                if (isSameDay(tDate, day)) {
-                    if (t.category === 'Savings') {
-                        savings += t.actual;
-                    } else if (incomeCategories.includes(t.category)) {
-                        income += t.actual;
-                    } else {
-                        expense += t.actual;
-                    }
-                }
+        if (monthlyStats?.dailyData) {
+            // Server returns { day: 1, income: ..., expense: ..., savings: ... }
+            // We need to map it to the Recharts format with full dates
+            return monthlyStats.dailyData.map((d: any) => {
+                const dateObj = new Date(currentYear, date.getMonth(), d.day);
+                return {
+                    date: format(dateObj, 'dd'),
+                    fullDate: format(dateObj, 'MMM dd'),
+                    income: d.income,
+                    expense: d.expense,
+                    savings: d.savings,
+                };
             });
+        }
 
-            return {
-                date: format(day, 'dd'),
-                fullDate: format(day, 'MMM dd'),
-                income,
-                expense,
-                savings,
-            };
-        });
-    }, [budget, date]);
+        // Fallback or Initial Load (though isLoading should handle this)
+        return [];
+    }, [monthlyStats, currentYear, date]);
 
-    // 2. Prepare Pie Data (Expenses)
+    // 2. Prepare Pie Data (Expenses) - Use Optimized Server Data
     const pieData = useMemo(() => {
-        if (!budget) return [];
-        const incomeCategories = ['Paycheck', 'Bonus', 'Debt Added', 'income'];
-        const categoryMap = new Map<string, number>();
+        if (monthlyStats?.pieData) return monthlyStats.pieData;
+        return [];
+    }, [monthlyStats]);
 
-        budget.transactions.forEach(t => {
-            if (!incomeCategories.includes(t.category) && t.category !== 'Savings' && t.actual > 0) {
-                const current = categoryMap.get(t.category) || 0;
-                categoryMap.set(t.category, current + t.actual);
-            }
-        });
-
-        return Array.from(categoryMap.entries())
-            .map(([name, value]) => ({ name, value }))
-            .sort((a, b) => b.value - a.value);
-    }, [budget]);
-
-    // Colors for Pie Chart
+    // Colors for Pie Chart - Using Theme Variables
     const pieColors = [
-        '#a3e635', // lime-400
-        '#34d399', // emerald-400
-        '#22d3ee', // cyan-400
-        '#818cf8', // indigo-400
-        '#c084fc', // purple-400
-        '#f472b6', // pink-400
-        '#fbbf24', // amber-400
-        '#f87171', // red-400
+        'hsl(var(--chart-1))', // Neon Green
+        'hsl(var(--chart-2))', // Teal
+        'hsl(var(--chart-3))', // Purple
+        'hsl(var(--chart-4))', // Pink
+        'hsl(var(--chart-5))', // Orange
+        '#3b82f6', // Blue
+        '#6366f1', // Indigo
+        '#a855f7', // Purple-600
     ];
 
     // 3. Prepare Goals Data
     const goalsData = useMemo(() => {
+        if (!goals) return [];
         return goals.map(g => {
-            const current = Number(g.currentAmount);
-            const target = Number(g.targetAmount);
-            const percent = target > 0 ? (current / target) * 100 : 0;
+            const current = g.currentAmount || 0;
+            const target = g.targetAmount || 1; // Prevent div by zero
+            const percent = Math.min(100, (current / target) * 100);
+
             return {
                 name: g.name,
                 saved: current,
                 target: target,
                 remaining: Math.max(0, target - current),
                 percent: Math.round(percent),
-                color: g.color || '#bef264'
+                // Normalized values for the bar chart (always sums to 100)
+                barSaved: percent,
+                barRemaining: 100 - percent,
+                color: g.color || 'hsl(var(--primary))'
             };
         });
     }, [goals]);
 
-    // Custom Label with Connector Line
-    const renderCustomizedLabel = (props: any) => {
-        const { cx, cy, midAngle, innerRadius, outerRadius, percent, index, name } = props;
-        const RADIAN = Math.PI / 180;
-        const sin = Math.sin(-RADIAN * midAngle);
-        const cos = Math.cos(-RADIAN * midAngle);
-        const sx = cx + (outerRadius) * cos;
-        const sy = cy + (outerRadius) * sin;
-        const mx = cx + (outerRadius + 20) * cos;
-        const my = cy + (outerRadius + 20) * sin;
-        const ex = mx + (cos >= 0 ? 1 : -1) * 22;
-        const ey = my;
-        const textAnchor = cos >= 0 ? 'start' : 'end';
 
-        if (percent < 0.05) return null;
 
-        const color = pieColors[index % pieColors.length];
-
-        return (
-            <g>
-                <path d={`M${sx},${sy}L${mx},${my}L${ex},${ey}`} stroke={color} fill="none" />
-                <circle cx={ex} cy={ey} r={2} fill={color} stroke="none" />
-                <text x={ex + (cos >= 0 ? 1 : -1) * 12} y={ey} textAnchor={textAnchor} fill="#fff" fontSize={12} dominantBaseline="central">
-                    {`${name} ${(percent * 100).toFixed(0)}%`}
-                </text>
-            </g>
-        );
-    };
-
-    // Label for Saved Bar (visible only if bar is wide enough)
+    // Label for Saved Bar (visible inside ONLY if percent is large enough)
     const renderSavedLabel = (props: any) => {
-        const { x, y, width, height, payload } = props;
-        const p = payload ? payload.percent : 0;
-        if (width < 40) return null;
-        return (
-            <text x={x + width - 5} y={y + height / 2 + 5} textAnchor="end" fill="#000" fontSize={12} fontWeight="bold">
-                {p}%
-            </text>
-        );
+        const { x, y, width, height, index } = props;
+        const data = goalsData[index];
+        const p = data ? data.percent : 0;
+
+        // If > 15%, we assume it fits inside and render cleanly.
+        if (p >= 15) {
+            return (
+                <text x={x + width - 5} y={y + height / 2 + 5} textAnchor="end" fill="hsl(var(--primary-foreground))" fontSize={12} fontWeight="bold">
+                    {p}%
+                </text>
+            );
+        }
+        return null;
     };
 
-    // Label for Remaining Bar (visible if Saved bar is too small)
+    // Label for Remaining Bar (handles small percentages to render on TOP of background)
     const renderRemainingLabel = (props: any) => {
-        const { x, y, height, payload } = props;
-        const p = payload ? payload.percent : 0;
+        const { x, y, height, index } = props;
+        const data = goalsData[index];
+        const p = data ? data.percent : 0;
 
-        // Show here if saved bar label is hidden (width < 40)
-        // Since we don't have width here, we use percentage proxy.
-        // Assuming ~40px is around 15% of width?
-        if (p >= 15) return null;
-
-        return (
-            <text x={x + 5} y={y + height / 2 + 5} textAnchor="start" fill="#bef264" fontSize={12} fontWeight="bold">
-                {p}%
-            </text>
-        );
+        // If < 15%, render it here (outside logic) so it sits on top of the grey bar
+        if (p < 15) {
+            return (
+                <text x={x + 5} y={y + height / 2 + 5} textAnchor="start" fill="hsl(var(--primary))" fontSize={12} fontWeight="bold">
+                    {p}%
+                </text>
+            );
+        }
+        return null;
     };
 
-    if (isLoadingBudget && !budget) {
+    if ((isLoadingBudget || isLoadingMonthlyStats) && !monthlyStats) {
         return (
             <div className="flex items-center justify-center min-h-screen">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
         );
     }
+
+    // ... Render ...
 
     return (
         <div className="min-h-screen bg-background text-foreground p-8">
@@ -201,7 +162,7 @@ export default function StatisticsPage() {
                         <Button variant="ghost" size="icon" onClick={handlePrevMonth} className="h-8 w-8">
                             <ChevronLeft className="h-4 w-4" />
                         </Button>
-                        <span className="font-semibold text-white min-w-[140px] text-center flex items-center justify-center gap-2">
+                        <span className="font-semibold text-foreground min-w-[140px] text-center flex items-center justify-center gap-2">
                             <Calendar className="h-4 w-4 text-primary" />
                             {currentMonthName} {currentYear}
                         </span>
@@ -211,138 +172,251 @@ export default function StatisticsPage() {
                     </div>
                 </div>
 
-                <Select value={activeMetric} onValueChange={setActiveMetric}>
-                    <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder="View Metric" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">All Metrics</SelectItem>
-                        <SelectItem value="income">Income Only</SelectItem>
-                        <SelectItem value="expense">Expense Only</SelectItem>
-                        <SelectItem value="savings">Savings Only</SelectItem>
-                    </SelectContent>
-                </Select>
+                <div className="flex gap-2">
+                    <Button
+                        variant={showIncome ? "default" : "outline"}
+                        onClick={() => setShowIncome(!showIncome)}
+                        className="h-8 border-dashed"
+                    >
+                        Income
+                    </Button>
+                    <Button
+                        variant={showExpense ? "default" : "outline"}
+                        onClick={() => setShowExpense(!showExpense)}
+                        className="h-8 border-dashed"
+                    >
+                        Expenses
+                    </Button>
+                    <Button
+                        variant={showSavings ? "default" : "outline"}
+                        onClick={() => setShowSavings(!showSavings)}
+                        className="h-8 border-dashed"
+                    >
+                        Savings
+                    </Button>
+                </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-                {/* Main Trend Chart */}
-                <Card className="col-span-1 lg:col-span-2 bg-card border-0 shadow-sm">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Daily Financial Flow (Area Chart) */}
+                <Card className="col-span-1 lg:col-span-2 bg-card border-none shadow-xl">
                     <CardHeader>
-                        <CardTitle className="text-lg font-bold">Daily Financial Flow</CardTitle>
+                        <CardTitle className="text-xl font-semibold text-card-foreground">Daily Financial Flow</CardTitle>
                     </CardHeader>
-                    <CardContent className="h-[400px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={dailyData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                                <defs>
-                                    <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                                    </linearGradient>
-                                    <linearGradient id="colorExpense" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} />
-                                        <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
-                                    </linearGradient>
-                                    <linearGradient id="colorSavings" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                                    </linearGradient>
-                                </defs>
-                                <XAxis dataKey="date" stroke="#666" tick={{ fill: '#666' }} />
-                                <YAxis stroke="#666" tick={{ fill: '#666' }} />
-                                <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
-                                <Tooltip
-                                    contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333' }}
-                                    labelStyle={{ color: '#fff' }}
-                                />
-                                <Legend />
-                                {(activeMetric === 'all' || activeMetric === 'income') && (
-                                    <Area type="monotone" dataKey="income" stroke="#10b981" fillOpacity={1} fill="url(#colorIncome)" name="Income" />
-                                )}
-                                {(activeMetric === 'all' || activeMetric === 'expense') && (
-                                    <Area type="monotone" dataKey="expense" stroke="#ef4444" fillOpacity={1} fill="url(#colorExpense)" name="Expenses" />
-                                )}
-                                {(activeMetric === 'all' || activeMetric === 'savings') && (
-                                    <Area type="monotone" dataKey="savings" stroke="#3b82f6" fillOpacity={1} fill="url(#colorSavings)" name="Savings" />
-                                )}
-                            </AreaChart>
-                        </ResponsiveContainer>
-                    </CardContent>
-                </Card>
-
-                {/* Expense Composition */}
-                <Card className="bg-card border-0 shadow-sm">
-                    <CardHeader>
-                        <CardTitle className="text-lg font-bold">Expense Breakdown</CardTitle>
-                    </CardHeader>
-                    <CardContent className="h-[300px]">
-                        {pieData.length > 0 ? (
+                    <CardContent>
+                        <div className="h-[300px] w-full">
                             <ResponsiveContainer width="100%" height="100%">
-                                <PieChart margin={{ top: 0, right: 80, left: 80, bottom: 0 }}>
-                                    <Pie
-                                        data={pieData}
-                                        cx="50%"
-                                        cy="50%"
-                                        innerRadius={0}
-                                        outerRadius={80}
-                                        paddingAngle={2}
-                                        dataKey="value"
-                                        label={renderCustomizedLabel}
-                                    >
-                                        {pieData.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={pieColors[index % pieColors.length]} stroke="transparent" />
-                                        ))}
-                                    </Pie>
+                                <AreaChart data={dailyData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                                    <defs>
+                                        <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8} />
+                                            <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.1} />
+                                        </linearGradient>
+                                        <linearGradient id="colorExpense" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="hsl(var(--destructive))" stopOpacity={0.8} />
+                                            <stop offset="95%" stopColor="hsl(var(--destructive))" stopOpacity={0.1} />
+                                        </linearGradient>
+                                        <linearGradient id="colorSavings" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="hsl(var(--chart-2))" stopOpacity={0.8} />
+                                            <stop offset="95%" stopColor="hsl(var(--chart-2))" stopOpacity={0.1} />
+                                        </linearGradient>
+                                    </defs>
+                                    <XAxis
+                                        dataKey="date"
+                                        stroke="hsl(var(--muted-foreground))"
+                                        fontSize={12}
+                                        tickLine={false}
+                                        axisLine={false}
+                                    />
+                                    <YAxis
+                                        stroke="hsl(var(--muted-foreground))"
+                                        fontSize={12}
+                                        tickLine={false}
+                                        axisLine={false}
+                                        tickFormatter={(value) => `${currency}${value}`}
+                                    />
+                                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} opacity={0.4} />
                                     <Tooltip
-                                        contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333' }}
-                                        formatter={(value: number) => [`${currency}${value.toFixed(2)}`, 'Amount']}
+                                        contentStyle={{ backgroundColor: 'hsl(var(--popover))', borderColor: 'hsl(var(--border))', borderRadius: 'var(--radius)', color: 'hsl(var(--popover-foreground))' }}
+                                        itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
+                                        labelStyle={{ color: 'hsl(var(--muted-foreground))' }}
+                                        formatter={(value: number) => [`${currency}${value.toFixed(2)}`, '']}
                                     />
                                     <Legend />
-                                </PieChart>
+                                    {showIncome && (
+                                        <Area
+                                            type="monotone"
+                                            dataKey="income"
+                                            name="Income"
+                                            stroke="hsl(var(--primary))"
+                                            fillOpacity={1}
+                                            fill="url(#colorIncome)"
+                                            strokeWidth={2}
+                                        />
+                                    )}
+                                    {showExpense && (
+                                        <Area
+                                            type="monotone"
+                                            dataKey="expense"
+                                            name="Expenses"
+                                            stroke="hsl(var(--destructive))"
+                                            fillOpacity={1}
+                                            fill="url(#colorExpense)"
+                                            strokeWidth={2}
+                                        />
+                                    )}
+                                    {showSavings && (
+                                        <Area
+                                            type="monotone"
+                                            dataKey="savings"
+                                            name="Savings"
+                                            stroke="hsl(var(--chart-2))"
+                                            fillOpacity={1}
+                                            fill="url(#colorSavings)"
+                                            strokeWidth={2}
+                                        />
+                                    )}
+                                </AreaChart>
                             </ResponsiveContainer>
-                        ) : (
-                            <div className="h-full flex items-center justify-center text-muted-foreground">
-                                No expense data available
-                            </div>
-                        )}
+                        </div>
                     </CardContent>
                 </Card>
 
-                {/* Goal Progress Bar Chart */}
-                <Card className="bg-card border-0 shadow-sm">
+                {/* Expense Breakdown (Pie Chart) */}
+                <Card className="bg-card border-none shadow-xl">
                     <CardHeader>
-                        <CardTitle className="text-lg font-bold">Goals Progress</CardTitle>
+                        <CardTitle className="text-xl font-semibold text-card-foreground">Expense Breakdown</CardTitle>
                     </CardHeader>
-                    <CardContent className="h-[300px]">
-                        {goalsData.length > 0 ? (
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={goalsData} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
-                                    <XAxis type="number" hide />
-                                    <YAxis dataKey="name" type="category" width={100} tick={{ fill: '#fff', fontSize: 12, fontWeight: 500 }} />
-                                    <Tooltip
-                                        cursor={{ fill: 'transparent' }}
-                                        contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333' }}
-                                        formatter={(value: number, name: string, props: any) => {
-                                            if (name === 'Saved') return [`${currency}${value} (${props.payload.percent}%)`, name];
-                                            return [`${currency}${value}`, name];
-                                        }}
-                                    />
-                                    {/* Saved Bar with Label - Neon Green */}
-                                    <Bar dataKey="saved" stackId="a" fill="#bef264" radius={[4, 0, 0, 4]} name="Saved" label={renderSavedLabel}>
-                                        {
-                                            goalsData.map((entry, index) => (
-                                                <Cell key={`cell-saved-${index}`} fill={entry.percent >= 100 ? '#10b981' : '#bef264'} />
-                                            ))
-                                        }
-                                    </Bar>
-                                    {/* Remaining Bar - Lighter Grey for visibility */}
-                                    <Bar dataKey="remaining" stackId="a" fill="#4b5563" radius={[0, 4, 4, 0]} name="Remaining" label={renderRemainingLabel} />
-                                </BarChart>
-                            </ResponsiveContainer>
-                        ) : (
-                            <div className="h-full flex items-center justify-center text-muted-foreground">
-                                No goals set
-                            </div>
-                        )}
+                    <CardContent>
+                        <div className="h-[300px] w-full">
+                            {pieData.length > 0 ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie
+                                            data={pieData}
+                                            cx="50%"
+                                            cy="50%"
+                                            innerRadius={60}
+                                            outerRadius={80}
+                                            paddingAngle={5}
+                                            dataKey="value"
+                                            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                                            stroke="none"
+                                        >
+                                            {pieData.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={pieColors[index % pieColors.length]} />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip
+                                            contentStyle={{ backgroundColor: 'hsl(var(--popover))', borderColor: 'hsl(var(--border))', borderRadius: 'var(--radius)', color: 'hsl(var(--popover-foreground))' }}
+                                            itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
+                                            formatter={(value: number) => [`${currency}${value.toFixed(2)}`, 'Amount']}
+                                        />
+                                        <Legend verticalAlign="bottom" height={36} />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className="h-full flex items-center justify-center text-muted-foreground">
+                                    No expense data available
+                                </div>
+                            )}
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Goals Progress (Bar Chart) - Normalized to 100% */}
+                <Card className="bg-card border-none shadow-xl">
+                    <CardHeader>
+                        <CardTitle className="text-xl font-semibold text-card-foreground">Goals Progress</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="h-[300px] w-full">
+                            {goalsData.length > 0 ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart
+                                        layout="vertical"
+                                        data={goalsData}
+                                        margin={{ top: 20, right: 30, left: 40, bottom: 5 }}
+                                    >
+                                        <XAxis type="number" domain={[0, 100]} hide />
+                                        <YAxis dataKey="name" type="category" width={100} tick={{ fill: 'hsl(var(--foreground))', fontSize: 12, fontWeight: 500 }} />
+                                        <Tooltip
+                                            cursor={{ fill: 'transparent' }}
+                                            contentStyle={{ backgroundColor: 'hsl(var(--popover))', borderColor: 'hsl(var(--border))', borderRadius: 'var(--radius)', color: 'hsl(var(--popover-foreground))' }}
+                                            itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
+                                            formatter={(value: number, name: string, props: any) => {
+                                                // Show REAL values from payload, not normalized bar values
+                                                const realValue = name === 'Saved' ? props.payload.saved : props.payload.remaining;
+                                                if (name === 'Saved') return [`${currency}${realValue} (${props.payload.percent}%)`, name];
+                                                return [`${currency}${realValue}`, name];
+                                            }}
+                                        />
+                                        <Bar dataKey="barSaved" name="Saved" stackId="a" radius={[4, 0, 0, 4]}>
+                                            {goalsData.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={entry.color} />
+                                            ))}
+                                            {/* Label List rendered manually via Content */}
+                                            <LabelList content={renderSavedLabel} />
+                                        </Bar>
+                                        <Bar dataKey="barRemaining" name="Remaining" stackId="a" fill="hsl(var(--secondary))" radius={[0, 4, 4, 0]}>
+                                            <LabelList content={renderRemainingLabel} />
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className="h-full flex items-center justify-center text-muted-foreground">
+                                    No goals set
+                                </div>
+                            )}
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* Yearly Expense Overview - Moved to Bottom */}
+            <div className="mt-8 mb-8">
+                <Card className="bg-card border-none shadow-xl">
+                    <CardHeader>
+                        <CardTitle className="text-xl font-semibold text-card-foreground">Yearly Expense Overview ({currentYear})</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="h-[300px] w-full">
+                            {isLoadingYearly ? (
+                                <div className="h-full flex items-center justify-center">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                                </div>
+                            ) : yearlyStats.length > 0 ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={yearlyStats} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+                                        <XAxis
+                                            dataKey="name"
+                                            stroke="hsl(var(--muted-foreground))"
+                                            fontSize={12}
+                                            tickLine={false}
+                                            axisLine={false}
+                                        />
+                                        <YAxis
+                                            stroke="hsl(var(--muted-foreground))"
+                                            fontSize={12}
+                                            tickLine={false}
+                                            axisLine={false}
+                                            tickFormatter={(value) => `${currency}${value}`}
+                                        />
+                                        <Tooltip
+                                            cursor={{ fill: 'hsl(var(--accent)/0.1)' }}
+                                            contentStyle={{ backgroundColor: 'hsl(var(--popover))', borderColor: 'hsl(var(--border))', borderRadius: 'var(--radius)', color: 'hsl(var(--popover-foreground))' }}
+                                            itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
+                                            formatter={(value: number) => [`${currency}${value.toFixed(2)}`, 'Expense']}
+                                        />
+                                        <Bar dataKey="expense" name="Expense" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className="h-full flex items-center justify-center text-muted-foreground">
+                                    No yearly data available
+                                </div>
+                            )}
+                        </div>
                     </CardContent>
                 </Card>
             </div>

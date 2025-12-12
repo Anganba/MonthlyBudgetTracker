@@ -12,6 +12,8 @@ import {
   addTransaction,
   updateTransaction,
   deleteTransaction,
+  getYearlyStats,
+  getMonthlyStats,
 } from "./routes/budget";
 import {
   getGoals,
@@ -85,6 +87,8 @@ export function createServer() {
 
   // Budget API routes - Protected
   app.get("/api/budget", requireAuth, getBudget);
+  app.get("/api/budget/year", requireAuth, getYearlyStats);
+  app.get("/api/budget/month-stats", requireAuth, getMonthlyStats);
   app.put("/api/budget", requireAuth, updateBudget);
   app.post("/api/budget/transaction", requireAuth, addTransaction);
   app.put("/api/budget/transaction", requireAuth, updateTransaction);

@@ -121,25 +121,29 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
                                     <SelectValue placeholder="Select category" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="Paycheck">Paycheck (Income)</SelectItem>
-                                    <SelectItem value="Bonus">Bonus (Income)</SelectItem>
-                                    <SelectItem value="Debt Added">Debt Added (Income)</SelectItem>
-
-                                    <SelectItem value="Food">Food</SelectItem>
-                                    <SelectItem value="Gadgets">Gadgets</SelectItem>
-                                    <SelectItem value="Health/medical">Health/medical</SelectItem>
-                                    <SelectItem value="Rent">Rent</SelectItem>
-                                    <SelectItem value="Transportation">Transportation</SelectItem>
-                                    <SelectItem value="Personal">Personal</SelectItem>
-                                    <SelectItem value="Cosmetics">Cosmetics</SelectItem>
-                                    <SelectItem value="Utilities">Utilities</SelectItem>
-                                    <SelectItem value="Travel">Travel</SelectItem>
-                                    <SelectItem value="Debt Paid">Debt Paid</SelectItem>
-                                    <SelectItem value="Miscellaneous">Miscellaneous</SelectItem>
-                                    <SelectItem value="Remittance">Remittance</SelectItem>
-                                    <SelectItem value="Snacks">Snacks</SelectItem>
-
-                                    <SelectItem value="Savings">Savings</SelectItem>
+                                    {
+                                        [
+                                            { value: "Bonus", label: "Bonus (Income)" },
+                                            { value: "Cosmetics", label: "Cosmetics" },
+                                            { value: "Debt Added", label: "Debt Added (Income)" },
+                                            { value: "Debt Paid", label: "Debt Paid" },
+                                            { value: "Food", label: "Food" },
+                                            { value: "Gadgets", label: "Gadgets" },
+                                            { value: "Health/medical", label: "Health/medical" },
+                                            { value: "Miscellaneous", label: "Miscellaneous" },
+                                            { value: "Paycheck", label: "Paycheck (Income)" },
+                                            { value: "Personal", label: "Personal" },
+                                            { value: "Remittance", label: "Remittance" },
+                                            { value: "Rent", label: "Rent" },
+                                            { value: "Savings", label: "Savings" },
+                                            { value: "Snacks", label: "Snacks" },
+                                            { value: "Transportation", label: "Transportation" },
+                                            { value: "Travel", label: "Travel" },
+                                            { value: "Utilities", label: "Utilities" }
+                                        ].sort((a, b) => a.label.localeCompare(b.label)).map(cat => (
+                                            <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
+                                        ))
+                                    }
                                 </SelectContent>
                             </Select>
                         </div>

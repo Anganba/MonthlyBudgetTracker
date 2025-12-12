@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/lib/auth";
 import { useBudget } from "@/hooks/use-budget";
-import { Bell, LogOut, User, Download, Repeat } from "lucide-react";
+import { LogOut, User, Download, Repeat } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 export function UserProfile() {
@@ -58,13 +58,6 @@ export function UserProfile() {
 
     return (
         <div className="flex items-center gap-4">
-            {/* Notification Bell */}
-            <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-foreground">
-                <Bell className="h-5 w-5" />
-                {/* Notification dot using primary color */}
-                <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-primary" />
-            </Button>
-
             {/* User Avatar & Menu */}
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>

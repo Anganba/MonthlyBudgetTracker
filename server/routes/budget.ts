@@ -60,7 +60,7 @@ const getOrCreateBudget = async (month: string, year: number, userId: string): P
         let targetBudget = budget;
         if (tMonth !== month || tYear !== year) {
           // Different month, find/create that one
-          targetBudget = await Budget.findOne({ month: tMonth, year: tYear, userId }) as IBudget;
+          targetBudget = await Budget.findOne({ month: tMonth, year: tYear, userId }) as any;
           if (!targetBudget) {
             targetBudget = await Budget.create({
               month: tMonth, year: tYear, transactions: [], userId,
@@ -103,29 +103,31 @@ const getOrCreateBudget = async (month: string, year: number, userId: string): P
 
 const recalculateGoalTotal = async (goalId: string, userId: string) => {
   const { Goal } = await import("../models/Goal");
-  console.log(`[Recalc] GoalId: ${goalId}, UserId: ${userId}`);
-  const result = await Budget.aggregate([
-    { $match: { userId } },
-    { $unwind: "$transactions" },
-    { $match: { "transactions.goalId": goalId } },
-    {
-      $project: {
-        category: "$transactions.category",
-        actual: "$transactions.actual",
-        amount: {
-          $cond: {
-            if: { $eq: ["$transactions.category", "Savings"] },
-            then: { $abs: "$transactions.actual" },
-            else: "$transactions.actual"
-          }
+  console.log(`[Recalc] Starting for GoalId: ${goalId}, UserId: ${userId}`);
+
+  try {
+    const result = await Budget.aggregate([
+      { $match: { userId } },
+      { $unwind: "$transactions" },
+      { $match: { "transactions.goalId": goalId } },
+      {
+        $project: {
+          amount: "$transactions.actual",
+          category: "$transactions.category"
         }
-      }
-    },
-    { $group: { _id: null, total: { $sum: "$amount" }, count: { $sum: 1 } } }
-  ]);
-  console.log('[Recalc] Aggregation Result:', result);
-  const total = result[0]?.total || 0;
-  await Goal.updateOne({ _id: goalId, userId }, { currentAmount: total });
+      },
+      { $group: { _id: null, total: { $sum: "$amount" }, count: { $sum: 1 } } }
+    ]);
+
+    console.log('[Recalc] Aggregation Result:', JSON.stringify(result));
+
+    const total = result[0]?.total || 0;
+    console.log(`[Recalc] Updating Goal ${goalId} with new total: ${total}`);
+
+    await Goal.updateOne({ _id: goalId, userId }, { currentAmount: total });
+  } catch (error) {
+    console.error(`[Recalc] Error calculating goal total for ${goalId}:`, error);
+  }
 };
 
 export const getBudget: RequestHandler = async (req, res) => {
@@ -331,7 +333,151 @@ export const deleteTransaction: RequestHandler = async (req, res) => {
 
     res.json({ success: true, data: transaction });
   } catch (error) {
-    console.error("Error deleting transaction:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+
+
+export const getYearlyStats: RequestHandler = async (req, res) => {
+  const { year } = req.query;
+  const userId = req.session?.user?.id;
+
+  if (!year || !userId) {
+    return res.status(400).json({ success: false, message: "Missing required fields" });
+  }
+
+  try {
+    const y = parseInt(year as string);
+
+    const aggregation = await Budget.aggregate([
+      { $match: { userId, year: y } },
+      { $unwind: "$transactions" },
+      {
+        $match: {
+          "transactions.category": { $nin: ['income', 'Paycheck', 'Bonus', 'Debt Added', 'Savings'] }
+        }
+      },
+      {
+        $group: {
+          _id: "$month",
+          totalExpense: { $sum: "$transactions.actual" }
+        }
+      }
+    ]);
+
+    const monthlyStats = Array(12).fill(0).map((_, i) => {
+      const mName = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"][i];
+      const found = aggregation.find(stat => stat._id === mName);
+      return {
+        name: mName.substring(0, 3), // Jan, Feb...
+        expense: found ? found.totalExpense : 0
+      };
+    });
+
+    res.json({ success: true, data: monthlyStats });
+  } catch (error) {
+    console.error("Error fetching yearly stats:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+export const getMonthlyStats: RequestHandler = async (req, res) => {
+  const { month, year } = req.query;
+  const userId = req.session?.user?.id;
+
+  if (!month || !year || !userId) {
+    return res.status(400).json({ success: false, message: "Missing required fields" });
+  }
+
+  try {
+    const m = month as string;
+    const y = parseInt(year as string);
+
+    // Get basic budget info first (rollover, etc) - cheap query
+    const budgetDoc = await Budget.findOne({ userId, month: m, year: y }).select('rolloverActual');
+    const startBalance = budgetDoc ? budgetDoc.rolloverActual : 0;
+
+    const stats = await Budget.aggregate([
+      { $match: { userId, month: m, year: y } },
+      {
+        $facet: {
+          // 1. Group by Category for Pie Chart
+          "expensesByCategory": [
+            { $unwind: "$transactions" },
+            { $match: { "transactions.category": { $nin: ['income', 'Paycheck', 'Bonus', 'Debt Added', 'Savings'] }, "transactions.actual": { $gt: 0 } } },
+            { $group: { _id: "$transactions.category", value: { $sum: "$transactions.actual" } } },
+            { $sort: { value: -1 } }
+          ],
+          // 2. Daily Flow
+          "dailyFlow": [
+            { $unwind: "$transactions" },
+            {
+              $group: {
+                _id: { $dayOfMonth: { $dateFromString: { dateString: "$transactions.date" } } },
+                income: {
+                  $sum: {
+                    $cond: [{ $in: ["$transactions.category", ['income', 'Paycheck', 'Bonus', 'Debt Added']] }, "$transactions.actual", 0]
+                  }
+                },
+                expense: {
+                  $sum: {
+                    $cond: [{ $and: [{ $not: { $in: ["$transactions.category", ['income', 'Paycheck', 'Bonus', 'Debt Added']] } }, { $ne: ["$transactions.category", "Savings"] }] }, "$transactions.actual", 0]
+                  }
+                },
+                savings: {
+                  $sum: {
+                    $cond: [{ $eq: ["$transactions.category", "Savings"] }, "$transactions.actual", 0]
+                  }
+                }
+              }
+            },
+            { $sort: { _id: 1 } }
+          ]
+        }
+      }
+    ]);
+
+    // Reshape data for frontend
+    const result = stats[0]; // Facet returns array with 1 obj
+
+    // Pie Data
+    const pieData = result.expensesByCategory.map((item: any) => ({ name: item._id, value: item.value }));
+
+    // Daily Data (Map to days of month)
+    // Note: Frontend currently generates all days. We can return sparse data or fill it here.
+    // Let's return sparse and let frontend/hook fill/map it if needed, or fill it here.
+    // Filling here is better for "Optimizing".
+
+    // Use date-fns logic equivalent or simple loop
+    const daysInMonth = new Date(y, ["January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"].indexOf(m) + 1, 0).getDate();
+
+    const dailyData = [];
+    const flowMap = new Map(result.dailyFlow.map((f: any) => [f._id, f]));
+
+    for (let i = 1; i <= daysInMonth; i++) {
+      const dayStat = flowMap.get(i) || { income: 0, expense: 0, savings: 0 };
+      // Date formatting usually done on frontend, let's send parts
+      dailyData.push({
+        day: i,
+        income: (dayStat as any).income,
+        expense: (dayStat as any).expense,
+        savings: (dayStat as any).savings
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        pieData,
+        dailyData,
+        startBalance
+      }
+    });
+
+  } catch (error) {
+    console.error("Error fetching monthly stats:", error);
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
