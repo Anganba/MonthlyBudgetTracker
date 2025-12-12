@@ -117,29 +117,35 @@ export function BudgetStatus({ currency = '$', budget, refreshBudget }: BudgetSt
                         ) : (
                             categoryData.map((cat) => {
                                 const percent = cat.total > 0 ? Math.round((cat.spent / cat.total) * 100) : 0;
+                                const isOverBudget = percent > 100;
                                 const Icon = getIcon(cat.name);
-                                const color = "text-primary";
+
+                                // Dynamic colors based on status
+                                const iconColor = isOverBudget ? "text-red-500" : "text-primary";
+                                const progressColor = isOverBudget ? "bg-red-500" : "bg-primary";
+                                const textColor = isOverBudget ? "text-red-500" : "text-white";
 
                                 return (
                                     <div key={cat.name} className="space-y-2">
                                         <div className="flex items-center gap-3">
                                             <div className="bg-secondary p-2 rounded-lg">
-                                                <Icon className={`h-5 w-5 ${color}`} />
+                                                <Icon className={`h-5 w-5 ${iconColor}`} />
                                             </div>
                                             <div className="flex-1">
                                                 <div className="flex justify-between items-center mb-1">
-                                                    <h5 className="font-semibold text-white text-sm">{cat.name}</h5>
+                                                    <h5 className={`font-semibold text-sm ${textColor}`}>{cat.name}</h5>
+                                                    {isOverBudget && <span className="text-xs font-bold text-red-500">OVER LIMIT</span>}
                                                 </div>
                                                 <div className="flex justify-between items-baseline">
-                                                    <span className="text-xs font-bold text-muted-foreground">{percent}%</span>
+                                                    <span className={`text-xs font-bold ${isOverBudget ? 'text-red-500' : 'text-muted-foreground'}`}>{percent}%</span>
                                                     <div className="text-xs">
-                                                        <span className="text-white font-medium">{currency}{cat.spent.toFixed(0)}</span>
+                                                        <span className={`${textColor} font-medium`}>{currency}{cat.spent.toFixed(0)}</span>
                                                         <span className="text-muted-foreground">/{currency}{cat.total.toFixed(0)}</span>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
-                                        <Progress value={percent} className="h-1.5 bg-secondary" />
+                                        <Progress value={percent > 100 ? 100 : percent} indicatorClassName={progressColor} className="h-1.5 bg-secondary" />
                                     </div>
                                 );
                             })

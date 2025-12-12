@@ -1,6 +1,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { BudgetMonth, Transaction } from "@shared/api";
+import { useAuth } from "@/lib/auth";
 
 export function useBudget(selectedMonth?: string, selectedYear?: number) {
     const queryClient = useQueryClient();
@@ -27,16 +28,21 @@ export function useBudget(selectedMonth?: string, selectedYear?: number) {
     const prevMonth = monthNames[prevDate.getMonth()];
     const prevYear = prevDate.getFullYear();
 
+    const { user } = useAuth();
+    const userId = user?.id;
+
     const { data: budget, isLoading: isLoadingCurrent } = useQuery({
-        queryKey: ['budget', month, year],
+        queryKey: ['budget', month, year, userId],
         queryFn: () => fetchBudget(month, year),
         staleTime: 1000 * 60 * 5,
+        enabled: !!userId, // Only fetch if user is logged in
     });
 
     const { data: prevBudget } = useQuery({
-        queryKey: ['budget', prevMonth, prevYear],
+        queryKey: ['budget', prevMonth, prevYear, userId],
         queryFn: () => fetchBudget(prevMonth, prevYear),
         staleTime: 1000 * 60 * 5,
+        enabled: !!userId,
     });
 
     const calculateStats = (b: BudgetMonth | null | undefined) => {
@@ -155,6 +161,6 @@ export function useBudget(selectedMonth?: string, selectedYear?: number) {
             savings: generateGraphData('savings'),
             balance: generateGraphData('balance'),
         },
-        refreshBudget: () => queryClient.invalidateQueries({ queryKey: ['budget', month, year] })
+        refreshBudget: () => queryClient.invalidateQueries({ queryKey: ['budget', month, year, userId] })
     };
 }

@@ -19,6 +19,12 @@ import {
   updateGoal,
   deleteGoal
 } from "./routes/goals";
+import {
+  getRecurringTransactions,
+  createRecurringTransaction,
+  updateRecurringTransaction,
+  deleteRecurringTransaction
+} from "./routes/recurring";
 
 import { connectDB } from "./db";
 
@@ -89,6 +95,12 @@ export function createServer() {
   app.post("/api/goals", requireAuth, createGoal);
   app.put("/api/goals/:id", requireAuth, updateGoal);
   app.delete("/api/goals/:id", requireAuth, deleteGoal);
+
+  // Recurring Transactions API routes
+  app.get("/api/recurring", requireAuth, getRecurringTransactions);
+  app.post("/api/recurring", requireAuth, createRecurringTransaction);
+  app.put("/api/recurring/:id", requireAuth, updateRecurringTransaction);
+  app.delete("/api/recurring/:id", requireAuth, deleteRecurringTransaction);
 
   return app;
 }

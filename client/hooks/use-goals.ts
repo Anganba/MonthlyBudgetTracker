@@ -2,10 +2,13 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Goal } from "@shared/api";
 import { useToast } from "@/components/ui/use-toast";
+import { useAuth } from "@/lib/auth";
 
 export function useGoals() {
     const queryClient = useQueryClient();
     const { toast } = useToast();
+    const { user } = useAuth();
+    const userId = user?.id;
 
     const fetchGoals = async () => {
         const res = await fetch("/api/goals");
@@ -15,8 +18,9 @@ export function useGoals() {
     };
 
     const { data: goals, isLoading, error } = useQuery({
-        queryKey: ['goals'],
+        queryKey: ['goals', userId],
         queryFn: fetchGoals,
+        enabled: !!userId,
     });
 
     const createGoalMutation = useMutation({
@@ -31,7 +35,7 @@ export function useGoals() {
             return json.data;
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['goals'] });
+            queryClient.invalidateQueries({ queryKey: ['goals', userId] });
             toast({ title: "Success", description: "Goal created successfully." });
         },
         onError: (err: Error) => {
@@ -52,7 +56,7 @@ export function useGoals() {
             return json.data;
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['goals'] });
+            queryClient.invalidateQueries({ queryKey: ['goals', userId] });
             toast({ title: "Success", description: "Goal updated successfully." });
         },
         onError: (err: Error) => {
@@ -70,7 +74,7 @@ export function useGoals() {
             return json;
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['goals'] });
+            queryClient.invalidateQueries({ queryKey: ['goals', userId] });
             toast({ title: "Success", description: "Goal deleted successfully." });
         },
         onError: (err: Error) => {

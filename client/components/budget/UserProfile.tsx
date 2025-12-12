@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/lib/auth";
 import { useBudget } from "@/hooks/use-budget";
-import { Bell, LogOut, User, Download } from "lucide-react";
+import { Bell, LogOut, User, Download, Repeat } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 export function UserProfile() {
@@ -91,6 +91,10 @@ export function UserProfile() {
                     <DropdownMenuItem onClick={handleExport}>
                         <Download className="mr-2 h-4 w-4" />
                         <span>Export Data</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate("/recurring")}>
+                        <Repeat className="mr-2 h-4 w-4" />
+                        <span>Recurring</span>
                     </DropdownMenuItem>
 
                     <DropdownMenuSeparator />

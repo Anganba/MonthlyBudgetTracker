@@ -17,6 +17,87 @@ const getOrCreateBudget = async (month: string, year: number, userId: string): P
       userId,
     });
   }
+
+  // Check and process recurring transactions
+  try {
+    const { RecurringTransactionModel } = await import("../models/RecurringTransaction");
+    const { startOfDay, addDays, addWeeks, addMonths, addYears, format, isAfter, isSameDay } = await import("date-fns");
+
+    // Get all active recurring transactions for this user
+    const recurring = await RecurringTransactionModel.find({ userId, active: true, nextRunDate: { $lte: format(new Date(), 'yyyy-MM-dd') } });
+
+    if (recurring.length > 0) {
+      console.log(`Processing ${recurring.length} due recurring transactions for user ${userId}`);
+      let changesMade = false;
+      const today = new Date(); // Current date for processing
+
+      for (const rule of recurring) {
+        // Create transaction
+        const newTransaction: Transaction = {
+          id: generateId(),
+          name: rule.name,
+          planned: rule.amount, // recurring amount is usually planned ? or actual? User usually sets the bill amount. Let's assume actual=amount, planned=amount
+          actual: rule.amount,
+          category: rule.category,
+          date: rule.nextRunDate, // Use the date it was supposed to run
+          goalId: undefined
+        };
+
+        // Find the correct budget month for this transaction date
+        // Note: The `budget` object we have is for the requested month/year.
+        // But the recurring transaction might be for a PAST or FUTURE month relative to the requested one?
+        // Actually, if we are just fetching the dashboard, we should probably process ALL due transactions 
+        // and put them in their respective budget months.
+        // However, simplify: We heavily rely on the user opening the app.
+        // If we put it in the WRONG budget month (e.g. requested Jan, but trans is for Feb), it won't return in THIS request.
+        // Use robust approach: Find/Create the specific budget for the transaction date.
+
+        const transDate = new Date(rule.nextRunDate);
+        const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+        const tMonth = months[transDate.getMonth()];
+        const tYear = transDate.getFullYear();
+
+        let targetBudget = budget;
+        if (tMonth !== month || tYear !== year) {
+          // Different month, find/create that one
+          targetBudget = await Budget.findOne({ month: tMonth, year: tYear, userId }) as IBudget;
+          if (!targetBudget) {
+            targetBudget = await Budget.create({
+              month: tMonth, year: tYear, transactions: [], userId,
+              rolloverPlanned: 0, rolloverActual: 0
+            });
+          }
+        }
+
+        targetBudget.transactions.push(newTransaction);
+        await targetBudget.save();
+
+        // Update next run date
+        let nextDate = new Date(rule.nextRunDate);
+        switch (rule.frequency) {
+          case 'daily': nextDate = addDays(nextDate, 1); break;
+          case 'weekly': nextDate = addWeeks(nextDate, 1); break;
+          case 'monthly': nextDate = addMonths(nextDate, 1); break;
+          case 'yearly': nextDate = addYears(nextDate, 1); break;
+        }
+
+        rule.lastRunDate = rule.nextRunDate;
+        rule.nextRunDate = format(nextDate, 'yyyy-MM-dd');
+        await rule.save();
+        changesMade = true;
+      }
+
+      // If we modified the CURRENT requested budget, we need to reload it to return fresh data
+      if (changesMade) {
+        const freshBudget = await Budget.findOne({ month, year, userId });
+        if (freshBudget) return freshBudget;
+      }
+    }
+  } catch (error) {
+    console.error("Error processing recurring transactions:", error);
+    // Don't block the UI loading if this background task fails
+  }
+
   return budget;
 };
 

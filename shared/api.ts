@@ -60,3 +60,22 @@ export interface BudgetListResponse {
   data?: BudgetMonth[];
   message?: string;
 }
+export interface RecurringTransaction {
+  id: string;
+  userId: string;
+  name: string;
+  amount: number;
+  category: TransactionCategory;
+  frequency: 'daily' | 'weekly' | 'monthly' | 'yearly';
+  startDate: string;
+  nextRunDate: string;
+  lastRunDate?: string;
+  active: boolean;
+  createdAt?: string;
+}
+
+export interface RecurringTransactionResponse {
+  success: boolean;
+  data?: RecurringTransaction[];
+  message?: string;
+}

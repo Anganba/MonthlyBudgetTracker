@@ -15,6 +15,7 @@ import Register from "./pages/Register";
 import NotFound from "./pages/NotFound";
 import { TransactionsPage } from "./pages/TransactionsPage";
 import { PlaceholderPage } from "./pages/PlaceholderPage";
+import RecurringPage from "./pages/RecurringPage";
 import GoalsPage from "./pages/GoalsPage";
 import StatisticsPage from "./pages/StatisticsPage";
 import ProfilePage from "./pages/ProfilePage";
@@ -98,6 +99,14 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <ProfilePage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/recurring"
+                element={
+                  <ProtectedRoute>
+                    <RecurringPage />
                   </ProtectedRoute>
                 }
               />

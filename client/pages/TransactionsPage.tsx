@@ -34,7 +34,7 @@ export function TransactionsPage() {
 
     // Pagination State
     const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 10;
+    const [itemsPerPage, setItemsPerPage] = useState(10);
 
     const fetchBudget = async (selectedMonth: string, selectedYear: number) => {
         setLoading(true);
@@ -289,26 +289,49 @@ export function TransactionsPage() {
                         </table>
                     </div>
 
-                    <div className="p-4 border-t border-border flex justify-between items-center text-xs text-muted-foreground">
-                        <span>Showing {paginatedTransactions.length} of {sortedTransactions.length} transactions</span>
-                        <div className="flex gap-2">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                                disabled={currentPage === 1}
+                    <div className="p-4 border-t border-border flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-2">
+                            <span>Rows per page:</span>
+                            <Select
+                                value={itemsPerPage.toString()}
+                                onValueChange={(value) => {
+                                    setItemsPerPage(Number(value));
+                                    setCurrentPage(1);
+                                }}
                             >
-                                Previous
-                            </Button>
-                            <span className="flex items-center">Page {currentPage} of {totalPages || 1}</span>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                                disabled={currentPage === totalPages || totalPages === 0}
-                            >
-                                Next
-                            </Button>
+                                <SelectTrigger className="h-8 w-[70px]">
+                                    <SelectValue placeholder={itemsPerPage} />
+                                </SelectTrigger>
+                                <SelectContent side="top">
+                                    <SelectItem value="10">10</SelectItem>
+                                    <SelectItem value="50">50</SelectItem>
+                                    <SelectItem value="100">100</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="flex items-center gap-4">
+                            <span>
+                                Showing {paginatedTransactions.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} - {Math.min(currentPage * itemsPerPage, sortedTransactions.length)} of {sortedTransactions.length} results
+                            </span>
+                            <div className="flex gap-2">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                    disabled={currentPage === 1}
+                                >
+                                    Previous
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                    disabled={currentPage === totalPages || totalPages === 0}
+                                >
+                                    Next
+                                </Button>
+                            </div>
                         </div>
                     </div>
                 </div>
