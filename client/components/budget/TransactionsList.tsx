@@ -115,7 +115,7 @@ export function TransactionsList({ transactions, currency }: TransactionsListPro
     };
 
     const renderList = (data: Transaction[]) => {
-        return sortData(data).slice(0, 7).map(t => <TransactionItem key={t.id} item={t} />);
+        return sortData(data).slice(0, 9).map(t => <TransactionItem key={t.id} item={t} />);
     };
 
     return (

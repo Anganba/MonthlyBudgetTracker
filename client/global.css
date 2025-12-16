@@ -80,24 +80,67 @@
 
 @media print {
   @page {
-    margin: 0.5cm;
-    size: landscape;
+    margin: 1cm;
+    size: auto;
   }
 
   body {
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
-    background-color: white;
+    background-color: white !important;
+    color: black !important;
+  }
+
+  /* Force Light Theme Colors for Print */
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 0%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 0%;
+    --muted-foreground: 0 0% 40%;
+    --border: 0 0% 80%;
   }
 
   .no-print {
     display: none !important;
   }
 
-  /* Ensure background gradients print */
+  /* Hide sidebar specifically if not covered by no-print */
+  nav,
+  aside,
+  .sidebar {
+    display: none !important;
+  }
+
+  /* Ensure content takes full width */
+  main,
+  .main-content {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Improve table readability */
+  table,
+  th,
+  td {
+    border: 1px solid #ddd;
+    border-collapse: collapse;
+    color: black !important;
+  }
+
+  /* Reset text colors */
   * {
-    print-color-adjust: exact;
-    -webkit-print-color-adjust: exact;
+    color: black !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+  }
+
+  /* Keep background colors for charts/badges if possible, but force text black */
+  .badge,
+  .bg-primary {
+    color: black !important;
+    border: 1px solid #000 !important;
   }
 }
 

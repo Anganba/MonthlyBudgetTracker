@@ -3,7 +3,7 @@ import { useAuth } from "@/lib/auth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { User, Settings, LogOut, Shield, CreditCard, Mail, Loader2, Edit, Save } from "lucide-react";
+import { User, Settings, LogOut, Shield, CreditCard, Mail, Loader2, Edit, Save, Linkedin, Github } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -179,6 +179,18 @@ export default function ProfilePage() {
                             </div>
                         </CardContent>
                     </Card>
+                </div>
+
+                <div className="text-center pt-8 border-t border-white/10 mt-12 pb-8">
+                    <p className="text-muted-foreground mb-4 font-sans">&copy; {new Date().getFullYear()} Anganba Singha. All rights reserved.</p>
+                    <div className="flex justify-center gap-6">
+                        <a href="https://www.linkedin.com/in/anganbasingha/" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors">
+                            <Linkedin className="h-6 w-6" />
+                        </a>
+                        <a href="https://github.com/anganba" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors">
+                            <Github className="h-6 w-6" />
+                        </a>
+                    </div>
                 </div>
 
                 {/* Edit Profile Dialog */}

@@ -555,3 +555,30 @@ export const getMonthlyStats: RequestHandler = async (req, res) => {
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
+
+export const getAllTransactions: RequestHandler = async (req, res) => {
+  const userId = req.session?.user?.id;
+
+  if (!userId) {
+    return res.status(401).json({ success: false, message: "Not authenticated" });
+  }
+
+  try {
+    // Fetch all budgets for the user
+    const budgets = await Budget.find({ userId });
+
+    // Extract and flatten transactions
+    let allTransactions: Transaction[] = [];
+    budgets.forEach(budget => {
+      allTransactions = allTransactions.concat(budget.transactions);
+    });
+
+    // Sort by date descending
+    allTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    res.json({ success: true, data: allTransactions });
+  } catch (error) {
+    console.error("Error fetching all transactions:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};

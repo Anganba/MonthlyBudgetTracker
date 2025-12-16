@@ -75,21 +75,7 @@ export function BudgetHeader({ month, year, onMonthChange, currency, onCurrencyC
           </div>
 
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-sans text-muted-foreground">
-                Currency:
-              </label>
-              <select
-                value={currency}
-                onChange={(e) => onCurrencyChange(e.target.value)}
-                className="px-3 py-2 border border-border bg-card text-foreground rounded-lg text-sm font-sans focus:outline-none focus:ring-1 focus:ring-primary"
-              >
-                <option value="USD">$ USD</option>
-                <option value="EUR">€ EUR</option>
-                <option value="GBP">£ GBP</option>
-                <option value="BDT">৳ BDT</option>
-              </select>
-            </div>
+
 
             <button
               onClick={handlePrint}

@@ -14,6 +14,7 @@ import {
   deleteTransaction,
   getYearlyStats,
   getMonthlyStats,
+  getAllTransactions,
 } from "./routes/budget";
 import {
   getGoals,
@@ -86,6 +87,7 @@ export function createServer() {
   app.get("/api/demo", handleDemo);
 
   // Budget API routes - Protected
+  app.get("/api/budget/all", requireAuth, getAllTransactions);
   app.get("/api/budget", requireAuth, getBudget);
   app.get("/api/budget/year", requireAuth, getYearlyStats);
   app.get("/api/budget/month-stats", requireAuth, getMonthlyStats);
