@@ -19,6 +19,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { useGoals } from '@/hooks/use-goals';
 import { cn } from "@/lib/utils";
+import { TRANSACTION_CATEGORIES } from "@/lib/categories";
 
 export interface TransactionData {
     id?: string;
@@ -121,29 +122,13 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
                                     <SelectValue placeholder="Select category" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {
-                                        [
-                                            { value: "Bonus", label: "Bonus (Income)" },
-                                            { value: "Cosmetics", label: "Cosmetics" },
-                                            { value: "Debt Added", label: "Debt Added (Income)" },
-                                            { value: "Debt Paid", label: "Debt Paid" },
-                                            { value: "Food", label: "Food" },
-                                            { value: "Gadgets", label: "Gadgets" },
-                                            { value: "Health/medical", label: "Health/medical" },
-                                            { value: "Miscellaneous", label: "Miscellaneous" },
-                                            { value: "Paycheck", label: "Paycheck (Income)" },
-                                            { value: "Personal", label: "Personal" },
-                                            { value: "Remittance", label: "Remittance" },
-                                            { value: "Rent", label: "Rent" },
-                                            { value: "Savings", label: "Savings" },
-                                            { value: "Snacks", label: "Snacks" },
-                                            { value: "Transportation", label: "Transportation" },
-                                            { value: "Travel", label: "Travel" },
-                                            { value: "Utilities", label: "Utilities" }
-                                        ].sort((a, b) => a.label.localeCompare(b.label)).map(cat => (
-                                            <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
-                                        ))
-                                    }
+                                    {TRANSACTION_CATEGORIES.sort((a, b) =>
+                                        a.label.localeCompare(b.label)
+                                    ).map((cat) => (
+                                        <SelectItem key={cat.id} value={cat.id}>
+                                            {cat.label}
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>

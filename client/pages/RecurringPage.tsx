@@ -13,12 +13,19 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { BudgetLimitsSection } from "@/components/budget/BudgetLimitsSection";
 
 export default function RecurringPage() {
     const { user } = useAuth();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const [isAddOpen, setIsAddOpen] = useState(false);
+    const [date] = useState(new Date());
+    const monthNames = ["January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+    ];
+    const currentMonthName = monthNames[date.getMonth()];
+    const currentYear = date.getFullYear();
 
     const { data: recurringList, isLoading } = useQuery({
         queryKey: ['recurring', user?.id],
@@ -118,6 +125,10 @@ export default function RecurringPage() {
                     </Table>
                 </CardContent>
             </Card>
+
+            <div className="mt-8">
+                <BudgetLimitsSection month={currentMonthName} year={currentYear} />
+            </div>
 
             <AddRecurringDialog
                 open={isAddOpen}

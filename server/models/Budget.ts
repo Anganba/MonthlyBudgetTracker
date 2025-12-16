@@ -8,7 +8,7 @@ export interface IBudget extends Document {
     rolloverActual: number;
     categoryLimits?: Map<string, number>;
     transactions: Transaction[];
-    userId?: string; // Optional for now, for future multi-user support
+    userId: string;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -34,7 +34,7 @@ const BudgetSchema = new Schema<IBudget>(
         rolloverActual: { type: Number, default: 0 },
         categoryLimits: { type: Map, of: Number, default: {} },
         transactions: [TransactionSchema],
-        userId: { type: String },
+        userId: { type: String, required: true },
     },
     { timestamps: true, toJSON: { flattenMaps: true } }
 );

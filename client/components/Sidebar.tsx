@@ -27,38 +27,27 @@ export function Sidebar({ collapsed, setCollapsed, mobile = false }: SidebarProp
     return (
         <div
             className={cn(
-                "h-screen bg-black text-white flex flex-col p-4 overflow-y-auto z-50 border-r border-white/10 transition-all duration-300 ease-in-out",
+                "h-screen bg-black text-white flex flex-col p-4 overflow-y-auto z-50 border-r border-white/10 transition-all duration-300 ease-in-out [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']",
                 mobile ? "w-full border-none" : "fixed left-0 top-0",
                 !mobile && (collapsed ? "w-20" : "w-64")
             )}
         >
-            <div className="flex items-center justify-between mb-8">
-                {!collapsed && (
-                    <div className="flex items-center gap-2 overflow-hidden whitespace-nowrap">
-                        <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0">
-                            <Wallet className="w-5 h-5 text-black" />
-                        </div>
-                        <h1 className="text-lg font-bold font-serif">Amar Taka Koi</h1>
-                    </div>
-                )}
-                {/* Fallback logo when collapsed */}
-                {collapsed && (
-                    <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0 mx-auto">
+            <div className="flex items-center justify-center mb-8">
+                <div
+                    className={cn(
+                        "flex items-center gap-2 overflow-hidden whitespace-nowrap cursor-pointer hover:opacity-80 transition-opacity",
+                        collapsed ? "justify-center" : "w-full"
+                    )}
+                    onClick={() => !mobile && setCollapsed(!collapsed)}
+                    title="Toggle Sidebar"
+                >
+                    <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0">
                         <Wallet className="w-5 h-5 text-black" />
                     </div>
-                )}
-
-                {!mobile && (
-                    <button
-                        onClick={() => setCollapsed(!collapsed)}
-                        className={cn(
-                            "text-gray-400 hover:text-white transition-colors",
-                            collapsed ? "mx-auto mt-4" : ""
-                        )}
-                    >
-                        {collapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
-                    </button>
-                )}
+                    {!collapsed && (
+                        <h1 className="text-lg font-bold font-serif">Amar Taka Koi</h1>
+                    )}
+                </div>
             </div>
 
             <div className="mb-6">

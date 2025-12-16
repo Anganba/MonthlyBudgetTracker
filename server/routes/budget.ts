@@ -8,11 +8,15 @@ const getOrCreateBudget = async (month: string, year: number, userId: string): P
   let budget = await Budget.findOne({ month, year, userId });
 
   if (!budget) {
+    // Attempt to find the most recent budget to copy limits/rollover from
+    const lastBudget = await Budget.findOne({ userId }).sort({ year: -1, month: -1 });
+
     budget = await Budget.create({
       month,
       year,
       rolloverPlanned: 0,
       rolloverActual: 0,
+      categoryLimits: lastBudget?.categoryLimits || {},
       transactions: [],
       userId,
     });

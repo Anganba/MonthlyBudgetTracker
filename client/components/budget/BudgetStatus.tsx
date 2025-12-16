@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, Home, Shirt, Utensils, Heart, ShoppingBag, Gamepad2, HelpCircle, Plus, BarChart3, List, Edit } from "lucide-react";
+import { MoreHorizontal, Plus, BarChart3, List, Edit } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { BudgetMonth, Transaction } from "@shared/api";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Link } from "react-router-dom";
-import { BudgetLimitsDialog } from "./BudgetLimitsDialog";
+import { getCategoryIcon } from "@/lib/category-icons";
 
 interface BudgetStatusProps {
     currency?: string;
@@ -15,7 +15,6 @@ interface BudgetStatusProps {
 }
 
 export function BudgetStatus({ currency = '$', budget, refreshBudget }: BudgetStatusProps) {
-    const [isLimitsOpen, setIsLimitsOpen] = useState(false);
     const transactions = budget?.transactions || [];
     const limits = (budget?.categoryLimits as Record<string, number>) || {};
 
@@ -49,18 +48,6 @@ export function BudgetStatus({ currency = '$', budget, refreshBudget }: BudgetSt
         };
     }).filter(item => item.spent > 0 || item.total > 0); // Only show if there's activity or a budget set
 
-    // Helper to get icon
-    const getIcon = (category: string) => {
-        switch (category) {
-            case 'Rent': case 'Housing': return Home;
-            case 'Food': return Utensils;
-            case 'Clothes': return Shirt;
-            case 'Health/medical': return Heart;
-            case 'Entertainment': case 'Games': return Gamepad2;
-            default: return ShoppingBag;
-        }
-    };
-
     // Calculate total budget metrics
     const totalBudget = categoryData.reduce((sum, c) => sum + c.total, 0);
     const totalSpent = categoryData.reduce((sum, c) => sum + c.spent, 0);
@@ -85,10 +72,12 @@ export function BudgetStatus({ currency = '$', budget, refreshBudget }: BudgetSt
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-48 bg-[#1c1c1c] border-white/10 text-white">
-                            <DropdownMenuItem onClick={() => setIsLimitsOpen(true)} className="cursor-pointer hover:bg-white/10 focus:bg-white/10">
-                                <Edit className="mr-2 h-4 w-4" />
-                                <span>Edit Limits</span>
-                            </DropdownMenuItem>
+                            <Link to="/recurring">
+                                <DropdownMenuItem className="cursor-pointer hover:bg-white/10 focus:bg-white/10">
+                                    <Edit className="mr-2 h-4 w-4" />
+                                    <span>Edit Limits</span>
+                                </DropdownMenuItem>
+                            </Link>
                             <Link to="/goals">
                                 <DropdownMenuItem className="cursor-pointer hover:bg-white/10 focus:bg-white/10">
                                     <Plus className="mr-2 h-4 w-4" />
@@ -118,7 +107,7 @@ export function BudgetStatus({ currency = '$', budget, refreshBudget }: BudgetSt
                             categoryData.map((cat) => {
                                 const percent = cat.total > 0 ? Math.round((cat.spent / cat.total) * 100) : 0;
                                 const isOverBudget = percent > 100;
-                                const Icon = getIcon(cat.name);
+                                const Icon = getCategoryIcon(cat.name);
 
                                 // Dynamic colors based on status
                                 const iconColor = isOverBudget ? "text-red-500" : "text-primary";
@@ -153,17 +142,6 @@ export function BudgetStatus({ currency = '$', budget, refreshBudget }: BudgetSt
                     </div>
                 </CardContent>
             </Card>
-
-            {budget && (
-                <BudgetLimitsDialog
-                    open={isLimitsOpen}
-                    onOpenChange={setIsLimitsOpen}
-                    month={budget.month}
-                    year={budget.year}
-                    initialLimits={(budget.categoryLimits as Record<string, number>) || {}}
-                    onSuccess={handleRefresh}
-                />
-            )}
         </>
     );
 }

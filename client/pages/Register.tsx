@@ -8,6 +8,7 @@ import { ArrowRight, Wallet } from "lucide-react";
 
 const Register = () => {
     const [username, setUsername] = useState('');
+    const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -20,7 +21,7 @@ const Register = () => {
         setIsLoading(true);
 
         try {
-            await register(username, password);
+            await register(username, password, email);
             navigate('/');
         } catch (err: any) {
             setError(err.message || 'Registration failed');
@@ -81,6 +82,17 @@ const Register = () => {
                                 value={username}
                                 onChange={(e) => setUsername(e.target.value)}
                                 required
+                                className="bg-background"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="email">Email</Label>
+                            <Input
+                                id="email"
+                                type="email"
+                                placeholder="name@example.com"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
                                 className="bg-background"
                             />
                         </div>

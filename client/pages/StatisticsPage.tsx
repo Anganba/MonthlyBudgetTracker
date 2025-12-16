@@ -300,7 +300,35 @@ export default function StatisticsPage() {
                                             outerRadius={80}
                                             paddingAngle={5}
                                             dataKey="value"
-                                            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                                            labelLine={false}
+                                            label={(props) => {
+                                                const RADIAN = Math.PI / 180;
+                                                const { cx, cy, midAngle, innerRadius, outerRadius, percent, index, name } = props;
+                                                const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+                                                const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                                                const y = cy + radius * Math.sin(-midAngle * RADIAN);
+
+                                                // Custom logic for "spider" legs
+                                                const sin = Math.sin(-RADIAN * midAngle);
+                                                const cos = Math.cos(-RADIAN * midAngle);
+                                                const sx = cx + (outerRadius + 10) * cos;
+                                                const sy = cy + (outerRadius + 10) * sin;
+                                                const mx = cx + (outerRadius + 30) * cos;
+                                                const my = cy + (outerRadius + 30) * sin;
+                                                const ex = mx + (cos >= 0 ? 1 : -1) * 22;
+                                                const ey = my;
+                                                const textAnchor = cos >= 0 ? 'start' : 'end';
+
+                                                return (
+                                                    <g>
+                                                        <path d={`M${sx},${sy}L${mx},${my}L${ex},${ey}`} stroke={pieColors[index % pieColors.length]} fill="none" />
+                                                        <circle cx={ex} cy={ey} r={2} fill={pieColors[index % pieColors.length]} stroke="none" />
+                                                        <text x={ex + (cos >= 0 ? 1 : -1) * 12} y={ey} dy={4} textAnchor={textAnchor} fill={pieColors[index % pieColors.length]} fontSize={12} fontWeight="500">
+                                                            {`${name} ${(percent * 100).toFixed(0)}%`}
+                                                        </text>
+                                                    </g>
+                                                );
+                                            }}
                                             stroke="none"
                                         >
                                             {pieData.map((entry, index) => (
@@ -312,7 +340,6 @@ export default function StatisticsPage() {
                                             itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
                                             formatter={(value: number) => [`${currency}${value.toFixed(2)}`, 'Amount']}
                                         />
-                                        <Legend verticalAlign="bottom" height={36} />
                                     </PieChart>
                                 </ResponsiveContainer>
                             ) : (

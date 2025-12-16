@@ -2,8 +2,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { SlidersHorizontal, Heart, ShoppingBag, Gamepad2, Home, Shirt, Utensils, ArrowUpDown } from "lucide-react";
+import { SlidersHorizontal, Heart, ShoppingBag, Gamepad2, Home, Utensils, ArrowUpDown, Banknote, Car, Zap, Plane, GraduationCap, CircleDollarSign, PiggyBank } from "lucide-react";
 import { Transaction } from "@shared/api";
+import { getCategoryIcon } from "@/lib/category-icons";
 import { format } from "date-fns";
 import { useState } from "react";
 
@@ -16,14 +17,33 @@ export function TransactionsList({ transactions, currency }: TransactionsListPro
     const [sortConfig, setSortConfig] = useState<{ key: keyof Transaction | 'date', direction: 'asc' | 'desc' } | null>({ key: 'date', direction: 'desc' });
 
     // Helper to map category to icon - simplistic for now
+    // Helper to map category to icon - simplistic for now
     const getIcon = (category: string) => {
         switch (category.toLowerCase()) {
             case 'food': return Utensils;
-            case 'shopping': return ShoppingBag;
-            case 'housing': return Home;
+            case 'shopping':
+            case 'cosmetics':
+            case 'gadgets':
+            case 'games':
+                return ShoppingBag;
+            case 'housing':
+            case 'rent':
+                return Home;
             case 'entertainment': return Gamepad2;
-            case 'health': return Heart;
-            default: return ShoppingBag;
+            case 'health':
+            case 'health/medical':
+                return Heart;
+            case 'paycheck':
+            case 'bonus':
+            case 'income':
+            case 'debt added':
+                return Banknote;
+            case 'savings': return PiggyBank;
+            case 'transportation': return Car;
+            case 'utilities': return Zap;
+            case 'travel': return Plane;
+            case 'education': return GraduationCap;
+            default: return CircleDollarSign;
         }
     };
 
@@ -57,7 +77,7 @@ export function TransactionsList({ transactions, currency }: TransactionsListPro
     const incomeCategories = ['Paycheck', 'Bonus', 'Debt Added', 'income'];
 
     const TransactionItem = ({ item }: { item: Transaction }) => {
-        const Icon = getIcon(item.category);
+        const Icon = getCategoryIcon(item.category);
         const isIncome = incomeCategories.includes(item.category);
 
         return (

@@ -15,13 +15,17 @@ const MONTHS = [
     'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
+import { useBudget } from "@/hooks/use-budget";
+
 export function TransactionsPage() {
     const queryClient = useQueryClient();
-    const [budget, setBudget] = useState<BudgetMonth | null>(null);
     const [month, setMonth] = useState(MONTHS[new Date().getMonth()]);
     const [year, setYear] = useState(new Date().getFullYear());
+
+    // Use cached budget data
+    const { budget, isLoading: loading, refreshBudget } = useBudget(month, year);
+
     const [currency, setCurrency] = useState('USD');
-    const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [categoryFilter, setCategoryFilter] = useState('all');
     const [typeFilter, setTypeFilter] = useState('all');
@@ -35,28 +39,6 @@ export function TransactionsPage() {
     // Pagination State
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(10);
-
-    const fetchBudget = async (selectedMonth: string, selectedYear: number) => {
-        setLoading(true);
-        try {
-            const response = await fetch(`/api/budget?month=${selectedMonth}&year=${selectedYear}`);
-            const result = await response.json();
-            if (result.success) {
-                setBudget(result.data);
-            } else {
-                setBudget(null);
-            }
-        } catch (error) {
-            console.error('Error fetching budget:', error);
-            setBudget(null);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        fetchBudget(month, year);
-    }, [month, year]);
 
     const handleMonthChange = (newMonth: string, newYear: number) => {
         setMonth(newMonth);
@@ -134,8 +116,7 @@ export function TransactionsPage() {
             });
             const result = await response.json();
             if (result.success) {
-                await fetchBudget(month, year);
-                queryClient.invalidateQueries({ queryKey: ['budget', month, year] });
+                refreshBudget();
                 queryClient.invalidateQueries({ queryKey: ['goals'] });
             }
         } catch (error) { console.error('Error saving transaction:', error); }
@@ -157,8 +138,7 @@ export function TransactionsPage() {
         if (!confirm('Are you sure you want to delete this transaction?')) return;
         try {
             await fetch(`/api/budget/transaction?month=${month}&year=${year}&id=${id}`, { method: 'DELETE' });
-            await fetchBudget(month, year);
-            queryClient.invalidateQueries({ queryKey: ['budget', month, year] });
+            refreshBudget();
             queryClient.invalidateQueries({ queryKey: ['goals'] });
         } catch (error) { console.error(error); }
     };

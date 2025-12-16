@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+import { EXPENSE_CATEGORIES } from "@/lib/categories";
+
 interface BudgetLimitsDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -12,12 +14,6 @@ interface BudgetLimitsDialogProps {
     initialLimits: Record<string, number>;
     onSuccess: () => void;
 }
-
-const DEFAULT_CATEGORIES = [
-    "Rent", "Housing", "Food", "Transportation", "Utilities",
-    "Health/medical", "Entertainment", "Shopping", "Personal",
-    "Education", "Travel", "Games", "Clothes"
-];
 
 export function BudgetLimitsDialog({ open, onOpenChange, month, year, initialLimits, onSuccess }: BudgetLimitsDialogProps) {
     const [limits, setLimits] = useState<Record<string, number>>(initialLimits || {});
@@ -59,7 +55,7 @@ export function BudgetLimitsDialog({ open, onOpenChange, month, year, initialLim
     };
 
     // Merge default categories with any custom ones present in limits
-    const allCategories = Array.from(new Set([...DEFAULT_CATEGORIES, ...Object.keys(limits)]));
+    const allCategories = Array.from(new Set([...EXPENSE_CATEGORIES.map(c => c.id), ...Object.keys(limits)]));
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
