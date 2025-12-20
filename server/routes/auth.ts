@@ -15,10 +15,20 @@ export const login: RequestHandler = async (req, res) => {
         const user = await User.findOne({ username });
 
         if (!user) {
+            console.log(`[Login] User ${username} not found.`);
             return res.status(401).json({ success: false, message: "Invalid credentials" });
         }
 
-        let isMatch = await bcrypt.compare(password, user.passwordHash).catch(() => false);
+        console.log(`[Login] User ${username} found. Comparing password...`);
+        console.log(`[Login] Hash length: ${user.passwordHash?.length || 0}`);
+
+        let isMatch = false;
+        try {
+            isMatch = await bcrypt.compare(password, user.passwordHash);
+            console.log(`[Login] Password match result: ${isMatch}`);
+        } catch (err) {
+            console.error(`[Login] Bcrypt compare error:`, err);
+        }
 
         // Fallback: Check for legacy plain-text password
         if (!isMatch && user.passwordHash === password) {
@@ -31,6 +41,7 @@ export const login: RequestHandler = async (req, res) => {
 
         if (isMatch) {
             if (req.session) {
+                console.log(`[Login] User ${username} authenticated. Creating session.`);
                 req.session.user = {
                     id: (user._id as any).toString(),
                     username: user.username,
@@ -39,15 +50,20 @@ export const login: RequestHandler = async (req, res) => {
 
                 req.session.save((err) => {
                     if (err) {
+                        console.error("[Login] Session save error:", err);
                         return res.status(500).json({ success: false, message: "Session save failed" });
                     }
+                    console.log(`[Login] Session saved for ${username}.`);
                     res.json({ success: true, user: req.session.user });
                 });
                 return;
+            } else {
+                console.error("[Login] Critical Error: req.session is undefined!");
+                return res.status(500).json({ success: false, message: "Server session error" });
             }
         }
 
-
+        console.log(`[Login] Password mismatch for ${username}`);
         return res.status(401).json({ success: false, message: "Invalid credentials" });
     } catch (error: any) {
         console.error("Login error:", error);
