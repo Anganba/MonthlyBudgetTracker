@@ -115,6 +115,36 @@ export function BudgetLimitsSection({ month, year }: BudgetLimitsSectionProps) {
                 </div>
             </CardHeader>
             <CardContent>
+                {/* Overall Summary */}
+                {(() => {
+                    const totalLimit = categoryData.reduce((sum, cat) => sum + cat.limit, 0);
+                    const totalSpent = categoryData.reduce((sum, cat) => sum + cat.spent, 0);
+
+                    if (totalLimit === 0 && totalSpent === 0) return null;
+
+                    const percent = totalLimit > 0 ? Math.round((totalSpent / totalLimit) * 100) : 0;
+                    const isOverBudget = percent > 100;
+                    const progressColor = isOverBudget ? "bg-red-500" : "bg-[#bef264]";
+
+                    return (
+                        <div className="mb-8 p-6 bg-secondary/20 rounded-xl border border-white/5">
+                            <h4 className="text-sm font-semibold text-muted-foreground mb-2">Overall Status</h4>
+                            <div className="flex justify-between items-end mb-3">
+                                <span className="text-3xl font-bold text-white">{percent}%</span>
+                                <div className="text-right">
+                                    <span className="text-white font-medium">${totalSpent.toLocaleString()}</span>
+                                    <span className="text-muted-foreground"> / ${totalLimit.toLocaleString()}</span>
+                                </div>
+                            </div>
+                            <Progress
+                                value={percent > 100 ? 100 : percent}
+                                indicatorClassName={progressColor}
+                                className="h-4 bg-secondary/50"
+                            />
+                        </div>
+                    );
+                })()}
+
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {categoryData.map(cat => {
                         const Icon = getCategoryIcon(cat.id);

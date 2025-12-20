@@ -9,6 +9,7 @@ import { Goal } from "@shared/api";
 
 export function GoalsSection() {
     const { goals, isLoading, createGoal, updateGoal } = useGoals();
+    const activeGoals = goals.filter(g => g.status === 'active' || !g.status);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
 
@@ -46,13 +47,13 @@ export function GoalsSection() {
             <CardContent className="space-y-4">
                 {isLoading ? (
                     <p className="text-sm text-muted-foreground">Loading goals...</p>
-                ) : goals.length === 0 ? (
+                ) : activeGoals.length === 0 ? (
                     <div className="text-center py-4">
                         <p className="text-sm text-muted-foreground mb-2">No goals set yet.</p>
                         <Button variant="outline" size="sm" onClick={handleAdd}>Create Goal</Button>
                     </div>
                 ) : (
-                    goals.map((goal) => {
+                    activeGoals.map((goal) => {
                         const progress = goal.targetAmount > 0
                             ? Math.min((goal.currentAmount / goal.targetAmount) * 100, 100)
                             : 0;

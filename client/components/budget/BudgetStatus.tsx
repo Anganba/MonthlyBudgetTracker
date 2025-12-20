@@ -18,7 +18,7 @@ export function BudgetStatus({ currency = '$', budget, refreshBudget }: BudgetSt
     const transactions = budget?.transactions || [];
     const limits = (budget?.categoryLimits as Record<string, number>) || {};
 
-    const incomeCategories = ['Paycheck', 'Bonus', 'Savings', 'Debt Added', 'income'];
+    const incomeCategories = ['Paycheck', 'Bonus', 'Savings', 'Debt Added', 'income', 'Transfer'];
 
     // 1. Identify all relevant categories (both from limits and transactions)
     const transactionCategories = new Set(transactions.map(t => t.category));
@@ -46,7 +46,7 @@ export function BudgetStatus({ currency = '$', budget, refreshBudget }: BudgetSt
             spent,
             total
         };
-    }).filter(item => item.spent > 0 || item.total > 0); // Only show if there's activity or a budget set
+    }).filter(item => item.spent > 0 || item.total > 0).sort((a, b) => a.name.localeCompare(b.name)); // Only show if there's activity or a budget set, sorted alphabetically
 
     // Calculate total budget metrics
     const totalBudget = categoryData.reduce((sum, c) => sum + c.total, 0);
@@ -100,44 +100,69 @@ export function BudgetStatus({ currency = '$', budget, refreshBudget }: BudgetSt
                     </DropdownMenu>
                 </CardHeader>
                 <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {categoryData.length === 0 ? (
-                            <p className="text-sm text-muted-foreground col-span-2">No budget limits or expenses yet. Set a limit to get started.</p>
+                    <div className="space-y-4">
+                        {totalBudget === 0 ? (
+                            <p className="text-sm text-muted-foreground">No budget limits set. Set a limit to track progress.</p>
                         ) : (
-                            categoryData.map((cat) => {
-                                const percent = cat.total > 0 ? Math.round((cat.spent / cat.total) * 100) : 0;
+                            (() => {
+                                const percent = Math.round((totalSpent / totalBudget) * 100);
                                 const isOverBudget = percent > 100;
-                                const Icon = getCategoryIcon(cat.name);
 
                                 // Dynamic colors based on status
-                                const iconColor = isOverBudget ? "text-red-500" : "text-primary";
                                 const progressColor = isOverBudget ? "bg-red-500" : "bg-primary";
                                 const textColor = isOverBudget ? "text-red-500" : "text-white";
 
                                 return (
-                                    <div key={cat.name} className="space-y-2">
-                                        <div className="flex items-center gap-3">
-                                            <div className="bg-secondary p-2 rounded-lg">
-                                                <Icon className={`h-5 w-5 ${iconColor}`} />
+                                    <div className="space-y-6">
+                                        <div className="space-y-2 p-4 bg-secondary/20 rounded-xl border border-white/5">
+                                            <div className="flex justify-between items-baseline mb-1">
+                                                <span className={`text-sm font-bold ${isOverBudget ? 'text-red-500' : 'text-muted-foreground'}`}>Overall Status</span>
+                                                {isOverBudget && <span className="text-xs font-bold text-red-500">OVER BUDGET</span>}
                                             </div>
-                                            <div className="flex-1">
-                                                <div className="flex justify-between items-center mb-1">
-                                                    <h5 className={`font-semibold text-sm ${textColor}`}>{cat.name}</h5>
-                                                    {isOverBudget && <span className="text-xs font-bold text-red-500">OVER LIMIT</span>}
-                                                </div>
-                                                <div className="flex justify-between items-baseline">
-                                                    <span className={`text-xs font-bold ${isOverBudget ? 'text-red-500' : 'text-muted-foreground'}`}>{percent}%</span>
-                                                    <div className="text-xs">
-                                                        <span className={`${textColor} font-medium`}>{currency}{cat.spent.toFixed(0)}</span>
-                                                        <span className="text-muted-foreground">/{currency}{cat.total.toFixed(0)}</span>
-                                                    </div>
-                                                </div>
+                                            <div className="flex justify-between items-end mb-2">
+                                                <span className="text-2xl font-bold text-white">{percent}%</span>
+                                                <p className="text-xs text-muted-foreground text-right">
+                                                    <span className={textColor}>{currency}{totalSpent.toLocaleString()}</span> / <span className="text-white">{currency}{totalBudget.toLocaleString()}</span>
+                                                </p>
+                                            </div>
+                                            <Progress value={percent > 100 ? 100 : percent} indicatorClassName={progressColor} className="h-3 bg-secondary" />
+                                        </div>
+
+                                        <div className="space-y-4">
+                                            <h4 className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Category Breakdown</h4>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                                                {categoryData.map((cat) => {
+                                                    const percent = cat.total > 0 ? Math.round((cat.spent / cat.total) * 100) : 0;
+                                                    const isOverBudget = percent > 100;
+                                                    const Icon = getCategoryIcon(cat.name);
+
+                                                    // Dynamic colors based on status
+                                                    const iconColor = isOverBudget ? "text-red-500" : "text-primary";
+                                                    const progressColor = isOverBudget ? "bg-red-500" : "bg-primary";
+                                                    const textColor = isOverBudget ? "text-red-500" : "text-white";
+
+                                                    return (
+                                                        <div key={cat.name} className="space-y-2">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="bg-secondary p-2 rounded-lg">
+                                                                    <Icon className={`h-4 w-4 ${iconColor}`} />
+                                                                </div>
+                                                                <div className="flex-1">
+                                                                    <div className="flex justify-between items-center mb-1">
+                                                                        <h5 className={`font-semibold text-sm ${textColor}`}>{cat.name}</h5>
+                                                                        <span className={`text-xs font-bold ${isOverBudget ? 'text-red-500' : 'text-muted-foreground'}`}>{percent}%</span>
+                                                                    </div>
+                                                                    <Progress value={percent > 100 ? 100 : percent} indicatorClassName={progressColor} className="h-1.5 bg-secondary" />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
                                             </div>
                                         </div>
-                                        <Progress value={percent > 100 ? 100 : percent} indicatorClassName={progressColor} className="h-1.5 bg-secondary" />
                                     </div>
                                 );
-                            })
+                            })()
                         )}
                     </div>
                 </CardContent>

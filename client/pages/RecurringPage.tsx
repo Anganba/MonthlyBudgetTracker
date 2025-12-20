@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Trash2, Plus, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { useWallets } from "@/hooks/use-wallets"; // Added hook similar to transactions
 import { useNavigate } from "react-router-dom";
 import { TransactionDialog, TransactionData } from "../components/budget/TransactionDialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
@@ -72,6 +73,8 @@ export default function RecurringPage() {
                 </Button>
                 <h1 className="text-3xl font-bold font-serif">Recurring Transactions</h1>
             </div>
+
+
 
             <Card className="border-0 shadow-lg bg-card">
                 <CardHeader className="flex flex-row items-center justify-between">
@@ -145,6 +148,8 @@ function AddRecurringDialog({ open, onOpenChange, onSubmit }: { open: boolean, o
     const [category, setCategory] = useState("Rent");
     const [frequency, setFrequency] = useState("monthly");
     const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+    const [walletId, setWalletId] = useState<string>("");
+    const { wallets } = useWallets();
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -153,7 +158,8 @@ function AddRecurringDialog({ open, onOpenChange, onSubmit }: { open: boolean, o
             amount: parseFloat(amount),
             category,
             frequency,
-            startDate
+            startDate,
+            walletId: walletId || undefined
         });
     };
 
@@ -210,6 +216,24 @@ function AddRecurringDialog({ open, onOpenChange, onSubmit }: { open: boolean, o
                             <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} required />
                         </div>
                     </div>
+
+                    {wallets.length > 0 && (
+                        <div className="space-y-2">
+                            <Label>Auto-pay from / Deposit to (Wallet)</Label>
+                            <Select value={walletId} onValueChange={setWalletId}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select Wallet (Optional)" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="unassigned">None</SelectItem>
+                                    {wallets.map(w => (
+                                        <SelectItem key={w.id} value={w.id}>{w.name} ({w.type})</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
+
                     <DialogFooter>
                         <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
                         <Button type="submit">Create Rule</Button>

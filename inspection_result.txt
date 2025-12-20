@@ -1,0 +1,26 @@
+Connecting to mongodb+srv://anganba:****@sananu.cai9lr7.mongodb.net/?appName=Sananu...
+Connected to DB
+Inspecting for UserId: 69346aedf24b51f183cae632
+
+--- WALLETS ---
+bKash (mfs): $244
+Cash (cash): $4306
+RedotPay (virtual_card): $1
+IBBL Bank (bank): $0
+American Express (credit_card): $0
+Binance (other): $0
+TOTAL WALLET BALANCE: $4551
+
+--- TRANSACTION FLOW ---
+Total Transactions Found: 49
+Total Calculated Income: $17354
+Total Calculated Expense (inc Savings): $13092
+Net Flow (Income - Expense): $4262
+
+--- DISCREPANCY ---
+Total Wallets ($4551) - Net Flow ($4262) = $289
+
+Possible Causes:
+1. Initial Wallet Balances (money you had before starting tracking).
+2. Transactions deleted from one side but not the other (bug).
+3. Manual edits to Wallet Balance/Rollover.

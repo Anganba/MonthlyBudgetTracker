@@ -35,7 +35,6 @@ export const getCategoryIcon = (category: string) => {
         case 'cosmetics': return Shirt; // Could look for something better like Smile/User? Shirt fits for personal shopping often.
         case 'clothes': return Shirt;
 
-        case 'housing':
         case 'rent':
             return Home;
 
@@ -61,8 +60,6 @@ export const getCategoryIcon = (category: string) => {
         case 'utilities': return Zap;
 
         case 'travel': return Plane;
-
-        case 'education': return GraduationCap;
 
         case 'personal': return Briefcase; // Or User
 

@@ -6,6 +6,7 @@ import MongoStore from "connect-mongo";
 import { handleDemo } from "./routes/demo";
 import { login, logout, getMe, register, updateProfile, updatePassword } from "./routes/auth";
 import { requireAuth } from "./middleware/auth";
+import { rateLimit } from "./middleware/rateLimit";
 import {
   getBudget,
   updateBudget,
@@ -28,6 +29,12 @@ import {
   updateRecurringTransaction,
   deleteRecurringTransaction
 } from "./routes/recurring";
+import {
+  getWallets,
+  createWallet,
+  updateWallet,
+  deleteWallet
+} from "./routes/wallets";
 
 import { connectDB } from "./db";
 
@@ -41,7 +48,10 @@ export function createServer() {
   app.set("trust proxy", 1);
 
   // Middleware
-  app.use(cors());
+  app.use(cors({
+    origin: process.env.NODE_ENV === "production" ? false : "*", // In production, same-origin only (false) or strict whitelist. Dev allows all.
+    credentials: true
+  }));
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
@@ -71,8 +81,9 @@ export function createServer() {
 
 
   // Auth Routes
-  app.post("/api/login", login);
-  app.post("/api/register", register);
+  const authLimiter = rateLimit(15 * 60 * 1000, 10); // 10 requests per 15 minutes for auth to prevent brute force
+  app.post("/api/login", authLimiter, login);
+  app.post("/api/register", authLimiter, register);
   app.post("/api/logout", logout);
   app.get("/api/me", getMe);
   app.put("/api/profile", requireAuth, updateProfile);
@@ -107,6 +118,12 @@ export function createServer() {
   app.post("/api/recurring", requireAuth, createRecurringTransaction);
   app.put("/api/recurring/:id", requireAuth, updateRecurringTransaction);
   app.delete("/api/recurring/:id", requireAuth, deleteRecurringTransaction);
+
+  // Wallets API routes
+  app.get("/api/wallets", requireAuth, getWallets);
+  app.post("/api/wallets", requireAuth, createWallet);
+  app.put("/api/wallets/:id", requireAuth, updateWallet);
+  app.delete("/api/wallets/:id", requireAuth, deleteWallet);
 
   return app;
 }

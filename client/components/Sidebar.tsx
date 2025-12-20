@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import { LayoutDashboard, Wallet, PiggyBank, BarChart3, User, ArrowRightLeft, ChevronRight, ChevronLeft, Repeat } from "lucide-react";
 
 import { useBudget } from "@/hooks/use-budget";
+import { useWallets } from "@/hooks/use-wallets";
 
 interface SidebarProps {
     collapsed: boolean;
@@ -12,17 +13,27 @@ interface SidebarProps {
 
 export function Sidebar({ collapsed, setCollapsed, mobile = false }: SidebarProps) {
     const { stats } = useBudget();
+    const { wallets } = useWallets();
     const location = useLocation();
     const currentPath = location.pathname;
 
     const links = [
         { href: "/", label: "Dashboard", icon: LayoutDashboard },
+        { href: "/wallets", label: "Wallets", icon: Wallet },
         { href: "/transactions", label: "Transactions", icon: ArrowRightLeft },
         { href: "/goals", label: "Goals", icon: PiggyBank },
         { href: "/recurring", label: "Recurring", icon: Repeat },
         { href: "/statistics", label: "Statistics", icon: BarChart3 },
         { href: "/profile", label: "Profile", icon: User },
     ];
+
+    // Calculate Net Worth if wallets exist
+    const hasWallets = wallets.length > 0;
+    const netWorth = wallets.reduce((sum, w) => sum + w.balance, 0);
+
+    // Display Logic: Show Net Worth if active, otherwise Monthly Budget Balance
+    const displayLabel = hasWallets ? "Net Worth" : "Total Balance";
+    const displayAmount = hasWallets ? netWorth : stats.balance;
 
     return (
         <div
@@ -61,15 +72,15 @@ export function Sidebar({ collapsed, setCollapsed, mobile = false }: SidebarProp
                         <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-primary border-r-primary rotate-45"></div>
 
                         <div className="text-center z-10">
-                            <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Total Balance</p>
-                            <p className="text-2xl font-bold text-white">${stats.balance.toLocaleString()}</p>
+                            <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">{displayLabel}</p>
+                            <p className="text-2xl font-bold text-white">${displayAmount.toLocaleString()}</p>
                         </div>
                     </div>
                 ) : (
                     // Collapsed Balance View (Mini)
                     <div className="text-center mb-6 py-4 border-y border-white/10">
-                        <p className="text-[10px] text-gray-400 uppercase mb-1">Bal</p>
-                        <p className="text-xs font-bold text-primary">${(stats.balance / 1000).toFixed(1)}k</p>
+                        <p className="text-[10px] text-gray-400 uppercase mb-1">{hasWallets ? "NET" : "TOT"}</p>
+                        <p className="text-xs font-bold text-primary">${(displayAmount / 1000).toFixed(1)}k</p>
                     </div>
                 )}
             </div>

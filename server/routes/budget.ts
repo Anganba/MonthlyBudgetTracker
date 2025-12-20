@@ -7,19 +7,126 @@ const generateId = () => Math.random().toString(36).substring(2, 9);
 const getOrCreateBudget = async (month: string, year: number, userId: string): Promise<IBudget> => {
   let budget = await Budget.findOne({ month, year, userId });
 
+  // Determine default limits from the most recent budget (chronologically) to ensure "recurring" limits available for any new creation
+  let defaultLimits = {};
+  try {
+    const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    // Fetch lightweight version of all budgets to sort correctly
+    const allBudgets = await Budget.find({ userId }).select('month year categoryLimits').lean();
+    if (allBudgets.length > 0) {
+      // Filter to finding the latest budget that ACTUALLY has limits set
+      // This prevents an empty future budget (like Jan 2026) from finding ITSELF as the latest and using empty limits
+      const budgetsWithLimits = allBudgets.filter(b => b.categoryLimits && Object.keys(b.categoryLimits).length > 0);
+
+      if (budgetsWithLimits.length > 0) {
+        const sortedBudgets = budgetsWithLimits.sort((a, b) => {
+          if (a.year !== b.year) return b.year - a.year;
+          return months.indexOf(b.month) - months.indexOf(a.month);
+        });
+        defaultLimits = sortedBudgets[0].categoryLimits;
+        console.log(`[Budget] Found latest limits from ${sortedBudgets[0].month} ${sortedBudgets[0].year}`);
+      }
+    }
+  } catch (err) {
+    console.error("Error determining default limits:", err);
+  }
+
   if (!budget) {
-    // Attempt to find the most recent budget to copy limits/rollover from
-    const lastBudget = await Budget.findOne({ userId }).sort({ year: -1, month: -1 });
+    let rolloverAmount = 0;
+    let savingsTransaction: any = null;
+
+    // Calculate rollover from the immediate previous month
+    const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const currentMonthIndex = months.indexOf(month);
+    let prevMonthIndex = currentMonthIndex - 1;
+    let prevYear = year;
+
+    if (prevMonthIndex < 0) {
+      prevMonthIndex = 11;
+      prevYear = year - 1;
+    }
+
+    const prevMonthName = months[prevMonthIndex];
+    const prevMonthBudget = await Budget.findOne({ userId, month: prevMonthName, year: prevYear });
+
+    if (prevMonthBudget) {
+      // Prefer immediate previous month for limits if available, otherwise use default (latest)
+      if (Object.keys(prevMonthBudget.categoryLimits || {}).length > 0) {
+        defaultLimits = prevMonthBudget.categoryLimits;
+      }
+
+      // Calculate balance: (Rollover + Income) - (Expenses + Savings)
+      const incomeCategories = ['income', 'Paycheck', 'Bonus', 'Debt Added'];
+
+      const income = prevMonthBudget.transactions
+        .filter(t => incomeCategories.includes(t.category))
+        .reduce((sum, t) => sum + t.actual, 0);
+
+      const expenses = prevMonthBudget.transactions
+        .filter(t => !incomeCategories.includes(t.category) && t.category !== 'Savings')
+        .reduce((sum, t) => sum + t.actual, 0);
+
+      const savings = prevMonthBudget.transactions
+        .filter(t => t.category === 'Savings')
+        .reduce((sum, t) => sum + t.actual, 0);
+
+      const startBalance = prevMonthBudget.rolloverActual || 0;
+      const balance = startBalance + income - expenses - savings;
+
+      if (balance > 0) {
+        rolloverAmount = balance;
+        console.log(`[Auto-Rollover] Found ${balance} from ${prevMonthName} ${prevYear}. Creating savings transaction.`);
+
+        savingsTransaction = {
+          id: generateId(),
+          name: "Savings from previous month",
+          planned: balance,
+          actual: balance,
+          category: "Savings",
+          date: `${year}-${(months.indexOf(month) + 1).toString().padStart(2, '0')}-01`,
+          goalId: undefined
+        };
+      }
+    }
 
     budget = await Budget.create({
       month,
       year,
       rolloverPlanned: 0,
-      rolloverActual: 0,
-      categoryLimits: lastBudget?.categoryLimits || {},
-      transactions: [],
+      rolloverActual: rolloverAmount, // Set the rollover
+      categoryLimits: defaultLimits,
+      transactions: savingsTransaction ? [savingsTransaction] : [], // Add the transaction
       userId,
     });
+  } else {
+    // If budget exists but has NO limits, attempt to backfill from defaults (fixing the issue for pre-existing future months)
+    let isEmpty = false;
+    if (!budget.categoryLimits) {
+      isEmpty = true;
+    } else if (budget.categoryLimits instanceof Map) {
+      isEmpty = budget.categoryLimits.size === 0;
+    } else if (typeof budget.categoryLimits === 'object') {
+      // Fallback if it was somehow treated as POJO
+      isEmpty = Object.keys(budget.categoryLimits).length === 0;
+    }
+
+    if (isEmpty && defaultLimits && Object.keys(defaultLimits).length > 0) {
+      console.log(`[Budget] Backfilling empty limits for ${month} ${year} from history.`);
+      // Convert plain object to Map if necessary because schema defines it as Map
+      if (!(defaultLimits instanceof Map)) {
+        const limitMap = new Map<string, number>();
+        for (const [k, v] of Object.entries(defaultLimits)) {
+          limitMap.set(k, Number(v));
+        }
+        budget.categoryLimits = limitMap;
+      } else {
+        budget.categoryLimits = defaultLimits;
+      }
+
+      // We must mark as modified because it's a mixed/map type sometimes
+      budget.markModified('categoryLimits');
+      await budget.save();
+    }
   }
 
   // Check and process recurring transactions
@@ -44,7 +151,8 @@ const getOrCreateBudget = async (month: string, year: number, userId: string): P
           actual: rule.amount,
           category: rule.category,
           date: rule.nextRunDate, // Use the date it was supposed to run
-          goalId: undefined
+          goalId: undefined,
+          walletId: rule.walletId || undefined
         };
 
         // Find the correct budget month for this transaction date
@@ -55,6 +163,7 @@ const getOrCreateBudget = async (month: string, year: number, userId: string): P
         // However, simplify: We heavily rely on the user opening the app.
         // If we put it in the WRONG budget month (e.g. requested Jan, but trans is for Feb), it won't return in THIS request.
         // Use robust approach: Find/Create the specific budget for the transaction date.
+        // 
 
         const transDate = new Date(rule.nextRunDate);
         const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -68,13 +177,26 @@ const getOrCreateBudget = async (month: string, year: number, userId: string): P
           if (!targetBudget) {
             targetBudget = await Budget.create({
               month: tMonth, year: tYear, transactions: [], userId,
-              rolloverPlanned: 0, rolloverActual: 0
+              rolloverPlanned: 0, rolloverActual: 0,
+              categoryLimits: defaultLimits // Ensure limits are copied to auto-created budgets
             });
           }
         }
 
         targetBudget.transactions.push(newTransaction);
         await targetBudget.save();
+
+        if (rule.walletId) {
+          const { WalletModel } = await import("../models/Wallet");
+          const wallet = await WalletModel.findOne({ _id: rule.walletId, userId });
+          if (wallet) {
+            const isIncome = ['income', 'Paycheck', 'Bonus', 'Debt Added'].includes(rule.category);
+            if (isIncome) wallet.balance += rule.amount;
+            else wallet.balance -= rule.amount; // Use rule.amount (newTransaction.actual)
+            await wallet.save();
+            console.log(`[Recurring] Updated wallet ${rule.walletId} balance for rule ${rule.name}`);
+          }
+        }
 
         // Update next run date
         let nextDate = new Date(rule.nextRunDate);
@@ -131,6 +253,75 @@ const recalculateGoalTotal = async (goalId: string, userId: string) => {
     await Goal.updateOne({ _id: goalId, userId }, { currentAmount: total });
   } catch (error) {
     console.error(`[Recalc] Error calculating goal total for ${goalId}:`, error);
+  }
+
+};
+
+const recalculateRollovers = async (startMonth: string, startYear: number, userId: string) => {
+  const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  let currentMonthIndex = months.indexOf(startMonth);
+  let currentYear = startYear;
+
+  // We iterate forward for, say, up to 24 months to be safe, or until no budget is found
+  // Actually, we need to process the current month provided (to get its ending balance)
+  // and then update the NEXT month.
+  // So loop starts from standard Budget M.
+
+  let loopCount = 0;
+  while (loopCount < 36) { // Safety break
+    const currentMonthName = months[currentMonthIndex];
+
+    const budget = await Budget.findOne({ userId, month: currentMonthName, year: currentYear });
+    if (!budget) {
+      // If gap in budget, we can't propagate further easily.
+      // However, user might have skipped a month. 
+      // For now, let's stop if current budget doesn't exist.
+      break;
+    }
+
+    // Calculate Ending Balance for CURRENT budget
+    const incomeCategories = ['income', 'Paycheck', 'Bonus', 'Debt Added'];
+    const income = budget.transactions
+      .filter(t => incomeCategories.includes(t.category))
+      .reduce((sum, t) => sum + t.actual, 0);
+
+    const expenses = budget.transactions
+      .filter(t => !incomeCategories.includes(t.category) && t.category !== 'Savings' && t.category !== 'Transfer' && t.type !== 'transfer')
+      .reduce((sum, t) => sum + t.actual, 0);
+
+    const savings = budget.transactions
+      .filter(t => t.category === 'Savings')
+      .reduce((sum, t) => sum + t.actual, 0);
+
+    const startBalance = budget.rolloverActual || 0;
+    const endBalance = startBalance + income - expenses - savings;
+
+    // Next Month
+    let nextMonthIndex = currentMonthIndex + 1;
+    let nextYear = currentYear;
+    if (nextMonthIndex > 11) {
+      nextMonthIndex = 0;
+      nextYear++;
+    }
+    const nextMonthName = months[nextMonthIndex];
+
+    // Update NEXT budget's rollover
+    const nextBudget = await Budget.findOne({ userId, month: nextMonthName, year: nextYear });
+    if (nextBudget) {
+      if (nextBudget.rolloverActual !== endBalance) {
+        console.log(`[Rollover] Updating ${nextMonthName} ${nextYear} rollover from ${nextBudget.rolloverActual} to ${endBalance}`);
+        nextBudget.rolloverActual = endBalance;
+        await nextBudget.save();
+      }
+    } else {
+      // If next budget doesn't exist, we stop propagating.
+      break;
+    }
+
+    // Move to next iteration
+    currentMonthIndex = nextMonthIndex;
+    currentYear = nextYear;
+    loopCount++;
   }
 };
 
@@ -191,7 +382,8 @@ export const updateBudget: RequestHandler = async (req, res) => {
 export const addTransaction: RequestHandler = async (req, res) => {
   // Ignore query params for target budget, rely on transaction date
   // const { month, year } = req.query; 
-  const { name, planned, actual, category, date, goalId } = req.body;
+  const { name, planned, actual, category, date, goalId, walletId, type, toWalletId } = req.body;
+  console.log('[API] addTransaction body:', { name, category, date, walletId, actual, type, toWalletId });
   const userId = req.session?.user?.id;
 
   if (!name || planned === undefined || actual === undefined || !category || !date) {
@@ -229,14 +421,55 @@ export const addTransaction: RequestHandler = async (req, res) => {
       category: category as TransactionCategory,
       date,
       goalId,
+      walletId,
+      type: type || 'expense',
+      toWalletId
     };
 
     budget.transactions.push(transaction);
+    budget.markModified('transactions');
     await budget.save();
 
     if (goalId) {
       await recalculateGoalTotal(goalId, userId);
     }
+
+    if (walletId) {
+      const { WalletModel } = await import("../models/Wallet");
+      const wallet = await WalletModel.findOne({ _id: walletId, userId });
+
+      // If Transfer OR Savings
+      const transactionType = req.body.type || 'expense';
+      if (transactionType === 'transfer' || category === 'Savings') {
+        const toWalletId = req.body.toWalletId;
+        if (wallet && toWalletId) {
+          // Deduct from Source
+          wallet.balance -= actual;
+          await wallet.save();
+
+          // Add to Target
+          const toWallet = await WalletModel.findOne({ _id: toWalletId, userId });
+          if (toWallet) {
+            toWallet.balance += actual;
+            await toWallet.save();
+          }
+        }
+      } else {
+        // Standard Expense/Income
+        if (wallet) {
+          const isIncome = ['income', 'Paycheck', 'Bonus', 'Debt Added'].includes(category) || transactionType === 'income';
+          if (isIncome) {
+            wallet.balance += actual;
+          } else {
+            wallet.balance -= actual;
+          }
+          await wallet.save();
+        }
+      }
+    }
+
+    // Propagate Rollover Changes
+    await recalculateRollovers(targetMonth, targetYear, userId);
 
     res.json({ success: true, data: transaction });
   } catch (error) {
@@ -272,6 +505,11 @@ export const updateTransaction: RequestHandler = async (req, res) => {
     }
 
     const oldGoalId = transaction.goalId;
+    const oldWalletId = transaction.walletId;
+    const oldAmount = transaction.actual;
+    const oldCategory = transaction.category;
+    const oldType = transaction.type || 'expense';
+    const oldToWalletId = transaction.toWalletId;
 
     // Check if we need to move the transaction (date change check)
     let targetMonth = month as string;
@@ -313,10 +551,15 @@ export const updateTransaction: RequestHandler = async (req, res) => {
       if (planned !== undefined) updatedTransaction.planned = planned;
       if (actual !== undefined) updatedTransaction.actual = actual;
       if (req.body.category !== undefined) updatedTransaction.category = req.body.category;
+      if (req.body.category !== undefined) updatedTransaction.category = req.body.category;
       if (req.body.date !== undefined) updatedTransaction.date = req.body.date;
       if (req.body.goalId !== undefined) updatedTransaction.goalId = req.body.goalId;
+      if (req.body.walletId !== undefined) updatedTransaction.walletId = req.body.walletId;
+      if (req.body.type !== undefined) updatedTransaction.type = req.body.type;
+      if (req.body.toWalletId !== undefined) updatedTransaction.toWalletId = req.body.toWalletId;
 
       targetBudget.transactions.push(updatedTransaction as Transaction);
+      targetBudget.markModified('transactions');
       await targetBudget.save();
 
       if (updatedTransaction.goalId) goalsToUpdate.add(updatedTransaction.goalId);
@@ -329,7 +572,13 @@ export const updateTransaction: RequestHandler = async (req, res) => {
       if (req.body.category !== undefined) transaction.category = req.body.category;
       if (req.body.date !== undefined) transaction.date = req.body.date;
       if (req.body.goalId !== undefined) transaction.goalId = req.body.goalId;
+      if (req.body.walletId !== undefined) transaction.walletId = req.body.walletId;
+      if (req.body.type !== undefined) transaction.type = req.body.type;
+      if (req.body.toWalletId !== undefined) transaction.toWalletId = req.body.toWalletId;
 
+
+
+      sourceBudget.markModified('transactions');
       await sourceBudget.save();
 
       if (transaction.goalId) goalsToUpdate.add(transaction.goalId);
@@ -339,6 +588,93 @@ export const updateTransaction: RequestHandler = async (req, res) => {
     for (const gid of goalsToUpdate) {
       await recalculateGoalTotal(gid, userId);
     }
+
+    const newWalletId = req.body.walletId !== undefined ? req.body.walletId : oldWalletId;
+    const newAmount = actual !== undefined ? actual : oldAmount;
+    const newCategory = req.body.category !== undefined ? req.body.category : oldCategory;
+
+    // --- Wallet Update Logic (Refactored for Transfers) ---
+
+    // 1. REVERT OLD (Undo the effect of the previous transaction state)
+    if (oldWalletId) {
+      const { WalletModel } = await import("../models/Wallet");
+      const w = await WalletModel.findOne({ _id: oldWalletId, userId });
+
+      if ((oldType === 'transfer' || oldCategory === 'Savings') && oldToWalletId) {
+        // Revert Transfer/Savings: Add back to Source, Subtract from Target
+        if (w) {
+          w.balance += oldAmount;
+          await w.save();
+        }
+        const targetW = await WalletModel.findOne({ _id: oldToWalletId, userId });
+        if (targetW) {
+          targetW.balance -= oldAmount;
+          await targetW.save();
+        }
+      } else {
+        // Revert Standard (Expense/Income)
+        if (w) {
+          // If it was Savings but lacked toWalletId (legacy), it was treated as expense.
+          // But here we assume if it's Savings it should be treated as transfer logic?
+          // CAUTION: Legacy savings might not have toWalletId.
+          // If oldCategory === 'Savings' but !oldToWalletId, fall through to else block?
+          // The condition `(oldType === 'transfer' || oldCategory === 'Savings') && oldToWalletId` handles this safely.
+          // If no toWalletId, it goes to `else` block which adds back amount (since it was treated as expense).
+          const wasIncome = ['income', 'Paycheck', 'Bonus', 'Debt Added'].includes(oldCategory) || oldType === 'income';
+          if (wasIncome) w.balance -= oldAmount; else w.balance += oldAmount;
+          await w.save();
+        }
+      }
+    }
+
+    // 2. APPLY NEW (Apply effect of new transaction state)
+    const newType = req.body.type !== undefined ? req.body.type : oldType;
+    const newToWalletId = req.body.toWalletId !== undefined ? req.body.toWalletId : oldToWalletId;
+
+    if (newWalletId) {
+      const { WalletModel } = await import("../models/Wallet");
+      const w = await WalletModel.findOne({ _id: newWalletId, userId });
+
+      if ((newType === 'transfer' || newCategory === 'Savings') && newToWalletId) {
+        // Apply Transfer/Savings: Deduct Source, Add Target
+        if (w) {
+          w.balance -= newAmount;
+          await w.save();
+        }
+        const targetW = await WalletModel.findOne({ _id: newToWalletId, userId });
+        if (targetW) {
+          targetW.balance += newAmount;
+          await targetW.save();
+        }
+      } else {
+        // Apply Standard
+        if (w) {
+          const isIncome = ['income', 'Paycheck', 'Bonus', 'Debt Added'].includes(newCategory) || newType === 'income';
+          if (isIncome) w.balance += newAmount; else w.balance -= newAmount;
+          await w.save();
+        }
+      }
+
+    }
+
+    // Propagate Rollover Changes (Run for earliest relevant month)
+    const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const m1Idx = months.indexOf(month as string);
+    const m2Idx = months.indexOf(targetMonth);
+    const y1 = parseInt(year as string);
+    const y2 = targetYear;
+
+    let startM = month as string;
+    let startY = y1;
+
+    if (y2 < y1 || (y2 === y1 && m2Idx < m1Idx)) {
+      startM = targetMonth;
+      startY = y2;
+    }
+
+
+
+    await recalculateRollovers(startM, startY, userId);
 
     res.json({ success: true, data: transaction });
   } catch (error) {
@@ -375,6 +711,11 @@ export const deleteTransaction: RequestHandler = async (req, res) => {
     const transaction = budget.transactions[index];
 
     const deletedGoalId = transaction.goalId;
+    const deletedWalletId = transaction.walletId;
+    const deletedAmount = transaction.actual;
+    const deletedCategory = transaction.category;
+    const deletedType = transaction.type || 'expense';
+    const deletedToWalletId = transaction.toWalletId;
 
     budget.transactions.splice(index, 1);
     await budget.save();
@@ -382,6 +723,42 @@ export const deleteTransaction: RequestHandler = async (req, res) => {
     if (deletedGoalId) {
       await recalculateGoalTotal(deletedGoalId, userId);
     }
+
+    if (deletedWalletId) {
+      const { WalletModel } = await import("../models/Wallet");
+
+      if ((deletedType === 'transfer' || deletedCategory === 'Savings') && deletedToWalletId) {
+        // Revert Transfer/Savings: Add back to Source, Subtract from Target
+        const w = await WalletModel.findOne({ _id: deletedWalletId, userId });
+        if (w) {
+          w.balance += deletedAmount;
+          await w.save();
+        }
+        const targetW = await WalletModel.findOne({ _id: deletedToWalletId, userId });
+        if (targetW) {
+          targetW.balance -= deletedAmount;
+          await targetW.save();
+        }
+      } else {
+        // Standard Revert
+        const wallet = await WalletModel.findOne({ _id: deletedWalletId, userId });
+        if (wallet) {
+          const isIncome = ['income', 'Paycheck', 'Bonus', 'Debt Added'].includes(deletedCategory) || deletedType === 'income';
+          if (isIncome) {
+            wallet.balance -= deletedAmount;
+          } else {
+            wallet.balance += deletedAmount;
+          }
+          await wallet.save();
+        }
+      }
+    }
+
+
+
+
+
+    await recalculateRollovers(month as string, parseInt(year as string), userId);
 
     res.json({ success: true, data: transaction });
   } catch (error) {
@@ -471,6 +848,7 @@ export const getMonthlyStats: RequestHandler = async (req, res) => {
             {
               $match: {
                 "transactions.category": { $nin: ['income', 'Paycheck', 'Bonus', 'Debt Added', 'Savings'] },
+                "transactions.type": { $ne: 'transfer' },
                 "transactions.actual": { $gt: 0 },
                 "transactions.date": { $regex: datePattern }
               }
@@ -496,7 +874,14 @@ export const getMonthlyStats: RequestHandler = async (req, res) => {
                 },
                 expense: {
                   $sum: {
-                    $cond: [{ $and: [{ $not: { $in: ["$transactions.category", ['income', 'Paycheck', 'Bonus', 'Debt Added']] } }, { $ne: ["$transactions.category", "Savings"] }] }, "$transactions.actual", 0]
+                    $cond: [{
+                      $and: [
+                        { $not: { $in: ["$transactions.category", ['income', 'Paycheck', 'Bonus', 'Debt Added']] } },
+                        { $ne: ["$transactions.category", "Savings"] },
+                        { $ne: ["$transactions.type", "transfer"] },
+                        { $ne: ["$transactions.category", "Transfer"] }
+                      ]
+                    }, "$transactions.actual", 0]
                   }
                 },
                 savings: {

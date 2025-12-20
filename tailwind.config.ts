@@ -14,8 +14,8 @@ export default {
     },
     extend: {
       fontFamily: {
-        serif: ['Georgia', 'Garamond', 'serif'],
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        serif: ['Outfit', 'sans-serif'],
+        sans: ['Outfit', 'Inter', 'system-ui', 'sans-serif'],
       },
       colors: {
         border: "hsl(var(--border))",

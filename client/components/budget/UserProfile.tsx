@@ -50,11 +50,15 @@ export function UserProfile() {
             const incomeCategories = ['Paycheck', 'Bonus', 'Debt Added', 'income'];
 
             const rows = transactions.map((t: any) => {
-                const isIncome = incomeCategories.includes(t.category);
+                const isIncome = ['Paycheck', 'Bonus', 'Debt Added', 'income'].includes(t.category) || t.type === 'income';
                 const isSavings = t.category === 'Savings';
+                const isGoal = t.name.startsWith("Goal Reached:");
+
                 let type = "Expense";
-                if (isIncome) type = "Income";
+                if (t.type === 'transfer') type = "Transfer";
+                else if (isIncome) type = "Income";
                 else if (isSavings) type = "Savings";
+                else if (isGoal) type = "Goal Completion";
 
                 return [
                     t.date,

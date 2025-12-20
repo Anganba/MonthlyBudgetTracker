@@ -58,7 +58,7 @@ export function useBudget(selectedMonth?: string, selectedYear?: number) {
             .reduce((sum, t) => sum + t.actual, 0);
 
         const expenses = transactions
-            .filter(t => !incomeCategories.includes(t.category) && t.category !== 'Savings')
+            .filter(t => !incomeCategories.includes(t.category) && t.category !== 'Savings' && t.type !== 'transfer' && t.category !== 'Transfer')
             .reduce((sum, t) => sum + t.actual, 0);
 
         const savings = transactions
@@ -111,7 +111,7 @@ export function useBudget(selectedMonth?: string, selectedYear?: number) {
                     .filter(t => incomeCategories.includes(t.category))
                     .reduce((sum, t) => sum + t.actual, 0);
                 const dayExpenses = dailyTransactions
-                    .filter(t => !incomeCategories.includes(t.category) && t.category !== 'Savings')
+                    .filter(t => !incomeCategories.includes(t.category) && t.category !== 'Savings' && t.type !== 'transfer' && t.category !== 'Transfer')
                     .reduce((sum, t) => sum + t.actual, 0);
                 const daySavings = dailyTransactions
                     .filter(t => t.category === 'Savings')
@@ -128,7 +128,7 @@ export function useBudget(selectedMonth?: string, selectedYear?: number) {
                         .reduce((sum, t) => sum + t.actual, 0);
                 } else if (type === 'expenses') {
                     value = dailyTransactions
-                        .filter(t => !incomeCategories.includes(t.category) && t.category !== 'Savings')
+                        .filter(t => !incomeCategories.includes(t.category) && t.category !== 'Savings' && t.type !== 'transfer' && t.category !== 'Transfer')
                         .reduce((sum, t) => sum + t.actual, 0);
                 } else if (type === 'savings') {
                     value = dailyTransactions

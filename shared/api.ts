@@ -2,16 +2,31 @@ export interface DemoResponse {
   message: string;
 }
 
+export interface Wallet {
+  id: string;
+  userId: string;
+  name: string;
+  type: 'cash' | 'mfs' | 'bank' | 'credit_card' | 'debit_card' | 'virtual_card' | 'other';
+  balance: number;
+  icon?: string;
+  color?: string;
+  isDefault?: boolean;
+  createdAt?: string;
+}
+
 export type TransactionCategory = string;
 
 export interface Transaction {
   id: string;
   name: string;
+  type?: 'expense' | 'income' | 'transfer';
   planned: number;
   actual: number;
   category: TransactionCategory;
   date: string;
   goalId?: string;
+  walletId?: string;
+  toWalletId?: string;
 }
 
 export interface BudgetMonth {
@@ -46,6 +61,8 @@ export interface Goal {
   targetAmount: number;
   currentAmount: number;
   color?: string;
+  status: 'active' | 'fulfilled' | 'archived';
+  completedAt?: string;
   createdAt?: string;
 }
 
@@ -71,6 +88,7 @@ export interface RecurringTransaction {
   nextRunDate: string;
   lastRunDate?: string;
   active: boolean;
+  walletId?: string;
   createdAt?: string;
 }
 

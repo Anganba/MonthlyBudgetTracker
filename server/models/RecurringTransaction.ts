@@ -18,6 +18,7 @@ const RecurringTransactionSchema = new Schema<IRecurringTransaction>(
         nextRunDate: { type: String, required: true },
         lastRunDate: { type: String },
         active: { type: Boolean, default: true },
+        walletId: { type: String, required: false },
     },
     { timestamps: true }
 );

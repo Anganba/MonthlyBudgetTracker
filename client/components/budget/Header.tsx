@@ -50,7 +50,7 @@ export function BudgetHeader({ month, year, onMonthChange, currency, onCurrencyC
           <div className="flex items-center gap-4">
             <button
               onClick={handlePreviousMonth}
-              className="p-2 hover:bg-white/10 rounded-lg transition no-print text-foreground"
+              className="p-2 hover:bg-primary hover:text-black rounded-lg transition no-print text-foreground"
               aria-label="Previous month"
             >
               <ChevronLeft className="w-5 h-5" />
@@ -67,7 +67,7 @@ export function BudgetHeader({ month, year, onMonthChange, currency, onCurrencyC
 
             <button
               onClick={handleNextMonth}
-              className="p-2 hover:bg-white/10 rounded-lg transition no-print text-foreground"
+              className="p-2 hover:bg-primary hover:text-black rounded-lg transition no-print text-foreground"
               aria-label="Next month"
             >
               <ChevronRight className="w-5 h-5" />

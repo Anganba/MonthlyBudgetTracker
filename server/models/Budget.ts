@@ -16,6 +16,7 @@ export interface IBudget extends Document {
 const TransactionSchema = new Schema<Transaction>({
     id: { type: String, required: true },
     name: { type: String, required: true },
+    type: { type: String, enum: ['expense', 'income', 'transfer'], default: 'expense' },
     planned: { type: Number, required: true },
     actual: { type: Number, required: true },
     category: {
@@ -24,6 +25,8 @@ const TransactionSchema = new Schema<Transaction>({
     },
     date: { type: String, required: true },
     goalId: { type: String, required: false },
+    walletId: { type: String, required: false }, // Link to Wallet (Source)
+    toWalletId: { type: String, required: false }, // Link to Target Wallet (Transfer)
 });
 
 const BudgetSchema = new Schema<IBudget>(

@@ -1,35 +1,53 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-// import { useLocation } from "wouter"; // Removed wouter
-import { BudgetMonth, Transaction } from "@shared/api";
+import { TransactionData } from "./TransactionDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, Wallet, Smartphone, Landmark, CreditCard, Banknote, Plus } from "lucide-react";
 import { MetricCard } from "./MetricCard";
 import { GoalsSection } from "./GoalsSection";
 import { BudgetStatus } from "./BudgetStatus";
 import { TransactionsList } from "./TransactionsList";
-import { TransactionDialog, TransactionData } from "./TransactionDialog";
+import { TransactionDialog } from "./TransactionDialog";
 import { useBudget } from "@/hooks/use-budget";
+import { useWallets } from "@/hooks/use-wallets";
 import { useAuth } from "@/lib/auth";
-import { LogOut } from "lucide-react";
 import { UserProfile } from "./UserProfile";
 
 export function Dashboard() {
-  const { budget, isLoading, stats, trends, graphs, refreshBudget } = useBudget();
-  const { logout } = useAuth();
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  // Month/Year for fetching
   const monthNames = ["January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December"
   ];
   const month = monthNames[currentDate.getMonth()];
   const year = currentDate.getFullYear();
-  const currency = "$"; // Hardcoded for design match, could be dynamic
+
+  // Pass selected month/year to hook
+  const { budget, isLoading, stats, trends, graphs, refreshBudget } = useBudget(month, year);
+  const { wallets } = useWallets();
+
+  const { logout } = useAuth();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const currency = "$";
 
   const queryClient = useQueryClient();
+
+  const handlePrevMonth = () => {
+    setCurrentDate(prev => {
+      const d = new Date(prev);
+      d.setMonth(d.getMonth() - 1);
+      return d;
+    });
+  };
+
+  const handleNextMonth = () => {
+    setCurrentDate(prev => {
+      const d = new Date(prev);
+      d.setMonth(d.getMonth() + 1);
+      return d;
+    });
+  };
 
   const handleTransactionSubmit = async (data: TransactionData) => {
     try {
@@ -42,6 +60,7 @@ export function Dashboard() {
       if (result.success) {
         await refreshBudget();
         queryClient.invalidateQueries({ queryKey: ['goals'] });
+        queryClient.invalidateQueries({ queryKey: ['wallets'] });
       }
     } catch (error) { console.error('Error adding transaction:', error); }
   };
@@ -57,38 +76,62 @@ export function Dashboard() {
     t.category.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const getWalletIcon = (type: string) => {
+    switch (type) {
+      case 'mfs': return Smartphone;
+      case 'bank': return Landmark;
+      case 'credit_card': return CreditCard;
+      case 'cash': return Banknote;
+      default: return Wallet;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background text-foreground p-8">
       {/* Top Header Row */}
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold font-serif">Dashboard</h1>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+        <div className="flex items-center justify-between md:justify-start gap-4 w-full md:w-auto">
+          <h1 className="text-3xl font-bold font-serif">Dashboard</h1>
+          <div className="flex items-center bg-card rounded-lg border border-white/10 p-1">
+            <Button variant="ghost" size="icon" onClick={handlePrevMonth} className="h-8 w-8 hover:bg-primary hover:text-black transition-colors rounded-md">
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="min-w-[120px] md:min-w-[140px] text-center font-medium text-sm md:text-base">
+              {month} {year}
+            </span>
+            <Button variant="ghost" size="icon" onClick={handleNextMonth} className="h-8 w-8 hover:bg-primary hover:text-black transition-colors rounded-md">
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
 
-        <div className="flex items-center gap-4 w-full max-w-xl justify-end">
-          <div className="relative w-full max-w-sm">
+        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-4 w-full md:max-w-xl justify-end">
+          <div className="relative w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search"
-              className="pl-10 bg-card border-0 rounded-full h-10 text-sm focus-visible:ring-primary"
+              placeholder="Search..."
+              className="pl-10 bg-card border-0 rounded-full h-10 text-sm focus-visible:ring-primary w-full"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
 
-          <Button
-            onClick={() => setIsDialogOpen(true)}
-            className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-full px-6 font-bold"
-          >
-            Add transaction
-          </Button>
-
-          <UserProfile />
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={() => setIsDialogOpen(true)}
+              className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-full px-6 font-bold flex-1 md:flex-none whitespace-nowrap gap-2"
+            >
+              <Plus className="h-4 w-4" /> Add Transaction
+            </Button>
+            <UserProfile />
+          </div>
         </div>
       </div>
 
       {/* Metric Cards Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
         <MetricCard
-          title="Total Balance"
+          title="Monthly Leftover"
           value={`${currency}${balance.toLocaleString()}`}
           trend={`${trends.balance > 0 ? '+' : ''}${trends.balance}%`}
           trendUp={trends.balance >= 0}
@@ -118,6 +161,36 @@ export function Dashboard() {
         />
       </div>
 
+      {/* Wallets Row */}
+      {wallets.length > 0 && (
+        <div className="mb-8">
+          <div className="flex items-center gap-4 mb-4">
+            <h2 className="text-lg font-bold font-serif flex items-center gap-2">
+              <Wallet className="w-5 h-5 text-primary" /> My Accounts
+            </h2>
+            <div className="px-3 py-1 rounded-full bg-primary/10 border border-primary/20">
+              <span className="text-xs text-primary font-bold">
+                Net Worth: ${wallets.reduce((acc, w) => acc + w.balance, 0).toLocaleString()}
+              </span>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+            {wallets.map(w => {
+              const Icon = getWalletIcon(w.type);
+              return (
+                <div key={w.id} className="bg-card border border-white/5 rounded-xl p-4 flex flex-col justify-between hover:bg-white/5 transition-colors">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Icon className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-xs font-medium text-muted-foreground truncate">{w.name}</span>
+                  </div>
+                  <div className="text-lg font-bold text-white">${w.balance.toLocaleString()}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Lower Section */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
         {/* Left Column (Goals + Budget) takes up 1/3 */}
@@ -127,7 +200,7 @@ export function Dashboard() {
         </div>
 
         <div className="xl:col-span-2 relative">
-          <TransactionsList transactions={filteredTransactions} currency={currency} />
+          <TransactionsList transactions={filteredTransactions} wallets={wallets} currency={currency} />
 
           {/* Gradient overlay at bottom for smooth scroll fade effect if needed */}
           <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-background to-transparent pointer-events-none"></div>

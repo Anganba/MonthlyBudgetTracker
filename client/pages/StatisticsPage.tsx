@@ -16,15 +16,23 @@ import {
     Bar,
     Legend,
     LabelList,
+    Label,
 } from "recharts";
-import { format, eachDayOfInterval, startOfMonth, endOfMonth, isSameDay, addMonths, subMonths } from "date-fns";
+import { format, eachDayOfInterval, startOfMonth, endOfMonth, isSameDay, addMonths, subMonths, isSameMonth } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ChevronLeft, ChevronRight, Calendar } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+
+import { useWallets } from "@/hooks/use-wallets";
 
 export default function StatisticsPage() {
     const [date, setDate] = useState(new Date());
+    const [xAxisMode, setXAxisMode] = useState<'daily' | 'weekly'>('daily');
+    const [yAxisMode, setYAxisMode] = useState<'standard' | 'cumulative'>('standard');
+    const [yAxisMax, setYAxisMax] = useState<string>('');
 
     const monthNames = ["January", "February", "March", "April", "May", "June",
         "July", "August", "September", "October", "November", "December"
@@ -33,8 +41,7 @@ export default function StatisticsPage() {
     const currentYear = date.getFullYear();
 
     const { budget, isLoading: isLoadingBudget, yearlyStats, isLoadingYearly, monthlyStats, isLoadingMonthlyStats } = useBudget(currentMonthName, currentYear);
-
-
+    const { wallets } = useWallets();
 
     const { goals, isLoading: isLoadingGoals } = useGoals();
     const currency = "$"; // consistent with app
@@ -47,25 +54,65 @@ export default function StatisticsPage() {
     const handleNextMonth = () => setDate(addMonths(date, 1));
 
     // 1. Prepare Daily Trend Data (Use Optimized Server Data if available)
-    const dailyData = useMemo(() => {
-        if (monthlyStats?.dailyData) {
-            // Server returns { day: 1, income: ..., expense: ..., savings: ... }
-            // We need to map it to the Recharts format with full dates
-            return monthlyStats.dailyData.map((d: any) => {
-                const dateObj = new Date(currentYear, date.getMonth(), d.day);
+    const chartData = useMemo(() => {
+        if (!monthlyStats?.dailyData) return [];
+
+        let data = monthlyStats.dailyData.map((d: any) => {
+            const dateObj = new Date(currentYear, date.getMonth(), d.day);
+            return {
+                day: d.day,
+                date: format(dateObj, 'dd'),
+                fullDate: format(dateObj, 'MMM dd'),
+                week: Math.ceil(d.day / 7),
+                income: d.income,
+                expense: d.expense,
+                savings: d.savings,
+            };
+        });
+
+        // X-Axis Aggregation: Weekly
+        if (xAxisMode === 'weekly') {
+            const weeklyMap = new Map();
+            data.forEach((d: any) => {
+                const key = `Week ${d.week}`;
+                if (!weeklyMap.has(key)) {
+                    weeklyMap.set(key, {
+                        date: key,
+                        fullDate: key,
+                        income: 0,
+                        expense: 0,
+                        savings: 0
+                    });
+                }
+                const weekData = weeklyMap.get(key);
+                weekData.income += d.income;
+                weekData.expense += d.expense;
+                weekData.savings += d.savings;
+            });
+            data = Array.from(weeklyMap.values());
+        }
+
+        // Y-Axis Transformation: Cumulative
+        if (yAxisMode === 'cumulative') {
+            let runningIncome = 0;
+            let runningExpense = 0;
+            let runningSavings = 0;
+
+            data = data.map((d: any) => {
+                runningIncome += d.income;
+                runningExpense += d.expense;
+                runningSavings += d.savings;
                 return {
-                    date: format(dateObj, 'dd'),
-                    fullDate: format(dateObj, 'MMM dd'),
-                    income: d.income,
-                    expense: d.expense,
-                    savings: d.savings,
+                    ...d,
+                    income: runningIncome,
+                    expense: runningExpense,
+                    savings: runningSavings
                 };
             });
         }
 
-        // Fallback or Initial Load (though isLoading should handle this)
-        return [];
-    }, [monthlyStats, currentYear, date]);
+        return data;
+    }, [monthlyStats, currentYear, date, xAxisMode, yAxisMode]);
 
     // 2. Prepare Pie Data (Expenses) - Use Optimized Server Data
     const pieData = useMemo(() => {
@@ -143,6 +190,68 @@ export default function StatisticsPage() {
         return null;
     };
 
+    // 4. Prepare Wallet Activity Data
+    const walletData = useMemo(() => {
+        if (!budget?.transactions || !wallets) return [];
+        const stats = new Map();
+
+        budget.transactions.forEach((t: any) => {
+            if (!t.walletId) return;
+            // Identify if expense or income for balance tracking
+            const isExpense = !['Paycheck', 'Bonus', 'Debt Added', 'Savings'].includes(t.category);
+            const isIncome = ['Paycheck', 'Bonus', 'Debt Added'].includes(t.category);
+
+            if (!stats.has(t.walletId)) stats.set(t.walletId, { expense: 0, income: 0 });
+            const s = stats.get(t.walletId);
+
+            if (isExpense) {
+                s.expense += t.actual;
+            } else if (isIncome) {
+                s.income += t.actual;
+            }
+        });
+
+        const isCurrent = isSameMonth(date, new Date());
+
+        return wallets
+            .map((w: any) => {
+                const s = stats.get(w.id) || { expense: 0, income: 0 };
+
+                // Start Balance Approximation
+                let startBalance = w.balance;
+                if (isCurrent) {
+                    startBalance = w.balance + s.expense - s.income;
+                }
+
+                const totalAvailable = startBalance + s.income;
+                const usage = s.expense;
+                const remaining = totalAvailable - usage;
+                const percentage = totalAvailable > 0 ? (usage / totalAvailable) * 100 : 0;
+
+                return {
+                    id: w.id,
+                    name: w.name,
+                    expense: s.expense,
+                    income: s.income,
+                    startBalance: startBalance,
+                    totalAvailable: totalAvailable,
+                    remaining: remaining,
+                    percentage: percentage,
+                    color: w.color || 'hsl(var(--primary))'
+                };
+            })
+            .sort((a: any, b: any) => b.expense - a.expense);
+    }, [budget, wallets, date]);
+
+    const totalMonthlyExpense = useMemo(() => {
+        return pieData.reduce((acc, curr) => acc + (curr.value || 0), 0);
+    }, [pieData]);
+
+    const totalYearlyExpense = useMemo(() => {
+        if (!yearlyStats) return 0;
+        return yearlyStats.reduce((acc: number, curr: any) => acc + (curr.expense || 0), 0);
+    }, [yearlyStats]);
+
     if ((isLoadingBudget || isLoadingMonthlyStats) && !monthlyStats) {
         return (
             <div className="flex items-center justify-center min-h-screen">
@@ -150,8 +259,6 @@ export default function StatisticsPage() {
             </div>
         );
     }
-
-    // ... Render ...
 
     return (
         <div className="min-h-screen bg-background text-foreground p-8">
@@ -200,13 +307,42 @@ export default function StatisticsPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Daily Financial Flow (Area Chart) */}
                 <Card className="col-span-1 lg:col-span-2 bg-card border-none shadow-xl">
-                    <CardHeader>
+                    <CardHeader className="flex flex-row items-center justify-between">
                         <CardTitle className="text-xl font-semibold text-card-foreground">Daily Financial Flow</CardTitle>
+                        <div className="flex gap-4">
+                            <Select value={xAxisMode} onValueChange={(v: any) => setXAxisMode(v)}>
+                                <SelectTrigger className="w-[120px]">
+                                    <SelectValue placeholder="X-Axis" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="daily">Daily</SelectItem>
+                                    <SelectItem value="weekly">Weekly</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <Select value={yAxisMode} onValueChange={(v: any) => setYAxisMode(v)}>
+                                <SelectTrigger className="w-[120px]">
+                                    <SelectValue placeholder="Y-Axis" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="standard">Standard</SelectItem>
+                                    <SelectItem value="cumulative">Cumulative</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <div className="w-[100px]">
+                                <Input
+                                    type="number"
+                                    placeholder="Y-Max"
+                                    value={yAxisMax}
+                                    onChange={(e) => setYAxisMax(e.target.value)}
+                                    className="bg-background"
+                                />
+                            </div>
+                        </div>
                     </CardHeader>
                     <CardContent>
                         <div className="h-[300px] w-full">
                             <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={dailyData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                                <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                                     <defs>
                                         <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
                                             <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8} />
@@ -234,6 +370,7 @@ export default function StatisticsPage() {
                                         tickLine={false}
                                         axisLine={false}
                                         tickFormatter={(value) => `${currency}${value}`}
+                                        domain={[0, yAxisMax ? parseInt(yAxisMax) : 'auto']}
                                     />
                                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} opacity={0.4} />
                                     <Tooltip
@@ -282,13 +419,13 @@ export default function StatisticsPage() {
                     </CardContent>
                 </Card>
 
-                {/* Expense Breakdown (Pie Chart) */}
-                <Card className="bg-card border-none shadow-xl">
+                {/* Expense Breakdown (Pie Chart) - Left Side */}
+                <Card className="col-span-1 bg-card border-none shadow-xl">
                     <CardHeader>
                         <CardTitle className="text-xl font-semibold text-card-foreground">Expense Breakdown</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="h-[300px] w-full">
+                        <div className="h-[400px] w-full">
                             {pieData.length > 0 ? (
                                 <ResponsiveContainer width="100%" height="100%">
                                     <PieChart>
@@ -296,9 +433,9 @@ export default function StatisticsPage() {
                                             data={pieData}
                                             cx="50%"
                                             cy="50%"
-                                            innerRadius={60}
-                                            outerRadius={80}
-                                            paddingAngle={5}
+                                            innerRadius={110}
+                                            outerRadius={150}
+                                            paddingAngle={2}
                                             dataKey="value"
                                             labelLine={false}
                                             label={(props) => {
@@ -323,7 +460,7 @@ export default function StatisticsPage() {
                                                     <g>
                                                         <path d={`M${sx},${sy}L${mx},${my}L${ex},${ey}`} stroke={pieColors[index % pieColors.length]} fill="none" />
                                                         <circle cx={ex} cy={ey} r={2} fill={pieColors[index % pieColors.length]} stroke="none" />
-                                                        <text x={ex + (cos >= 0 ? 1 : -1) * 12} y={ey} dy={4} textAnchor={textAnchor} fill={pieColors[index % pieColors.length]} fontSize={12} fontWeight="500">
+                                                        <text x={ex + (cos >= 0 ? 1 : -1) * 12} y={ey} dy={4} textAnchor={textAnchor} fill={pieColors[index % pieColors.length]} fontSize={14} fontWeight="500">
                                                             {`${name} ${(percent * 100).toFixed(0)}%`}
                                                         </text>
                                                     </g>
@@ -334,6 +471,24 @@ export default function StatisticsPage() {
                                             {pieData.map((entry, index) => (
                                                 <Cell key={`cell-${index}`} fill={pieColors[index % pieColors.length]} />
                                             ))}
+                                            <Label
+                                                content={({ viewBox }) => {
+                                                    if (viewBox && 'cx' in viewBox && 'cy' in viewBox) {
+                                                        return (
+                                                            <text x={viewBox.cx} y={viewBox.cy} textAnchor="middle" dominantBaseline="middle">
+                                                                <tspan x={viewBox.cx} y={viewBox.cy} dy="-10" className="fill-muted-foreground text-xs font-medium uppercase tracking-wider">
+                                                                    Total Spent
+                                                                </tspan>
+                                                                <tspan x={viewBox.cx} y={viewBox.cy} dy="20" className="fill-primary text-xl font-bold" style={{ filter: 'drop-shadow(0 0 1px hsl(var(--primary)))' }}>
+                                                                    {currency}{totalMonthlyExpense.toFixed(2)}
+                                                                </tspan>
+                                                            </text>
+                                                        )
+                                                    }
+                                                    return null;
+                                                }}
+                                                position="center"
+                                            />
                                         </Pie>
                                         <Tooltip
                                             contentStyle={{ backgroundColor: 'hsl(var(--popover))', borderColor: 'hsl(var(--border))', borderRadius: 'var(--radius)', color: 'hsl(var(--popover-foreground))' }}
@@ -351,8 +506,8 @@ export default function StatisticsPage() {
                     </CardContent>
                 </Card>
 
-                {/* Goals Progress (Bar Chart) - Normalized to 100% */}
-                <Card className="bg-card border-none shadow-xl">
+                {/* Goals Progress (Bar Chart) - Right Side */}
+                <Card className="col-span-1 bg-card border-none shadow-xl">
                     <CardHeader>
                         <CardTitle className="text-xl font-semibold text-card-foreground">Goals Progress</CardTitle>
                     </CardHeader>
@@ -372,7 +527,6 @@ export default function StatisticsPage() {
                                             contentStyle={{ backgroundColor: 'hsl(var(--popover))', borderColor: 'hsl(var(--border))', borderRadius: 'var(--radius)', color: 'hsl(var(--popover-foreground))' }}
                                             itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
                                             formatter={(value: number, name: string, props: any) => {
-                                                // Show REAL values from payload, not normalized bar values
                                                 const realValue = name === 'Saved' ? props.payload.saved : props.payload.remaining;
                                                 if (name === 'Saved') return [`${currency}${realValue} (${props.payload.percent}%)`, name];
                                                 return [`${currency}${realValue}`, name];
@@ -398,29 +552,88 @@ export default function StatisticsPage() {
                         </div>
                     </CardContent>
                 </Card>
+
+                {/* Wallet Spending (Redesigned) - Bottom Full Width */}
+                <Card className="col-span-1 lg:col-span-2 bg-card border-none shadow-xl">
+                    <CardHeader>
+                        <CardTitle className="text-xl font-semibold text-card-foreground">Wallet Spending</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="flex flex-col gap-6">
+                            {walletData.length > 0 ? (
+                                walletData.map((wallet: any, index: number) => (
+                                    <div key={wallet.id} className="space-y-2">
+                                        <div className="flex justify-between items-center text-sm">
+                                            <div className="flex items-center gap-2">
+                                                <div className="font-semibold">{wallet.name}</div>
+                                                <div className="text-primary text-xs">
+                                                    (Remaining: {currency}{wallet.remaining?.toFixed(2) || '0.00'})
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-4">
+                                                <span className={`${wallet.percentage > 90 ? 'text-destructive' : 'text-foreground'} font-medium`}>{currency}{wallet.expense.toFixed(2)}</span>
+                                                <span className="text-muted-foreground">/</span>
+                                                <span className="font-medium text-primary">{currency}{wallet.totalAvailable?.toFixed(2) || '0.00'}</span>
+                                            </div>
+                                        </div>
+                                        <div className="h-3 w-full bg-secondary rounded-full overflow-hidden">
+                                            <div
+                                                className="h-full bg-primary transition-all duration-500"
+                                                style={{ width: `${Math.min(100, wallet.percentage)}%` }}
+                                            />
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="py-8 flex items-center justify-center text-muted-foreground">
+                                    No wallet activity this month
+                                </div>
+                            )}
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
 
             {/* Yearly Expense Overview - Moved to Bottom */}
+            {/* Yearly Expense Overview - Modern UI */}
             <div className="mt-8 mb-8">
-                <Card className="bg-card border-none shadow-xl">
-                    <CardHeader>
-                        <CardTitle className="text-xl font-semibold text-card-foreground">Yearly Expense Overview ({currentYear})</CardTitle>
+                <Card className="bg-card border-none shadow-xl overflow-hidden relative">
+                    {/* Decorative background glow */}
+                    <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-primary/5 rounded-full blur-3xl -z-10 translate-x-1/2 -translate-y-1/2"></div>
+
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                        <div>
+                            <CardTitle className="text-xl font-semibold text-card-foreground">Yearly Overview</CardTitle>
+                            <p className="text-sm text-muted-foreground">Spending trends for {currentYear}</p>
+                        </div>
+                        <div className="text-right">
+                            <span className="text-2xl font-bold block text-primary">{currency}{totalYearlyExpense.toFixed(2)}</span>
+                            <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Total Spent</span>
+                        </div>
                     </CardHeader>
                     <CardContent>
-                        <div className="h-[300px] w-full">
+                        <div className="h-[300px] w-full mt-4">
                             {isLoadingYearly ? (
                                 <div className="h-full flex items-center justify-center">
                                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                                 </div>
                             ) : yearlyStats.length > 0 ? (
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={yearlyStats} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+                                    <BarChart data={yearlyStats} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                        <defs>
+                                            <linearGradient id="yearExpenseGradient" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="0%" stopColor="hsl(var(--destructive))" stopOpacity={0.8} />
+                                                <stop offset="95%" stopColor="hsl(var(--destructive))" stopOpacity={0.3} />
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} opacity={0.4} />
                                         <XAxis
                                             dataKey="name"
                                             stroke="hsl(var(--muted-foreground))"
                                             fontSize={12}
                                             tickLine={false}
                                             axisLine={false}
+                                            dy={10}
                                         />
                                         <YAxis
                                             stroke="hsl(var(--muted-foreground))"
@@ -430,12 +643,23 @@ export default function StatisticsPage() {
                                             tickFormatter={(value) => `${currency}${value}`}
                                         />
                                         <Tooltip
-                                            cursor={{ fill: 'hsl(var(--accent)/0.1)' }}
-                                            contentStyle={{ backgroundColor: 'hsl(var(--popover))', borderColor: 'hsl(var(--border))', borderRadius: 'var(--radius)', color: 'hsl(var(--popover-foreground))' }}
-                                            itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
+                                            cursor={{ fill: 'hsl(var(--muted)/0.2)' }}
+                                            contentStyle={{
+                                                backgroundColor: 'hsl(var(--popover))',
+                                                borderColor: 'hsl(var(--border))',
+                                                borderRadius: '0.5rem',
+                                                boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                                            }}
+                                            itemStyle={{ color: 'hsl(var(--destructive))', fontWeight: 600 }}
                                             formatter={(value: number) => [`${currency}${value.toFixed(2)}`, 'Expense']}
                                         />
-                                        <Bar dataKey="expense" name="Expense" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
+                                        <Bar
+                                            dataKey="expense"
+                                            name="Expense"
+                                            fill="url(#yearExpenseGradient)"
+                                            radius={[6, 6, 0, 0]}
+                                            maxBarSize={50}
+                                        />
                                     </BarChart>
                                 </ResponsiveContainer>
                             ) : (
@@ -447,6 +671,6 @@ export default function StatisticsPage() {
                     </CardContent>
                 </Card>
             </div>
-        </div>
+        </div >
     );
 }

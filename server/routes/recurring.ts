@@ -19,6 +19,7 @@ export const getRecurringTransactions: RequestHandler = async (req, res) => {
             nextRunDate: doc.nextRunDate,
             lastRunDate: doc.lastRunDate,
             active: doc.active,
+            walletId: doc.walletId,
             createdAt: (doc as any).createdAt?.toISOString(),
         }));
         res.json({ success: true, data });
@@ -32,7 +33,7 @@ export const createRecurringTransaction: RequestHandler = async (req, res) => {
     const userId = req.session?.user?.id;
     if (!userId) return res.status(401).json({ success: false, message: "Not authenticated" });
 
-    const { name, amount, category, frequency, startDate } = req.body;
+    const { name, amount, category, frequency, startDate, walletId } = req.body;
 
     if (!name || amount === undefined || !category || !frequency || !startDate) {
         return res.status(400).json({ success: false, message: "Missing required fields" });
@@ -47,7 +48,8 @@ export const createRecurringTransaction: RequestHandler = async (req, res) => {
             frequency,
             startDate,
             nextRunDate: startDate, // First run is on start date
-            active: true
+            active: true,
+            walletId: walletId || undefined
         });
 
         res.json({ success: true, data: { ...newItem.toObject(), id: newItem._id.toString() } });
@@ -67,7 +69,7 @@ export const updateRecurringTransaction: RequestHandler = async (req, res) => {
         const item = await RecurringTransactionModel.findOne({ _id: id, userId });
         if (!item) return res.status(404).json({ success: false, message: "Not found" });
 
-        const allowedUpdates = ['name', 'amount', 'category', 'frequency', 'startDate', 'nextRunDate', 'active'];
+        const allowedUpdates = ['name', 'amount', 'category', 'frequency', 'startDate', 'nextRunDate', 'active', 'walletId'];
         allowedUpdates.forEach(key => {
             if (req.body[key] !== undefined) (item as any)[key] = req.body[key];
         });

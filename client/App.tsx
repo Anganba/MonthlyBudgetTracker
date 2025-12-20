@@ -19,6 +19,7 @@ import RecurringPage from "./pages/RecurringPage";
 import GoalsPage from "./pages/GoalsPage";
 import StatisticsPage from "./pages/StatisticsPage";
 import ProfilePage from "./pages/ProfilePage";
+import WalletsPage from "./pages/WalletsPage";
 
 const queryClient = new QueryClient();
 
@@ -99,6 +100,14 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <RecurringPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/wallets"
+                element={
+                  <ProtectedRoute>
+                    <WalletsPage />
                   </ProtectedRoute>
                 }
               />

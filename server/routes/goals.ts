@@ -9,6 +9,8 @@ const mapToGoal = (doc: any): Goal => ({
     targetAmount: doc.targetAmount,
     currentAmount: doc.currentAmount,
     color: doc.color,
+    status: doc.status || 'active',
+    completedAt: doc.completedAt?.toISOString(),
     createdAt: doc.createdAt?.toISOString(),
 });
 
@@ -41,7 +43,8 @@ export const createGoal: RequestHandler = async (req, res) => {
             name,
             targetAmount,
             currentAmount: currentAmount || 0,
-            color
+            color,
+            status: 'active'
         });
         res.json({ success: true, data: mapToGoal(goal) });
     } catch (error) {
@@ -55,7 +58,9 @@ export const updateGoal: RequestHandler = async (req, res) => {
     const { id } = req.params;
     if (!userId) return res.status(401).json({ success: false, message: "Not authenticated" });
 
-    const { name, targetAmount, currentAmount, color } = req.body;
+    const { name, targetAmount, currentAmount, color, status } = req.body;
+    console.log(`[UpdateGoal] Request body for ${id}:`, req.body);
+
 
     try {
         const goal = await GoalModel.findOne({ _id: id, userId });
@@ -66,7 +71,17 @@ export const updateGoal: RequestHandler = async (req, res) => {
         if (currentAmount !== undefined) goal.currentAmount = currentAmount;
         if (color !== undefined) goal.color = color;
 
+        if (status) {
+            goal.status = status;
+            if (status === 'fulfilled' && !goal.completedAt) {
+                goal.completedAt = new Date();
+            } else if (status === 'active') {
+                goal.completedAt = undefined;
+            }
+        }
+
         await goal.save();
+        console.log(`[UpdateGoal] Updated goal ${id} status to ${goal.status}`);
         res.json({ success: true, data: mapToGoal(goal) });
     } catch (error) {
         console.error("Error updating goal:", error);

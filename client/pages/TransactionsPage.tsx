@@ -5,9 +5,19 @@ import { BudgetHeader } from '../components/budget/Header';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, Filter, Edit2, Trash2, ArrowUpDown } from "lucide-react";
+import { Plus, Search, Filter, Edit2, Trash2, ArrowUpDown, ArrowRight } from "lucide-react";
 import { format } from 'date-fns';
 import { TransactionDialog, TransactionData } from "../components/budget/TransactionDialog";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 
 const MONTHS = [
@@ -16,6 +26,7 @@ const MONTHS = [
 ];
 
 import { useBudget } from "@/hooks/use-budget";
+import { useWallets } from '@/hooks/use-wallets';
 
 export function TransactionsPage() {
     const queryClient = useQueryClient();
@@ -24,17 +35,23 @@ export function TransactionsPage() {
 
     // Use cached budget data
     const { budget, isLoading: loading, refreshBudget } = useBudget(month, year);
+    const { wallets } = useWallets();
 
     const [currency, setCurrency] = useState('USD');
     const [searchTerm, setSearchTerm] = useState('');
     const [categoryFilter, setCategoryFilter] = useState('all');
     const [typeFilter, setTypeFilter] = useState('all');
-    const [sortConfig, setSortConfig] = useState<{ key: keyof Transaction; direction: 'asc' | 'desc' } | null>(null);
+    const [sortConfig, setSortConfig] = useState<{ key: keyof Transaction | 'wallet' | 'type'; direction: 'asc' | 'desc' } | null>(null);
 
+    // Dialog State
     // Dialog State
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [dialogMode, setDialogMode] = useState<'add' | 'edit'>('add');
     const [selectedTransaction, setSelectedTransaction] = useState<TransactionData | null>(null);
+
+    // Delete Dialog State
+    const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+    const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null);
 
     // Pagination State
     const [currentPage, setCurrentPage] = useState(1);
@@ -51,9 +68,10 @@ export function TransactionsPage() {
     };
     const symbol = getCurrencySymbol(currency);
 
-    const getCategoryType = (category: string) => {
-        if (['Paycheck', 'Bonus', 'Debt Added'].includes(category)) return 'income';
-        if (['Savings'].includes(category)) return 'savings';
+    const getTransactionType = (t: Transaction) => {
+        if (['Savings'].includes(t.category)) return 'savings';
+        if (t.type) return t.type;
+        if (['Paycheck', 'Bonus', 'Debt Added'].includes(t.category)) return 'income';
         return 'expense';
     };
 
@@ -62,7 +80,7 @@ export function TransactionsPage() {
         const matchesSearch = t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             t.category.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesCategory = categoryFilter === 'all' || t.category === categoryFilter;
-        const type = getCategoryType(t.category);
+        const type = getTransactionType(t);
         const matchesType = typeFilter === 'all' || type === typeFilter;
 
         return matchesSearch && matchesCategory && matchesType;
@@ -73,8 +91,26 @@ export function TransactionsPage() {
             // Default sort by date desc
             return new Date(b.date).getTime() - new Date(a.date).getTime();
         }
-        const aValue = a[sortConfig.key];
-        const bValue = b[sortConfig.key];
+
+        if (sortConfig.key === 'wallet') {
+            const getWalletName = (id?: string) => wallets.find(w => w.id === id)?.name || '';
+            const aWallet = getWalletName(a.walletId);
+            const bWallet = getWalletName(b.walletId);
+            if (aWallet < bWallet) return sortConfig.direction === 'asc' ? -1 : 1;
+            if (aWallet > bWallet) return sortConfig.direction === 'asc' ? 1 : -1;
+            return 0;
+        }
+
+        if (sortConfig.key === 'type') {
+            const aType = getTransactionType(a);
+            const bType = getTransactionType(b);
+            if (aType < bType) return sortConfig.direction === 'asc' ? -1 : 1;
+            if (aType > bType) return sortConfig.direction === 'asc' ? 1 : -1;
+            return 0;
+        }
+
+        const aValue = a[sortConfig.key as keyof Transaction];
+        const bValue = b[sortConfig.key as keyof Transaction];
 
         if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
         if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
@@ -92,7 +128,7 @@ export function TransactionsPage() {
         setCurrentPage(1); // Reset page on filter change
     }, [searchTerm, categoryFilter, typeFilter, month, year]);
 
-    const requestSort = (key: keyof Transaction) => {
+    const requestSort = (key: keyof Transaction | 'wallet' | 'type') => {
         let direction: 'asc' | 'desc' = 'asc';
         if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
             direction = 'desc';
@@ -118,6 +154,7 @@ export function TransactionsPage() {
             if (result.success) {
                 refreshBudget();
                 queryClient.invalidateQueries({ queryKey: ['goals'] });
+                queryClient.invalidateQueries({ queryKey: ['wallets'] });
             }
         } catch (error) { console.error('Error saving transaction:', error); }
     };
@@ -134,13 +171,21 @@ export function TransactionsPage() {
         setIsDialogOpen(true);
     };
 
-    const handleDeleteTransaction = async (id: string) => {
-        if (!confirm('Are you sure you want to delete this transaction?')) return;
+    const openDeleteDialog = (id: string) => {
+        setTransactionToDelete(id);
+        setIsDeleteOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!transactionToDelete) return;
         try {
-            await fetch(`/api/budget/transaction?month=${month}&year=${year}&id=${id}`, { method: 'DELETE' });
+            await fetch(`/api/budget/transaction?month=${month}&year=${year}&id=${transactionToDelete}`, { method: 'DELETE' });
             refreshBudget();
             queryClient.invalidateQueries({ queryKey: ['goals'] });
+            queryClient.invalidateQueries({ queryKey: ['wallets'] });
         } catch (error) { console.error(error); }
+        setIsDeleteOpen(false);
+        setTransactionToDelete(null);
     };
 
     // Collect unique categories for filter
@@ -188,6 +233,7 @@ export function TransactionsPage() {
                                 <SelectItem value="income">Income</SelectItem>
                                 <SelectItem value="expense">Expense</SelectItem>
                                 <SelectItem value="savings">Savings</SelectItem>
+                                <SelectItem value="transfer">Transfer</SelectItem>
                             </SelectContent>
                         </Select>
 
@@ -208,44 +254,62 @@ export function TransactionsPage() {
                 {/* Table */}
                 <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
                     <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
+                        <table className="w-full text-sm table-fixed">
                             <thead>
                                 <tr className="bg-muted/50 border-b border-border">
-                                    <th className="text-left py-3 px-4 font-semibold text-muted-foreground cursor-pointer hover:text-foreground" onClick={() => requestSort('date')}>
+                                    <th className="text-left py-3 px-4 font-semibold text-muted-foreground cursor-pointer hover:text-foreground w-[150px]" onClick={() => requestSort('date')}>
                                         <div className="flex items-center gap-1">Date <ArrowUpDown className="h-3 w-3" /></div>
                                     </th>
-                                    <th className="text-left py-3 px-4 font-semibold text-muted-foreground cursor-pointer hover:text-foreground" onClick={() => requestSort('name')}>
+                                    <th className="text-left py-3 px-4 font-semibold text-muted-foreground cursor-pointer hover:text-foreground w-auto" onClick={() => requestSort('name')}>
                                         <div className="flex items-center gap-1">Description <ArrowUpDown className="h-3 w-3" /></div>
                                     </th>
-                                    <th className="text-left py-3 px-4 font-semibold text-muted-foreground cursor-pointer hover:text-foreground" onClick={() => requestSort('category')}>
+                                    <th className="text-left py-3 px-4 font-semibold text-muted-foreground cursor-pointer hover:text-foreground w-[140px]" onClick={() => requestSort('category')}>
                                         <div className="flex items-center gap-1">Category <ArrowUpDown className="h-3 w-3" /></div>
                                     </th>
-                                    <th className="text-left py-3 px-4 font-semibold text-muted-foreground">Type</th>
-                                    <th className="text-right py-3 px-4 font-semibold text-muted-foreground cursor-pointer hover:text-foreground" onClick={() => requestSort('actual')}>
+                                    <th className="text-left py-3 px-4 font-semibold text-muted-foreground cursor-pointer hover:text-foreground w-[200px]" onClick={() => requestSort('wallet')}>
+                                        <div className="flex items-center gap-1">Payment Method <ArrowUpDown className="h-3 w-3" /></div>
+                                    </th>
+                                    <th className="text-left py-3 px-4 font-semibold text-muted-foreground cursor-pointer hover:text-foreground w-[100px]" onClick={() => requestSort('type')}>
+                                        <div className="flex items-center gap-1">Type <ArrowUpDown className="h-3 w-3" /></div>
+                                    </th>
+                                    <th className="text-right py-3 px-4 font-semibold text-muted-foreground cursor-pointer hover:text-foreground w-[120px]" onClick={() => requestSort('actual')}>
                                         <div className="flex items-center justify-end gap-1">Amount <ArrowUpDown className="h-3 w-3" /></div>
                                     </th>
-                                    <th className="text-right py-3 px-4 font-semibold text-muted-foreground">Actions</th>
+                                    <th className="text-right py-3 px-4 font-semibold text-muted-foreground w-[80px]">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {loading ? (
-                                    <tr><td colSpan={6} className="text-center py-8 text-muted-foreground">Loading...</td></tr>
+                                    <tr><td colSpan={7} className="text-center py-8 text-muted-foreground">Loading...</td></tr>
                                 ) : paginatedTransactions.length === 0 ? (
-                                    <tr><td colSpan={6} className="text-center py-8 text-muted-foreground">No transactions found.</td></tr>
+                                    <tr><td colSpan={7} className="text-center py-8 text-muted-foreground">No transactions found.</td></tr>
                                 ) : (
                                     paginatedTransactions.map((t) => {
-                                        const type = getCategoryType(t.category);
+                                        const type = getTransactionType(t);
                                         const isIncome = type === 'income';
                                         return (
                                             <tr key={t.id} className="border-b border-border hover:bg-muted/50 transition">
                                                 <td className="py-3 px-4 text-foreground">{t.date ? format(new Date(t.date), 'MMM dd, yyyy') : '-'}</td>
                                                 <td className="py-3 px-4 font-medium text-foreground">{t.name}</td>
                                                 <td className="py-3 px-4">
-                                                    <span className="px-2 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+                                                    <span className="px-2 py-1 rounded-full text-xs font-medium bg-secondary text-secondary-foreground">
                                                         {t.category}
                                                     </span>
                                                 </td>
-                                                <td className="py-3 px-4 text-muted-foreground capitalize">{type}</td>
+                                                <td className="py-3 px-4 text-foreground">
+                                                    {type === 'transfer' && t.toWalletId ? (
+                                                        <div className="flex items-center gap-1 text-xs">
+                                                            <span>{wallets.find(w => w.id === t.walletId)?.name}</span>
+                                                            <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                                                            <span>{wallets.find(w => w.id === t.toWalletId)?.name}</span>
+                                                        </div>
+                                                    ) : (
+                                                        t.walletId ? (
+                                                            <span className="text-xs">{wallets.find(w => w.id === t.walletId)?.name || '-'}</span>
+                                                        ) : '-'
+                                                    )}
+                                                </td>
+                                                <td className="py-3 px-4 text-foreground capitalize">{type}</td>
                                                 <td className={cn("py-3 px-4 text-right font-medium", isIncome ? "text-emerald-600" : "text-foreground")}>
                                                     {isIncome ? '+' : ''}{symbol}{t.actual.toFixed(2)}
                                                 </td>
@@ -258,7 +322,7 @@ export function TransactionsPage() {
                                                     </button>
                                                     <button
                                                         className="p-1 hover:bg-red-100 text-red-500 rounded transition"
-                                                        onClick={() => handleDeleteTransaction(t.id)}
+                                                        onClick={() => openDeleteDialog(t.id)}
                                                     >
                                                         <Trash2 className="h-4 w-4" />
                                                     </button>
@@ -326,6 +390,23 @@ export function TransactionsPage() {
                 initialData={selectedTransaction}
                 mode={dialogMode}
             />
-        </div>
+
+            <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This action cannot be undone. This will permanently delete the transaction.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                            Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </div >
     );
 }

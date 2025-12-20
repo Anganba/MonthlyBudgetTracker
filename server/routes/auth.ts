@@ -1,5 +1,6 @@
 import { RequestHandler } from "express";
 import mongoose from "mongoose";
+import bcrypt from "bcryptjs";
 import { User } from "../models/User";
 
 export const login: RequestHandler = async (req, res) => {
@@ -11,21 +12,24 @@ export const login: RequestHandler = async (req, res) => {
 
     try {
         // Find user by username
-        let user = await User.findOne({ username });
+        const user = await User.findOne({ username });
 
-        // If no user exists, check if it matches the env var admin credentials
-        // If so, create the user in the DB for future persistence
-        const envUsername = process.env.ADMIN_USERNAME || "admin";
-        const envPassword = process.env.ADMIN_PASSWORD || "password";
-
-        if (!user && username === envUsername && password === envPassword) {
-            user = await User.create({
-                username: envUsername,
-                passwordHash: envPassword, // In a real app, hash this!
-            });
+        if (!user) {
+            return res.status(401).json({ success: false, message: "Invalid credentials" });
         }
 
-        if (user && user.passwordHash === password) {
+        let isMatch = await bcrypt.compare(password, user.passwordHash).catch(() => false);
+
+        // Fallback: Check for legacy plain-text password
+        if (!isMatch && user.passwordHash === password) {
+            console.log(`Migrating user ${user.username} to hashed password.`);
+            const newHash = await bcrypt.hash(password, 10);
+            user.passwordHash = newHash;
+            await user.save();
+            isMatch = true;
+        }
+
+        if (isMatch) {
             if (req.session) {
                 req.session.user = {
                     id: (user._id as any).toString(),
@@ -33,16 +37,16 @@ export const login: RequestHandler = async (req, res) => {
                     email: user.email
                 };
 
-                return new Promise((resolve, reject) => {
-                    req.session.save((err) => {
-                        if (err) {
-                            return reject(res.status(500).json({ success: false, message: "Session save failed" }));
-                        }
-                        resolve(res.json({ success: true, user: req.session.user }));
-                    });
+                req.session.save((err) => {
+                    if (err) {
+                        return res.status(500).json({ success: false, message: "Session save failed" });
+                    }
+                    res.json({ success: true, user: req.session.user });
                 });
+                return;
             }
         }
+
 
         return res.status(401).json({ success: false, message: "Invalid credentials" });
     } catch (error: any) {
@@ -72,10 +76,12 @@ export const register: RequestHandler = async (req, res) => {
             return res.status(400).json({ success: false, message: "Username already exists" });
         }
 
+        const hashedPassword = await bcrypt.hash(password, 10);
+
         const user = await User.create({
             username,
             email,
-            passwordHash: password, // In a real app, hash this!
+            passwordHash: hashedPassword,
         });
 
         if (req.session) {
@@ -157,11 +163,19 @@ export const updatePassword: RequestHandler = async (req, res) => {
         const user = await User.findById(userId);
         if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
-        if (user.passwordHash !== currentPassword) {
+        let isMatch = await bcrypt.compare(currentPassword, user.passwordHash).catch(() => false);
+
+        // Fallback: Check for legacy plain-text
+        if (!isMatch && user.passwordHash === currentPassword) {
+            isMatch = true;
+        }
+
+        if (!isMatch) {
             return res.status(400).json({ success: false, message: "Incorrect current password" });
         }
 
-        user.passwordHash = newPassword;
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        user.passwordHash = hashedPassword;
         await user.save();
 
         res.json({ success: true, message: "Password updated" });
