@@ -15,6 +15,14 @@ export default defineConfig(({ mode }) => ({
   },
   build: {
     outDir: "dist/spa",
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ["react", "react-dom", "react-router-dom", "@tanstack/react-query"],
+          ui: ["@radix-ui/react-dialog", "@radix-ui/react-slot", "lucide-react", "recharts"],
+        },
+      },
+    },
   },
   plugins: [react(), expressPlugin()],
   resolve: {

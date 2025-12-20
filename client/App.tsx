@@ -7,19 +7,20 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import { createRoot } from "react-dom/client";
+import { Suspense, lazy } from "react";
 import { Layout } from "@/components/Layout";
 
-import Index from "./pages/Index";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import NotFound from "./pages/NotFound";
-import { TransactionsPage } from "./pages/TransactionsPage";
-import { PlaceholderPage } from "./pages/PlaceholderPage";
-import RecurringPage from "./pages/RecurringPage";
-import GoalsPage from "./pages/GoalsPage";
-import StatisticsPage from "./pages/StatisticsPage";
-import ProfilePage from "./pages/ProfilePage";
-import WalletsPage from "./pages/WalletsPage";
+// Lazy load pages for better performance
+const Index = lazy(() => import("./pages/Index"));
+const Login = lazy(() => import("./pages/Login"));
+const Register = lazy(() => import("./pages/Register"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const TransactionsPage = lazy(() => import("./pages/TransactionsPage").then(module => ({ default: module.TransactionsPage })));
+const RecurringPage = lazy(() => import("./pages/RecurringPage"));
+const GoalsPage = lazy(() => import("./pages/GoalsPage"));
+const StatisticsPage = lazy(() => import("./pages/StatisticsPage"));
+const ProfilePage = lazy(() => import("./pages/ProfilePage"));
+const WalletsPage = lazy(() => import("./pages/WalletsPage"));
 
 const queryClient = new QueryClient();
 
@@ -51,68 +52,74 @@ const App = () => (
         <Sonner />
         <AuthProvider>
           <BrowserRouter>
-            <Routes>
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route
-                path="/"
-                element={
-                  <ProtectedRoute>
-                    <Index />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/transactions"
-                element={
-                  <ProtectedRoute>
-                    <TransactionsPage />
-                  </ProtectedRoute>
-                }
-              />
+            <Suspense fallback={
+              <div className="flex items-center justify-center h-screen">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+              </div>
+            }>
+              <Routes>
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+                <Route
+                  path="/"
+                  element={
+                    <ProtectedRoute>
+                      <Index />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/transactions"
+                  element={
+                    <ProtectedRoute>
+                      <TransactionsPage />
+                    </ProtectedRoute>
+                  }
+                />
 
-              <Route
-                path="/goals"
-                element={
-                  <ProtectedRoute>
-                    <GoalsPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/statistics"
-                element={
-                  <ProtectedRoute>
-                    <StatisticsPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/profile"
-                element={
-                  <ProtectedRoute>
-                    <ProfilePage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/recurring"
-                element={
-                  <ProtectedRoute>
-                    <RecurringPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/wallets"
-                element={
-                  <ProtectedRoute>
-                    <WalletsPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+                <Route
+                  path="/goals"
+                  element={
+                    <ProtectedRoute>
+                      <GoalsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/statistics"
+                  element={
+                    <ProtectedRoute>
+                      <StatisticsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/profile"
+                  element={
+                    <ProtectedRoute>
+                      <ProfilePage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/recurring"
+                  element={
+                    <ProtectedRoute>
+                      <RecurringPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/wallets"
+                  element={
+                    <ProtectedRoute>
+                      <WalletsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
           </BrowserRouter>
         </AuthProvider>
       </TooltipProvider>
