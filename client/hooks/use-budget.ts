@@ -14,7 +14,7 @@ export function useBudget(selectedMonth?: string, selectedYear?: number) {
     const year = selectedYear || currentDate.getFullYear();
 
     const fetchBudget = async (m: string, y: number) => {
-        const response = await fetch(`/api/budget?month=${m}&year=${y}`);
+        const response = await fetch(`/api/budget?month=${m}&year=${y}&t=${new Date().getTime()}`);
         const result = await response.json();
         // Return null instead of throwing if budget doesn't exist, to handle new months gracefully
         if (!result.success) return null;
@@ -152,7 +152,7 @@ export function useBudget(selectedMonth?: string, selectedYear?: number) {
     const { data: yearlyStats, isLoading: isLoadingYearly } = useQuery({
         queryKey: ['yearlyStats', year, userId],
         queryFn: async () => {
-            const response = await fetch(`/api/budget/year?year=${year}`);
+            const response = await fetch(`/api/budget/year?year=${year}&t=${new Date().getTime()}`);
             const result = await response.json();
             if (!result.success) return [];
             return result.data as { name: string; expense: number }[];
@@ -165,7 +165,7 @@ export function useBudget(selectedMonth?: string, selectedYear?: number) {
     const { data: monthlyStats, isLoading: isLoadingMonthlyStats } = useQuery({
         queryKey: ['monthlyStats', month, year, userId],
         queryFn: async () => {
-            const response = await fetch(`/api/budget/month-stats?month=${month}&year=${year}`);
+            const response = await fetch(`/api/budget/month-stats?month=${month}&year=${year}&t=${new Date().getTime()}`);
             const result = await response.json();
             if (!result.success) return null;
             return result.data as { pieData: any[]; dailyData: any[]; startBalance: number };

@@ -326,6 +326,7 @@ const recalculateRollovers = async (startMonth: string, startYear: number, userI
 };
 
 export const getBudget: RequestHandler = async (req, res) => {
+  res.header('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   const { month, year } = req.query;
   const userId = req.session?.user?.id;
 
@@ -769,6 +770,7 @@ export const deleteTransaction: RequestHandler = async (req, res) => {
 
 
 export const getYearlyStats: RequestHandler = async (req, res) => {
+  res.header('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   const { year } = req.query;
   const userId = req.session?.user?.id;
 
@@ -812,6 +814,7 @@ export const getYearlyStats: RequestHandler = async (req, res) => {
 };
 
 export const getMonthlyStats: RequestHandler = async (req, res) => {
+  res.header('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   const { month, year } = req.query;
   const userId = req.session?.user?.id;
 
