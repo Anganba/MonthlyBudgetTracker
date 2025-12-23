@@ -259,69 +259,82 @@ const recalculateGoalTotal = async (goalId: string, userId: string) => {
 
 const recalculateRollovers = async (startMonth: string, startYear: number, userId: string) => {
   const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-  let currentMonthIndex = months.indexOf(startMonth);
-  let currentYear = startYear;
 
-  // We iterate forward for, say, up to 24 months to be safe, or until no budget is found
-  // Actually, we need to process the current month provided (to get its ending balance)
-  // and then update the NEXT month.
-  // So loop starts from standard Budget M.
+  // 1. Bulk Fetch: Get all potentially relevant budgets (current and future)
+  // We fetch anything from the start year onwards.
+  const allBudgets = await Budget.find({
+    userId,
+    year: { $gte: startYear }
+  });
 
-  let loopCount = 0;
-  while (loopCount < 36) { // Safety break
-    const currentMonthName = months[currentMonthIndex];
+  if (!allBudgets || allBudgets.length === 0) return;
 
-    const budget = await Budget.findOne({ userId, month: currentMonthName, year: currentYear });
-    if (!budget) {
-      // If gap in budget, we can't propagate further easily.
-      // However, user might have skipped a month. 
-      // For now, let's stop if current budget doesn't exist.
+  // 2. Sort budgets chronologically in memory
+  const sortedBudgets = allBudgets.sort((a, b) => {
+    if (a.year !== b.year) return a.year - b.year;
+    return months.indexOf(a.month) - months.indexOf(b.month);
+  });
+
+  // 3. Find the index where our chain starts
+  const startIndex = sortedBudgets.findIndex(b => b.year === startYear && b.month === startMonth);
+  if (startIndex === -1) return; // Start budget not found, cannot propagate
+
+  const updates = [];
+
+  // 4. Propagate changes forward in memory
+  // We iterate from the start budget up to the second-to-last budget
+  for (let i = startIndex; i < sortedBudgets.length - 1; i++) {
+    const currentBudget = sortedBudgets[i];
+    const nextBudget = sortedBudgets[i + 1];
+
+    // Check for continuity (no gaps in months)
+    const currentMonthIdx = months.indexOf(currentBudget.month);
+    let expectedNextMonthIdx = currentMonthIdx + 1;
+    let expectedNextYear = currentBudget.year;
+    if (expectedNextMonthIdx > 11) {
+      expectedNextMonthIdx = 0;
+      expectedNextYear++;
+    }
+
+    // If the next budget in the list is NOT the immediate next month, we stop (gap detected)
+    if (nextBudget.month !== months[expectedNextMonthIdx] || nextBudget.year !== expectedNextYear) {
       break;
     }
 
-    // Calculate Ending Balance for CURRENT budget
+    // Calculate Ending Balance of Current Budget
+    // (This logic mirrors calculateStats/original logic)
     const incomeCategories = ['income', 'Paycheck', 'Bonus', 'Debt Added'];
-    const income = budget.transactions
+
+    const income = currentBudget.transactions
       .filter(t => incomeCategories.includes(t.category))
       .reduce((sum, t) => sum + t.actual, 0);
 
-    const expenses = budget.transactions
+    const expenses = currentBudget.transactions
       .filter(t => !incomeCategories.includes(t.category) && t.category !== 'Savings' && t.category !== 'Transfer' && t.type !== 'transfer')
       .reduce((sum, t) => sum + t.actual, 0);
 
-    const savings = budget.transactions
+    const savings = currentBudget.transactions
       .filter(t => t.category === 'Savings')
       .reduce((sum, t) => sum + t.actual, 0);
 
-    const startBalance = budget.rolloverActual || 0;
+    const startBalance = currentBudget.rolloverActual || 0;
     const endBalance = startBalance + income - expenses - savings;
 
-    // Next Month
-    let nextMonthIndex = currentMonthIndex + 1;
-    let nextYear = currentYear;
-    if (nextMonthIndex > 11) {
-      nextMonthIndex = 0;
-      nextYear++;
+    // Apply to Next Budget
+    // Since 'nextBudget' is a reference to the object in 'sortedBudgets', 
+    // modifying it here will affect the calculation in the NEXT iteration (where it becomes 'currentBudget').
+    if (Math.abs(nextBudget.rolloverActual - endBalance) > 0.001) { // Float safety check
+      console.log(`[Rollover] Updating ${nextBudget.month} ${nextBudget.year} rollover from ${nextBudget.rolloverActual} to ${endBalance}`);
+      nextBudget.rolloverActual = endBalance;
+      nextBudget.markModified('rolloverActual');
+      updates.push(nextBudget);
     }
-    const nextMonthName = months[nextMonthIndex];
+  }
 
-    // Update NEXT budget's rollover
-    const nextBudget = await Budget.findOne({ userId, month: nextMonthName, year: nextYear });
-    if (nextBudget) {
-      if (nextBudget.rolloverActual !== endBalance) {
-        console.log(`[Rollover] Updating ${nextMonthName} ${nextYear} rollover from ${nextBudget.rolloverActual} to ${endBalance}`);
-        nextBudget.rolloverActual = endBalance;
-        await nextBudget.save();
-      }
-    } else {
-      // If next budget doesn't exist, we stop propagating.
-      break;
-    }
-
-    // Move to next iteration
-    currentMonthIndex = nextMonthIndex;
-    currentYear = nextYear;
-    loopCount++;
+  // 5. Bulk Save (Parallel)
+  if (updates.length > 0) {
+    await Promise.all(updates.map(b => b.save()));
+    console.log(`[Rollover] Optimized propagation complete. Updated ${updates.length} budgets.`);
   }
 };
 

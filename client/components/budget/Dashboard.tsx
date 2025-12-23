@@ -27,7 +27,7 @@ export function Dashboard() {
   const { budget, isLoading, stats, trends, graphs, refreshBudget } = useBudget(month, year);
   const { wallets } = useWallets();
 
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const currency = "$";
 
@@ -50,6 +50,38 @@ export function Dashboard() {
   };
 
   const handleTransactionSubmit = async (data: TransactionData) => {
+    // Snapshot strictly immutable
+    const snapshot = queryClient.getQueryData(['budget', month, year, user?.id]);
+
+    // Check if the transaction belongs to the currently viewed month/year
+    const tDate = new Date(data.date || new Date());
+    const tMonth = monthNames[tDate.getMonth()];
+    const tYear = tDate.getFullYear();
+    const isCurrentView = tMonth === month && tYear === year;
+
+    // Optimistic Update (Only if in current view)
+    const tempId = Math.random().toString(36).substring(7);
+    const optimisticTransaction = {
+      ...data,
+      id: data.id || tempId, // Use existing ID if edit, else temp
+      date: data.date || new Date().toISOString()
+    };
+
+    if (isCurrentView) {
+      // Update Budget Cache (Transactions List & Metrics)
+      queryClient.setQueryData(['budget', month, year, user?.id], (old: any) => {
+        if (!old) return old;
+        // If edit, replace. If add, prepend.
+        let newTransactions;
+        if (data.id) {
+          newTransactions = old.transactions.map((t: any) => t.id === data.id ? optimisticTransaction : t);
+        } else {
+          newTransactions = [optimisticTransaction, ...(old.transactions || [])];
+        }
+        return { ...old, transactions: newTransactions };
+      });
+    }
+
     try {
       const response = await fetch(`/api/budget/transaction?month=${month}&year=${year}`, {
         method: 'POST',
@@ -57,12 +89,24 @@ export function Dashboard() {
         body: JSON.stringify(data)
       });
       const result = await response.json();
+
       if (result.success) {
+        // If it was an optimistic update, we might want to swap ID, but since we are invalidating everything anyway, 
+        // it's safer and easier to just let the refetch handle it. 
+        // However, to prevent "flicker" of removing the opt-item before the fetch returns, we could swap.
+        // But broad invalidation is fast enough usually.
+
+        // Refresh everything else in background
         await refreshBudget();
-        queryClient.invalidateQueries({ queryKey: ['goals'] });
-        queryClient.invalidateQueries({ queryKey: ['wallets'] });
+      } else {
+        // Revert on server error
+        if (isCurrentView && snapshot) queryClient.setQueryData(['budget', month, year, user?.id], snapshot);
       }
-    } catch (error) { console.error('Error adding transaction:', error); }
+    } catch (error) {
+      console.error('Error adding transaction:', error);
+      // Revert on network error
+      if (isCurrentView && snapshot) queryClient.setQueryData(['budget', month, year, user?.id], snapshot);
+    }
   };
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -129,7 +173,7 @@ export function Dashboard() {
       </div>
 
       {/* Metric Cards Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <MetricCard
           title="Monthly Leftover"
           value={`${currency}${balance.toLocaleString()}`}
@@ -174,7 +218,7 @@ export function Dashboard() {
               </span>
             </div>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             {wallets.map(w => {
               const Icon = getWalletIcon(w.type);
               return (
@@ -192,14 +236,14 @@ export function Dashboard() {
       )}
 
       {/* Lower Section */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left Column (Goals + Budget) takes up 1/3 */}
-        <div className="xl:col-span-1 space-y-6">
+        <div className="lg:col-span-1 space-y-6">
           <GoalsSection />
           <BudgetStatus currency={currency} budget={budget} refreshBudget={refreshBudget} />
         </div>
 
-        <div className="xl:col-span-2 relative">
+        <div className="lg:col-span-2 relative">
           <TransactionsList transactions={filteredTransactions} wallets={wallets} currency={currency} />
 
           {/* Gradient overlay at bottom for smooth scroll fade effect if needed */}

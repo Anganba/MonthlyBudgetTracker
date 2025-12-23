@@ -27,6 +27,7 @@ const MONTHS = [
 
 import { useBudget } from "@/hooks/use-budget";
 import { useWallets } from '@/hooks/use-wallets';
+import { useAuth } from "@/lib/auth";
 
 export function TransactionsPage() {
     const queryClient = useQueryClient();
@@ -36,6 +37,7 @@ export function TransactionsPage() {
     // Use cached budget data
     const { budget, isLoading: loading, refreshBudget } = useBudget(month, year);
     const { wallets } = useWallets();
+    const { user } = useAuth();
 
     const [currency, setCurrency] = useState('USD');
     const [searchTerm, setSearchTerm] = useState('');
@@ -138,6 +140,38 @@ export function TransactionsPage() {
 
     // Handlers
     const handleTransactionSubmit = async (data: TransactionData) => {
+        // Snapshot
+        const snapshot = queryClient.getQueryData(['budget', month, year, user?.id]);
+
+        // Check date for optimistic update validity
+        const tDate = new Date(data.date || new Date());
+        // Note: We need to handle year/month matching carefully
+        const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+        const tMonth = monthNames[tDate.getMonth()];
+        const tYear = tDate.getFullYear();
+        const isCurrentView = tMonth === month && tYear === year;
+
+        // Optimistic Update
+        const tempId = Math.random().toString(36).substring(7);
+        const optimisticTransaction = {
+            ...data,
+            id: data.id || tempId,
+            date: data.date || new Date().toISOString()
+        };
+
+        if (user?.id && isCurrentView) {
+            queryClient.setQueryData(['budget', month, year, user.id], (old: any) => {
+                if (!old) return old;
+                let newTransactions;
+                if (dialogMode === 'edit' && data.id) {
+                    newTransactions = old.transactions.map((t: any) => t.id === data.id ? optimisticTransaction : t);
+                } else {
+                    newTransactions = [optimisticTransaction, ...(old.transactions || [])];
+                }
+                return { ...old, transactions: newTransactions };
+            });
+        }
+
         try {
             const url = dialogMode === 'add'
                 ? `/api/budget/transaction?month=${month}&year=${year}`
@@ -152,11 +186,18 @@ export function TransactionsPage() {
             });
             const result = await response.json();
             if (result.success) {
-                refreshBudget();
-                queryClient.invalidateQueries({ queryKey: ['goals'] });
-                queryClient.invalidateQueries({ queryKey: ['wallets'] });
+                // If success, we just refresh everything.
+                // The optimistic update is already visible. 
+                // We rely on refreshBudget to clean up and sync with server eventually.
+                await refreshBudget();
+            } else {
+                // Revert
+                if (snapshot && user?.id && isCurrentView) queryClient.setQueryData(['budget', month, year, user.id], snapshot);
             }
-        } catch (error) { console.error('Error saving transaction:', error); }
+        } catch (error) {
+            console.error('Error saving transaction:', error);
+            if (snapshot && user?.id && isCurrentView) queryClient.setQueryData(['budget', month, year, user.id], snapshot);
+        }
     };
 
     const openAddDialog = () => {
@@ -180,9 +221,7 @@ export function TransactionsPage() {
         if (!transactionToDelete) return;
         try {
             await fetch(`/api/budget/transaction?month=${month}&year=${year}&id=${transactionToDelete}`, { method: 'DELETE' });
-            refreshBudget();
-            queryClient.invalidateQueries({ queryKey: ['goals'] });
-            queryClient.invalidateQueries({ queryKey: ['wallets'] });
+            await refreshBudget();
         } catch (error) { console.error(error); }
         setIsDeleteOpen(false);
         setTransactionToDelete(null);

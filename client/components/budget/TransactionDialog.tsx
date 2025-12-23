@@ -29,6 +29,7 @@ import { useGoals } from '@/hooks/use-goals';
 import { useWallets } from '@/hooks/use-wallets';
 import { cn } from "@/lib/utils";
 import { TRANSACTION_CATEGORIES } from "@/lib/categories";
+import { useToast } from "@/components/ui/use-toast";
 
 export interface TransactionData {
     id?: string;
@@ -65,6 +66,7 @@ const getWalletLabel = (type: string) => {
 export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, mode = 'add' }: TransactionDialogProps) {
     const { goals } = useGoals();
     const { wallets } = useWallets();
+    const { toast } = useToast();
 
     // State
     const [type, setType] = useState<'expense' | 'income' | 'transfer'>('expense');
@@ -139,7 +141,14 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
         e.preventDefault();
 
         // Basic Validation
-        if (!name.trim()) return;
+        if (!name.trim()) {
+            toast({
+                title: "Description Required",
+                description: "Please enter a relevant description for the transaction.",
+                variant: "destructive",
+            });
+            return;
+        }
         if (type === 'transfer' || category === 'Savings') {
             if (!walletId || !toWalletId) return; // Need both wallets
             if (walletId === toWalletId) return; // Cannot transfer to self
@@ -171,6 +180,9 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
                     <DialogTitle className="font-serif text-2xl">{title}</DialogTitle>
+                    <DialogDescription className="text-muted-foreground">
+                        {mode === 'add' ? 'Enter the details of your new transaction below.' : 'Modify the details of this transaction.'}
+                    </DialogDescription>
                 </DialogHeader>
 
                 <Tabs value={type} onValueChange={(v) => setType(v as any)} className="w-full">
@@ -189,7 +201,22 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="amount">Amount</Label>
-                                <Input id="amount" type="number" step="0.01" placeholder="0.00" value={actual} onChange={(e) => setActual(e.target.value)} />
+                                <Input
+                                    id="amount"
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    inputMode="decimal"
+                                    placeholder="0.00"
+                                    value={actual}
+                                    onChange={(e) => setActual(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        // Prevent +, -, e, E keys
+                                        if (['+', '-', 'e', 'E'].includes(e.key)) {
+                                            e.preventDefault();
+                                        }
+                                    }}
+                                />
                             </div>
                         </div>
 

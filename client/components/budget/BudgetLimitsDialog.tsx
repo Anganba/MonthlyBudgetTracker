@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -62,6 +62,9 @@ export function BudgetLimitsDialog({ open, onOpenChange, month, year, initialLim
             <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>Set Monthly Budget Limits</DialogTitle>
+                    <DialogDescription>
+                        Define max spending limits for each category to track your budget health.
+                    </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4 py-4">
                     {allCategories.map(category => (

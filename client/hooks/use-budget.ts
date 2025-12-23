@@ -193,10 +193,19 @@ export function useBudget(selectedMonth?: string, selectedYear?: number) {
         yearlyStats: yearlyStats || [],
         monthlyStats,
         isLoadingMonthlyStats,
-        refreshBudget: () => {
-            queryClient.invalidateQueries({ queryKey: ['budget', month, year, userId] });
-            queryClient.invalidateQueries({ queryKey: ['yearlyStats', year, userId] });
-            queryClient.invalidateQueries({ queryKey: ['monthlyStats', month, year, userId] });
+        refreshBudget: async () => {
+            // Invalidate all budget-related queries to ensure consistency across months
+            // This is crucial because a transaction in one month can affect rollovers in subsequent months
+            await Promise.all([
+                // Invalidate everything under 'budget' to catch other months' data 
+                // (e.g. previous month's ending balance affecting this month's start)
+                queryClient.invalidateQueries({ queryKey: ['budget'] }),
+                queryClient.invalidateQueries({ queryKey: ['yearlyStats'] }),
+                queryClient.invalidateQueries({ queryKey: ['monthlyStats'] }),
+                // Also invalidate derived data that might be displayed elsewhere
+                queryClient.invalidateQueries({ queryKey: ['goals'] }),
+                queryClient.invalidateQueries({ queryKey: ['wallets'] })
+            ]);
         }
     };
 }

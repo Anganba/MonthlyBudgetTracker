@@ -425,7 +425,7 @@ export default function StatisticsPage() {
                         <CardTitle className="text-xl font-semibold text-card-foreground">Expense Breakdown</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="h-[400px] w-full">
+                        <div className="h-[350px] lg:h-[450px] w-full">
                             {pieData.length > 0 ? (
                                 <ResponsiveContainer width="100%" height="100%">
                                     <PieChart>
@@ -433,8 +433,8 @@ export default function StatisticsPage() {
                                             data={pieData}
                                             cx="50%"
                                             cy="50%"
-                                            innerRadius={110}
-                                            outerRadius={150}
+                                            innerRadius="45%"
+                                            outerRadius="60%"
                                             paddingAngle={2}
                                             dataKey="value"
                                             labelLine={false}
