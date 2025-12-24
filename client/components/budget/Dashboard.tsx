@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { TransactionData } from "./TransactionDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ChevronLeft, ChevronRight, Search, Wallet, Smartphone, Landmark, CreditCard, Banknote, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, Wallet, Smartphone, Landmark, CreditCard, Banknote, Plus, Sparkles } from "lucide-react";
 import { MetricCard } from "./MetricCard";
 import { GoalsSection } from "./GoalsSection";
 import { BudgetStatus } from "./BudgetStatus";
@@ -91,20 +91,12 @@ export function Dashboard() {
       const result = await response.json();
 
       if (result.success) {
-        // If it was an optimistic update, we might want to swap ID, but since we are invalidating everything anyway, 
-        // it's safer and easier to just let the refetch handle it. 
-        // However, to prevent "flicker" of removing the opt-item before the fetch returns, we could swap.
-        // But broad invalidation is fast enough usually.
-
-        // Refresh everything else in background
         await refreshBudget();
       } else {
-        // Revert on server error
         if (isCurrentView && snapshot) queryClient.setQueryData(['budget', month, year, user?.id], snapshot);
       }
     } catch (error) {
       console.error('Error adding transaction:', error);
-      // Revert on network error
       if (isCurrentView && snapshot) queryClient.setQueryData(['budget', month, year, user?.id], snapshot);
     }
   };
@@ -130,57 +122,90 @@ export function Dashboard() {
     }
   };
 
+  const getWalletColor = (type: string) => {
+    switch (type) {
+      case 'mfs': return 'from-pink-500/20 to-pink-500/5 border-pink-500/30';
+      case 'bank': return 'from-blue-500/20 to-blue-500/5 border-blue-500/30';
+      case 'credit_card': return 'from-purple-500/20 to-purple-500/5 border-purple-500/30';
+      case 'cash': return 'from-green-500/20 to-green-500/5 border-green-500/30';
+      default: return 'from-gray-500/20 to-gray-500/5 border-gray-500/30';
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-background text-foreground p-8">
+    <div className="min-h-screen bg-black text-white p-4 md:p-6 lg:p-8 relative overflow-hidden">
+      {/* Background decorations - hidden on mobile for performance */}
+      <div className="hidden md:block absolute top-0 right-0 w-[600px] h-[600px] bg-primary/5 rounded-full blur-3xl pointer-events-none" />
+      <div className="hidden md:block absolute bottom-0 left-0 w-[400px] h-[400px] bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+
       {/* Top Header Row */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-        <div className="flex items-center justify-between md:justify-start gap-4 w-full md:w-auto">
-          <h1 className="text-3xl font-bold font-serif">Dashboard</h1>
-          <div className="flex items-center bg-card rounded-lg border border-white/10 p-1">
-            <Button variant="ghost" size="icon" onClick={handlePrevMonth} className="h-8 w-8 hover:bg-primary hover:text-black transition-colors rounded-md">
+      <div className="relative z-10 flex flex-col gap-4 mb-6 md:mb-8">
+        {/* Title + Date Nav Row */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold font-serif text-white">Dashboard</h1>
+            <p className="text-gray-500 text-xs md:text-sm mt-0.5 md:mt-1 hidden sm:block">Track your finances at a glance</p>
+          </div>
+          <div className="flex items-center bg-zinc-900/80 backdrop-blur-sm rounded-xl md:rounded-2xl border border-white/10 p-1 md:p-1.5 shadow-lg">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handlePrevMonth}
+              className="h-8 w-8 md:h-9 md:w-9 hover:bg-primary hover:text-black transition-all rounded-lg md:rounded-xl"
+            >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <span className="min-w-[120px] md:min-w-[140px] text-center font-medium text-sm md:text-base">
+            <span className="min-w-[100px] md:min-w-[140px] text-center font-semibold text-xs md:text-sm lg:text-base px-1 md:px-2">
               {month} {year}
             </span>
-            <Button variant="ghost" size="icon" onClick={handleNextMonth} className="h-8 w-8 hover:bg-primary hover:text-black transition-colors rounded-md">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleNextMonth}
+              className="h-8 w-8 md:h-9 md:w-9 hover:bg-primary hover:text-black transition-all rounded-lg md:rounded-xl"
+            >
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
         </div>
 
-        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-4 w-full md:max-w-xl justify-end">
-          <div className="relative w-full">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        {/* Search + Actions Row */}
+        <div className="flex flex-col sm:flex-row items-stretch gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 md:left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
             <Input
               placeholder="Search..."
-              className="pl-10 bg-card border-0 rounded-full h-10 text-sm focus-visible:ring-primary w-full"
+              className="pl-9 md:pl-11 bg-zinc-900/80 backdrop-blur-sm border-white/10 rounded-xl md:rounded-2xl h-10 md:h-11 text-sm focus-visible:ring-primary focus-visible:border-primary w-full"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 md:gap-3">
             <Button
               onClick={() => setIsDialogOpen(true)}
-              className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-full px-6 font-bold flex-1 md:flex-none whitespace-nowrap gap-2"
+              className="bg-primary text-black hover:bg-primary/90 rounded-xl md:rounded-2xl px-4 md:px-6 h-10 md:h-11 font-bold flex-1 sm:flex-none whitespace-nowrap gap-1.5 md:gap-2 shadow-lg shadow-primary/20 text-sm"
             >
-              <Plus className="h-4 w-4" /> Add Transaction
+              <Plus className="h-4 w-4" />
+              <span className="hidden sm:inline">Add Transaction</span>
+              <span className="sm:hidden">Add</span>
             </Button>
-            <UserProfile />
+            <div className="hidden sm:block">
+              <UserProfile />
+            </div>
           </div>
         </div>
       </div>
 
       {/* Metric Cards Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
         <MetricCard
           title="Monthly Leftover"
           value={`${currency}${balance.toLocaleString()}`}
           trend={`${trends.balance > 0 ? '+' : ''}${trends.balance}%`}
           trendUp={trends.balance >= 0}
           data={graphs.balance}
-          className="border-l-4 border-l-primary" // Highlight
+          className="bg-gradient-to-br from-primary/20 to-primary/5 border-primary/30"
         />
         <MetricCard
           title="Income"
@@ -207,27 +232,37 @@ export function Dashboard() {
 
       {/* Wallets Row */}
       {wallets.length > 0 && (
-        <div className="mb-8">
-          <div className="flex items-center gap-4 mb-4">
-            <h2 className="text-lg font-bold font-serif flex items-center gap-2">
-              <Wallet className="w-5 h-5 text-primary" /> My Accounts
-            </h2>
-            <div className="px-3 py-1 rounded-full bg-primary/10 border border-primary/20">
-              <span className="text-xs text-primary font-bold">
-                Net Worth: ${wallets.reduce((acc, w) => acc + w.balance, 0).toLocaleString()}
+        <div className="relative z-10 mb-6 md:mb-8">
+          <div className="flex items-center justify-between gap-3 mb-3 md:mb-4">
+            <div className="flex items-center gap-2 md:gap-3">
+              <div className="p-1.5 md:p-2 rounded-lg md:rounded-xl bg-primary/20">
+                <Wallet className="w-4 h-4 md:w-5 md:h-5 text-primary" />
+              </div>
+              <h2 className="text-base md:text-xl font-bold font-serif text-white">My Accounts</h2>
+            </div>
+            <div className="px-2 md:px-4 py-1 md:py-1.5 rounded-full bg-gradient-to-r from-primary/20 to-primary/5 border border-primary/30">
+              <span className="text-xs md:text-sm text-primary font-bold flex items-center gap-1 md:gap-1.5">
+                <Sparkles className="h-3 w-3 md:h-3.5 md:w-3.5" />
+                <span className="hidden sm:inline">Net Worth:</span> ${wallets.reduce((acc, w) => acc + w.balance, 0).toLocaleString()}
               </span>
             </div>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 md:gap-4">
             {wallets.map(w => {
               const Icon = getWalletIcon(w.type);
+              const colorClass = getWalletColor(w.type);
               return (
-                <div key={w.id} className="bg-card border border-white/5 rounded-xl p-4 flex flex-col justify-between hover:bg-white/5 transition-colors">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Icon className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-xs font-medium text-muted-foreground truncate">{w.name}</span>
+                <div
+                  key={w.id}
+                  className={`bg-gradient-to-br ${colorClass} rounded-xl md:rounded-2xl p-3 md:p-4 flex flex-col justify-between hover:scale-[1.02] transition-transform border backdrop-blur-sm`}
+                >
+                  <div className="flex items-center gap-1.5 md:gap-2 mb-2 md:mb-3">
+                    <div className="p-1 md:p-1.5 rounded-md md:rounded-lg bg-white/10">
+                      <Icon className="w-3 h-3 md:w-4 md:h-4 text-white" />
+                    </div>
+                    <span className="text-[10px] md:text-xs font-medium text-white/70 truncate">{w.name}</span>
                   </div>
-                  <div className="text-lg font-bold text-white">${w.balance.toLocaleString()}</div>
+                  <div className="text-base md:text-xl font-bold text-white">${w.balance.toLocaleString()}</div>
                 </div>
               );
             })}
@@ -236,18 +271,18 @@ export function Dashboard() {
       )}
 
       {/* Lower Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 lg:gap-8">
         {/* Left Column (Goals + Budget) takes up 1/3 */}
-        <div className="lg:col-span-1 space-y-6">
+        <div className="lg:col-span-1 space-y-4 md:space-y-6 order-2 lg:order-1">
           <GoalsSection />
           <BudgetStatus currency={currency} budget={budget} refreshBudget={refreshBudget} />
         </div>
 
-        <div className="lg:col-span-2 relative">
+        <div className="lg:col-span-2 relative order-1 lg:order-2">
           <TransactionsList transactions={filteredTransactions} wallets={wallets} currency={currency} />
 
           {/* Gradient overlay at bottom for smooth scroll fade effect if needed */}
-          <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-background to-transparent pointer-events-none"></div>
+          <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-black to-transparent pointer-events-none"></div>
         </div>
       </div>
 

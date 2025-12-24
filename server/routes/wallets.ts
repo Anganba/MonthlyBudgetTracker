@@ -8,6 +8,7 @@ const mapToWallet = (doc: any): Wallet => ({
     name: doc.name,
     type: doc.type,
     balance: doc.balance,
+    description: doc.description,
     icon: doc.icon,
     color: doc.color,
     isDefault: doc.isDefault,
@@ -30,7 +31,7 @@ export const createWallet: RequestHandler = async (req, res) => {
     const userId = req.session?.user?.id;
     if (!userId) return res.status(401).json({ success: false, message: "Not authenticated" });
 
-    const { name, type, balance, color, icon, isDefault } = req.body;
+    const { name, type, balance, description, color, icon, isDefault } = req.body;
 
     try {
         if (isDefault) {
@@ -43,6 +44,7 @@ export const createWallet: RequestHandler = async (req, res) => {
             name,
             type,
             balance: balance || 0,
+            description: description || '',
             color,
             icon,
             isDefault: !!isDefault
@@ -63,11 +65,12 @@ export const updateWallet: RequestHandler = async (req, res) => {
         const wallet = await WalletModel.findOne({ _id: id, userId });
         if (!wallet) return res.status(404).json({ success: false, message: "Wallet not found" });
 
-        const { name, type, balance, color, icon, isDefault } = req.body;
+        const { name, type, balance, description, color, icon, isDefault } = req.body;
 
         if (name) wallet.name = name;
         if (type) wallet.type = type;
         if (balance !== undefined) wallet.balance = balance;
+        if (description !== undefined) wallet.description = description;
         if (color) wallet.color = color;
         if (icon) wallet.icon = icon;
 

@@ -5,7 +5,7 @@ import { BudgetHeader } from '../components/budget/Header';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, Filter, Edit2, Trash2, ArrowUpDown, ArrowRight } from "lucide-react";
+import { Plus, Search, Filter, Edit2, Trash2, ArrowUpDown, ArrowRight, ArrowDownCircle, ArrowUpCircle, PiggyBank, ArrowLeftRight, Receipt } from "lucide-react";
 import { format } from 'date-fns';
 import { TransactionDialog, TransactionData } from "../components/budget/TransactionDialog";
 import {
@@ -34,7 +34,6 @@ export function TransactionsPage() {
     const [month, setMonth] = useState(MONTHS[new Date().getMonth()]);
     const [year, setYear] = useState(new Date().getFullYear());
 
-    // Use cached budget data
     const { budget, isLoading: loading, refreshBudget } = useBudget(month, year);
     const { wallets } = useWallets();
     const { user } = useAuth();
@@ -45,17 +44,13 @@ export function TransactionsPage() {
     const [typeFilter, setTypeFilter] = useState('all');
     const [sortConfig, setSortConfig] = useState<{ key: keyof Transaction | 'wallet' | 'type'; direction: 'asc' | 'desc' } | null>(null);
 
-    // Dialog State
-    // Dialog State
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [dialogMode, setDialogMode] = useState<'add' | 'edit'>('add');
     const [selectedTransaction, setSelectedTransaction] = useState<TransactionData | null>(null);
 
-    // Delete Dialog State
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
     const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null);
 
-    // Pagination State
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(10);
 
@@ -77,23 +72,29 @@ export function TransactionsPage() {
         return 'expense';
     };
 
-    // Filter and Sort Logic
+    const getTypeInfo = (type: string) => {
+        switch (type) {
+            case 'income': return { icon: ArrowUpCircle, color: 'text-green-400', bg: 'bg-green-500/20' };
+            case 'expense': return { icon: ArrowDownCircle, color: 'text-red-400', bg: 'bg-red-500/20' };
+            case 'savings': return { icon: PiggyBank, color: 'text-blue-400', bg: 'bg-blue-500/20' };
+            case 'transfer': return { icon: ArrowLeftRight, color: 'text-purple-400', bg: 'bg-purple-500/20' };
+            default: return { icon: Receipt, color: 'text-gray-400', bg: 'bg-gray-500/20' };
+        }
+    };
+
     const filteredTransactions = budget?.transactions.filter(t => {
         const matchesSearch = t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             t.category.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesCategory = categoryFilter === 'all' || t.category === categoryFilter;
         const type = getTransactionType(t);
         const matchesType = typeFilter === 'all' || type === typeFilter;
-
         return matchesSearch && matchesCategory && matchesType;
     }) || [];
 
     const sortedTransactions = [...filteredTransactions].sort((a, b) => {
         if (!sortConfig) {
-            // Default sort by date desc
             return new Date(b.date).getTime() - new Date(a.date).getTime();
         }
-
         if (sortConfig.key === 'wallet') {
             const getWalletName = (id?: string) => wallets.find(w => w.id === id)?.name || '';
             const aWallet = getWalletName(a.walletId);
@@ -102,7 +103,6 @@ export function TransactionsPage() {
             if (aWallet > bWallet) return sortConfig.direction === 'asc' ? 1 : -1;
             return 0;
         }
-
         if (sortConfig.key === 'type') {
             const aType = getTransactionType(a);
             const bType = getTransactionType(b);
@@ -110,16 +110,13 @@ export function TransactionsPage() {
             if (aType > bType) return sortConfig.direction === 'asc' ? 1 : -1;
             return 0;
         }
-
         const aValue = a[sortConfig.key as keyof Transaction];
         const bValue = b[sortConfig.key as keyof Transaction];
-
         if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
         if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
         return 0;
     });
 
-    // Pagination Logic
     const totalPages = Math.ceil(sortedTransactions.length / itemsPerPage);
     const paginatedTransactions = sortedTransactions.slice(
         (currentPage - 1) * itemsPerPage,
@@ -127,7 +124,7 @@ export function TransactionsPage() {
     );
 
     useEffect(() => {
-        setCurrentPage(1); // Reset page on filter change
+        setCurrentPage(1);
     }, [searchTerm, categoryFilter, typeFilter, month, year]);
 
     const requestSort = (key: keyof Transaction | 'wallet' | 'type') => {
@@ -138,20 +135,14 @@ export function TransactionsPage() {
         setSortConfig({ key, direction });
     };
 
-    // Handlers
     const handleTransactionSubmit = async (data: TransactionData) => {
-        // Snapshot
         const snapshot = queryClient.getQueryData(['budget', month, year, user?.id]);
-
-        // Check date for optimistic update validity
         const tDate = new Date(data.date || new Date());
-        // Note: We need to handle year/month matching carefully
         const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
         const tMonth = monthNames[tDate.getMonth()];
         const tYear = tDate.getFullYear();
         const isCurrentView = tMonth === month && tYear === year;
 
-        // Optimistic Update
         const tempId = Math.random().toString(36).substring(7);
         const optimisticTransaction = {
             ...data,
@@ -176,9 +167,7 @@ export function TransactionsPage() {
             const url = dialogMode === 'add'
                 ? `/api/budget/transaction?month=${month}&year=${year}`
                 : `/api/budget/transaction?month=${month}&year=${year}&id=${data.id}`;
-
             const method = dialogMode === 'add' ? 'POST' : 'PUT';
-
             const response = await fetch(url, {
                 method,
                 headers: { 'Content-Type': 'application/json' },
@@ -186,12 +175,8 @@ export function TransactionsPage() {
             });
             const result = await response.json();
             if (result.success) {
-                // If success, we just refresh everything.
-                // The optimistic update is already visible. 
-                // We rely on refreshBudget to clean up and sync with server eventually.
                 await refreshBudget();
             } else {
-                // Revert
                 if (snapshot && user?.id && isCurrentView) queryClient.setQueryData(['budget', month, year, user.id], snapshot);
             }
         } catch (error) {
@@ -227,11 +212,18 @@ export function TransactionsPage() {
         setTransactionToDelete(null);
     };
 
-    // Collect unique categories for filter
     const categories = Array.from(new Set(budget?.transactions.map(t => t.category) || [])).sort();
 
+    // Stats
+    const totalIncome = filteredTransactions.filter(t => getTransactionType(t) === 'income').reduce((sum, t) => sum + t.actual, 0);
+    const totalExpenses = filteredTransactions.filter(t => getTransactionType(t) === 'expense').reduce((sum, t) => sum + t.actual, 0);
+
     return (
-        <div className="min-h-screen bg-background text-foreground">
+        <div className="min-h-screen bg-black text-white relative overflow-hidden">
+            {/* Background decorations */}
+            <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-primary/5 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-blue-500/5 rounded-full blur-3xl pointer-events-none" />
+
             <BudgetHeader
                 month={month}
                 year={year}
@@ -240,34 +232,75 @@ export function TransactionsPage() {
                 onCurrencyChange={setCurrency}
             />
 
-            <div className="p-8">
+            <div className="p-6 md:p-8 relative z-10">
+                {/* Header */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
                     <div>
-                        <h1 className="font-serif text-3xl font-bold text-foreground">Transactions</h1>
-                        <p className="text-muted-foreground">Manage and track your financial activity.</p>
+                        <h1 className="font-serif text-3xl md:text-4xl font-bold text-white">Transactions</h1>
+                        <p className="text-gray-500 mt-1">Manage and track your financial activity</p>
                     </div>
-                    <Button onClick={openAddDialog} className="gap-2">
+                    <Button
+                        onClick={openAddDialog}
+                        className="bg-primary text-black hover:bg-primary/90 rounded-2xl px-6 h-11 font-bold shadow-lg shadow-primary/20 gap-2"
+                    >
                         <Plus className="h-4 w-4" /> Add Transaction
                     </Button>
                 </div>
 
+                {/* Stats Row */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div className="rounded-2xl bg-gradient-to-br from-zinc-900 to-zinc-800 border border-white/10 p-6">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 rounded-xl bg-white/10">
+                                <Receipt className="h-6 w-6 text-gray-400" />
+                            </div>
+                            <div>
+                                <p className="text-sm text-gray-400">Total Transactions</p>
+                                <p className="text-2xl font-bold text-white">{sortedTransactions.length}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="rounded-2xl bg-gradient-to-br from-green-500/10 to-green-500/5 border border-green-500/20 p-6">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 rounded-xl bg-green-500/20">
+                                <ArrowUpCircle className="h-6 w-6 text-green-400" />
+                            </div>
+                            <div>
+                                <p className="text-sm text-gray-400">Total Income</p>
+                                <p className="text-2xl font-bold text-green-400">{symbol}{totalIncome.toLocaleString()}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="rounded-2xl bg-gradient-to-br from-red-500/10 to-red-500/5 border border-red-500/20 p-6">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 rounded-xl bg-red-500/20">
+                                <ArrowDownCircle className="h-6 w-6 text-red-400" />
+                            </div>
+                            <div>
+                                <p className="text-sm text-gray-400">Total Expenses</p>
+                                <p className="text-2xl font-bold text-red-400">{symbol}{totalExpenses.toLocaleString()}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 {/* Filters */}
-                <div className="bg-card border border-border rounded-xl p-4 shadow-sm mb-6 flex flex-col md:flex-row gap-4 items-center">
+                <div className="rounded-2xl bg-zinc-900/50 border border-white/10 p-4 mb-6 flex flex-col md:flex-row gap-4 items-center">
                     <div className="relative flex-1 w-full">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
                         <Input
                             placeholder="Search transactions..."
-                            className="pl-9 bg-background border-border"
+                            className="pl-11 h-11 bg-zinc-800 border-zinc-700 rounded-xl focus:border-primary"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
-                    <div className="flex gap-4 w-full md:w-auto">
+                    <div className="flex gap-3 w-full md:w-auto">
                         <Select value={typeFilter} onValueChange={setTypeFilter}>
-                            <SelectTrigger className="w-[140px]">
+                            <SelectTrigger className="w-[140px] h-11 bg-zinc-800 border-zinc-700 rounded-xl">
                                 <SelectValue placeholder="All Types" />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="bg-zinc-800 border-zinc-700">
                                 <SelectItem value="all">All Types</SelectItem>
                                 <SelectItem value="income">Income</SelectItem>
                                 <SelectItem value="expense">Expense</SelectItem>
@@ -277,10 +310,10 @@ export function TransactionsPage() {
                         </Select>
 
                         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                            <SelectTrigger className="w-[180px]">
+                            <SelectTrigger className="w-[180px] h-11 bg-zinc-800 border-zinc-700 rounded-xl">
                                 <SelectValue placeholder="All Categories" />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="bg-zinc-800 border-zinc-700">
                                 <SelectItem value="all">All Categories</SelectItem>
                                 {categories.map(c => (
                                     <SelectItem key={c} value={c}>{c}</SelectItem>
@@ -291,80 +324,89 @@ export function TransactionsPage() {
                 </div>
 
                 {/* Table */}
-                <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+                <div className="rounded-2xl bg-zinc-900/50 border border-white/10 overflow-hidden">
                     <div className="overflow-x-auto">
-                        <table className="w-full text-sm table-fixed">
+                        <table className="w-full text-sm">
                             <thead>
-                                <tr className="bg-muted/50 border-b border-border">
-                                    <th className="text-left py-3 px-4 font-semibold text-muted-foreground cursor-pointer hover:text-foreground w-[150px]" onClick={() => requestSort('date')}>
+                                <tr className="bg-white/5 border-b border-white/10">
+                                    <th className="text-left py-4 px-4 font-medium text-gray-400 cursor-pointer hover:text-white transition-colors" onClick={() => requestSort('date')}>
                                         <div className="flex items-center gap-1">Date <ArrowUpDown className="h-3 w-3" /></div>
                                     </th>
-                                    <th className="text-left py-3 px-4 font-semibold text-muted-foreground cursor-pointer hover:text-foreground w-auto" onClick={() => requestSort('name')}>
+                                    <th className="text-left py-4 px-4 font-medium text-gray-400 cursor-pointer hover:text-white transition-colors" onClick={() => requestSort('name')}>
                                         <div className="flex items-center gap-1">Description <ArrowUpDown className="h-3 w-3" /></div>
                                     </th>
-                                    <th className="text-left py-3 px-4 font-semibold text-muted-foreground cursor-pointer hover:text-foreground w-[140px]" onClick={() => requestSort('category')}>
+                                    <th className="text-left py-4 px-4 font-medium text-gray-400 cursor-pointer hover:text-white transition-colors" onClick={() => requestSort('category')}>
                                         <div className="flex items-center gap-1">Category <ArrowUpDown className="h-3 w-3" /></div>
                                     </th>
-                                    <th className="text-left py-3 px-4 font-semibold text-muted-foreground cursor-pointer hover:text-foreground w-[200px]" onClick={() => requestSort('wallet')}>
-                                        <div className="flex items-center gap-1">Payment Method <ArrowUpDown className="h-3 w-3" /></div>
+                                    <th className="text-left py-4 px-4 font-medium text-gray-400 cursor-pointer hover:text-white transition-colors" onClick={() => requestSort('wallet')}>
+                                        <div className="flex items-center gap-1">Wallet <ArrowUpDown className="h-3 w-3" /></div>
                                     </th>
-                                    <th className="text-left py-3 px-4 font-semibold text-muted-foreground cursor-pointer hover:text-foreground w-[100px]" onClick={() => requestSort('type')}>
+                                    <th className="text-left py-4 px-4 font-medium text-gray-400 cursor-pointer hover:text-white transition-colors" onClick={() => requestSort('type')}>
                                         <div className="flex items-center gap-1">Type <ArrowUpDown className="h-3 w-3" /></div>
                                     </th>
-                                    <th className="text-right py-3 px-4 font-semibold text-muted-foreground cursor-pointer hover:text-foreground w-[120px]" onClick={() => requestSort('actual')}>
+                                    <th className="text-right py-4 px-4 font-medium text-gray-400 cursor-pointer hover:text-white transition-colors" onClick={() => requestSort('actual')}>
                                         <div className="flex items-center justify-end gap-1">Amount <ArrowUpDown className="h-3 w-3" /></div>
                                     </th>
-                                    <th className="text-right py-3 px-4 font-semibold text-muted-foreground w-[80px]">Actions</th>
+                                    <th className="text-right py-4 px-4 font-medium text-gray-400">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {loading ? (
-                                    <tr><td colSpan={7} className="text-center py-8 text-muted-foreground">Loading...</td></tr>
+                                    <tr><td colSpan={7} className="text-center py-12 text-gray-500">Loading...</td></tr>
                                 ) : paginatedTransactions.length === 0 ? (
-                                    <tr><td colSpan={7} className="text-center py-8 text-muted-foreground">No transactions found.</td></tr>
+                                    <tr><td colSpan={7} className="text-center py-12 text-gray-500">No transactions found.</td></tr>
                                 ) : (
                                     paginatedTransactions.map((t) => {
                                         const type = getTransactionType(t);
+                                        const typeInfo = getTypeInfo(type);
+                                        const TypeIcon = typeInfo.icon;
                                         const isIncome = type === 'income';
                                         return (
-                                            <tr key={t.id} className="border-b border-border hover:bg-muted/50 transition">
-                                                <td className="py-3 px-4 text-foreground">{t.date ? format(new Date(t.date), 'MMM dd, yyyy') : '-'}</td>
-                                                <td className="py-3 px-4 font-medium text-foreground">{t.name}</td>
-                                                <td className="py-3 px-4">
-                                                    <span className="px-2 py-1 rounded-full text-xs font-medium bg-secondary text-secondary-foreground">
+                                            <tr key={t.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                                                <td className="py-4 px-4 text-gray-300">{t.date ? format(new Date(t.date), 'MMM dd, yyyy') : '-'}</td>
+                                                <td className="py-4 px-4 font-medium text-white">{t.name}</td>
+                                                <td className="py-4 px-4">
+                                                    <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-white/10 text-gray-300">
                                                         {t.category}
                                                     </span>
                                                 </td>
-                                                <td className="py-3 px-4 text-foreground">
+                                                <td className="py-4 px-4 text-gray-300">
                                                     {type === 'transfer' && t.toWalletId ? (
                                                         <div className="flex items-center gap-1 text-xs">
                                                             <span>{wallets.find(w => w.id === t.walletId)?.name}</span>
-                                                            <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                                                            <ArrowRight className="h-3 w-3 text-gray-500" />
                                                             <span>{wallets.find(w => w.id === t.toWalletId)?.name}</span>
                                                         </div>
                                                     ) : (
                                                         t.walletId ? (
-                                                            <span className="text-xs">{wallets.find(w => w.id === t.walletId)?.name || '-'}</span>
+                                                            <span className="text-sm">{wallets.find(w => w.id === t.walletId)?.name || '-'}</span>
                                                         ) : '-'
                                                     )}
                                                 </td>
-                                                <td className="py-3 px-4 text-foreground capitalize">{type}</td>
-                                                <td className={cn("py-3 px-4 text-right font-medium", isIncome ? "text-emerald-600" : "text-foreground")}>
+                                                <td className="py-4 px-4">
+                                                    <span className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium capitalize", typeInfo.bg, typeInfo.color)}>
+                                                        <TypeIcon className="h-3 w-3" />
+                                                        {type}
+                                                    </span>
+                                                </td>
+                                                <td className={cn("py-4 px-4 text-right font-semibold", isIncome ? "text-green-400" : "text-white")}>
                                                     {isIncome ? '+' : ''}{symbol}{t.actual.toFixed(2)}
                                                 </td>
-                                                <td className="py-3 px-4 text-right flex justify-end gap-2">
-                                                    <button
-                                                        className="p-1 hover:bg-yellow-100 text-yellow-500 rounded transition"
-                                                        onClick={() => openEditDialog(t)}
-                                                    >
-                                                        <Edit2 className="h-4 w-4" />
-                                                    </button>
-                                                    <button
-                                                        className="p-1 hover:bg-red-100 text-red-500 rounded transition"
-                                                        onClick={() => openDeleteDialog(t.id)}
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </button>
+                                                <td className="py-4 px-4 text-right">
+                                                    <div className="flex justify-end gap-1">
+                                                        <button
+                                                            className="p-2 hover:bg-yellow-500/20 text-yellow-500 rounded-lg transition-colors"
+                                                            onClick={() => openEditDialog(t)}
+                                                        >
+                                                            <Edit2 className="h-4 w-4" />
+                                                        </button>
+                                                        <button
+                                                            className="p-2 hover:bg-red-500/20 text-red-500 rounded-lg transition-colors"
+                                                            onClick={() => openDeleteDialog(t.id)}
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         );
@@ -374,7 +416,7 @@ export function TransactionsPage() {
                         </table>
                     </div>
 
-                    <div className="p-4 border-t border-border flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-muted-foreground">
+                    <div className="p-4 border-t border-white/10 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-gray-400">
                         <div className="flex items-center gap-2">
                             <span>Rows per page:</span>
                             <Select
@@ -384,10 +426,10 @@ export function TransactionsPage() {
                                     setCurrentPage(1);
                                 }}
                             >
-                                <SelectTrigger className="h-8 w-[70px]">
+                                <SelectTrigger className="h-9 w-[70px] bg-zinc-800 border-zinc-700 rounded-lg">
                                     <SelectValue placeholder={itemsPerPage} />
                                 </SelectTrigger>
-                                <SelectContent side="top">
+                                <SelectContent side="top" className="bg-zinc-800 border-zinc-700">
                                     <SelectItem value="10">10</SelectItem>
                                     <SelectItem value="50">50</SelectItem>
                                     <SelectItem value="100">100</SelectItem>
@@ -397,7 +439,7 @@ export function TransactionsPage() {
 
                         <div className="flex items-center gap-4">
                             <span>
-                                Showing {paginatedTransactions.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} - {Math.min(currentPage * itemsPerPage, sortedTransactions.length)} of {sortedTransactions.length} results
+                                Showing {paginatedTransactions.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} - {Math.min(currentPage * itemsPerPage, sortedTransactions.length)} of {sortedTransactions.length}
                             </span>
                             <div className="flex gap-2">
                                 <Button
@@ -405,6 +447,7 @@ export function TransactionsPage() {
                                     size="sm"
                                     onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                                     disabled={currentPage === 1}
+                                    className="border-zinc-700 hover:bg-zinc-800"
                                 >
                                     Previous
                                 </Button>
@@ -413,6 +456,7 @@ export function TransactionsPage() {
                                     size="sm"
                                     onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                                     disabled={currentPage === totalPages || totalPages === 0}
+                                    className="border-zinc-700 hover:bg-zinc-800"
                                 >
                                     Next
                                 </Button>
@@ -431,21 +475,21 @@ export function TransactionsPage() {
             />
 
             <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
-                <AlertDialogContent>
+                <AlertDialogContent className="bg-zinc-900 border-white/10">
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
+                        <AlertDialogTitle className="text-xl font-serif">Are you sure?</AlertDialogTitle>
+                        <AlertDialogDescription className="text-gray-400">
                             This action cannot be undone. This will permanently delete the transaction.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        <AlertDialogCancel className="border-zinc-700 hover:bg-zinc-800">Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmDelete} className="bg-red-500 hover:bg-red-600 text-white">
                             Delete
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-        </div >
+        </div>
     );
 }

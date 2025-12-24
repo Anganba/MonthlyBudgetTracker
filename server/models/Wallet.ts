@@ -11,6 +11,7 @@ const WalletSchema = new Schema<IWallet>(
         name: { type: String, required: true },
         type: { type: String, enum: ['cash', 'mfs', 'bank', 'credit_card', 'debit_card', 'virtual_card', 'other'], default: 'mfs' },
         balance: { type: Number, default: 0 },
+        description: { type: String, default: '' },
         icon: { type: String },
         color: { type: String },
         isDefault: { type: Boolean, default: false }

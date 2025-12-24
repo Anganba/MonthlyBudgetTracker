@@ -12,59 +12,144 @@ import {
     GraduationCap,
     CircleDollarSign,
     Cookie,
-    Pizza,
     Shirt,
     Wrench,
-    Briefcase
+    Briefcase,
+    // New icons for expanded categories
+    Cloud,
+    Globe,
+    Code,
+    Tv,
+    ShoppingCart,
+    Wifi,
+    Fuel,
+    Gift,
+    Shield,
+    Send,
+    Coffee,
+    Sparkles,
+    Baby,
+    Dog,
+    Dumbbell,
+    Palette,
+    Scissors,
+    Phone,
+    Headphones,
+    Laptop,
+    CreditCard,
+    Receipt,
+    HandCoins,
+    Wallet,
+    TrendingUp,
+    PartyPopper,
+    GlassWater,
+    Popcorn,
+    UtensilsCrossed,
+    type LucideIcon
 } from "lucide-react";
 
-export const getCategoryIcon = (category: string) => {
-    switch (category.toLowerCase()) {
-        case 'food': return Utensils;
-        case 'lunch': return Utensils;
-        case 'breakfast': return Utensils;
-        case 'dinner': return Utensils;
+// Icon mapping for all categories
+const CATEGORY_ICON_MAP: Record<string, LucideIcon> = {
+    // Income
+    "bonus": Banknote,
+    "debt added": Banknote,
+    "freelance": Laptop,
+    "gifts received": Gift,
+    "paycheck": Wallet,
+    "refund": Receipt,
+    "salary": Banknote,
+    "side hustle": Briefcase,
+    "income": TrendingUp,
 
-        case 'snacks': return Cookie; // Or Pizza if better for "snack item sign"
+    // Savings
+    "savings": PiggyBank,
 
-        case 'shopping':
-        case 'gadgets':
-        case 'games':
-            return ShoppingBag;
+    // Tech & Digital
+    "cloud & hosting": Cloud,
+    "courses & learning": GraduationCap,
+    "domains & services": Globe,
+    "software & tools": Code,
+    "subscriptions": Tv,
 
-        case 'cosmetics': return Shirt; // Could look for something better like Smile/User? Shirt fits for personal shopping often.
-        case 'clothes': return Shirt;
+    // Food & Drinks
+    "coffee & drinks": Coffee,
+    "dining out": UtensilsCrossed,
+    "food": Utensils,
+    "groceries": ShoppingCart,
+    "snacks": Cookie,
 
-        case 'rent':
-            return Home;
+    // Housing & Utilities
+    "internet": Wifi,
+    "phone & mobile": Phone,
+    "rent": Home,
+    "utilities": Zap,
 
-        case 'entertainment': return Gamepad2;
+    // Transportation
+    "fuel": Fuel,
+    "parking": Car,
+    "public transit": Car,
+    "rideshare": Car,
+    "transportation": Car,
+    "travel": Plane,
+    "vehicle maintenance": Wrench,
 
-        case 'health':
-        case 'health/medical':
-            return Heart;
+    // Personal & Lifestyle
+    "clothes": Shirt,
+    "cosmetics": Sparkles,
+    "fitness": Dumbbell,
+    "hobbies": Palette,
+    "personal": Briefcase,
+    "salon & grooming": Scissors,
+    "shopping": ShoppingBag,
 
-        case 'paycheck':
-        case 'bonus':
-        case 'income':
-        case 'debt added':
-        case 'salary':
-            return Banknote;
+    // Entertainment
+    "entertainment": Gamepad2,
+    "movies & cinema": Popcorn,
+    "music": Headphones,
+    "parties & events": PartyPopper,
 
-        case 'savings': return PiggyBank;
+    // Health & Wellness
+    "health/medical": Heart,
+    "pharmacy": Heart,
 
-        case 'transportation':
-        case 'rixa bhara': // Handling user specific case potentially
-            return Car;
+    // Family & Pets
+    "baby & kids": Baby,
+    "education": GraduationCap,
+    "pets": Dog,
 
-        case 'utilities': return Zap;
+    // Shopping & Gadgets
+    "electronics": Laptop,
+    "gadgets": Laptop,
+    "home & garden": Home,
 
-        case 'travel': return Plane;
+    // Financial
+    "bank fees": CreditCard,
+    "debt paid": CreditCard,
+    "donations": Gift,
+    "gifts": Gift,
+    "insurance": Shield,
+    "investments": TrendingUp,
+    "remittance": Send,
+    "taxes": Receipt,
+    "tips & service": HandCoins,
 
-        case 'personal': return Briefcase; // Or User
+    // General
+    "miscellaneous": Wrench,
 
-        case 'miscellaneous': return Wrench;
-
-        default: return CircleDollarSign;
-    }
+    // Aliases for common variations
+    "lunch": Utensils,
+    "breakfast": Utensils,
+    "dinner": Utensils,
+    "games": Gamepad2,
+    "health": Heart,
+    "medical": Heart,
+    "transfer": Send,
 };
+
+export const getCategoryIcon = (category: string): LucideIcon => {
+    const key = category.toLowerCase();
+    return CATEGORY_ICON_MAP[key] || CircleDollarSign;
+};
+
+// Export the map for use in category management UI
+export const getAllCategoryIcons = () => CATEGORY_ICON_MAP;

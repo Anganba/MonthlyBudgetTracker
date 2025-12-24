@@ -10,17 +10,15 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/lib/auth";
-import { useBudget } from "@/hooks/use-budget";
 import { LogOut, User, Download, Repeat } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useToast } from "@/components/ui/use-toast";
+import { ExportDialog } from "./ExportDialog";
 
 export function UserProfile() {
     const { user, logout } = useAuth();
-    const { budget } = useBudget();
-
     const navigate = useNavigate();
-    const { toast } = useToast();
+
+    const [exportDialogOpen, setExportDialogOpen] = useState(false);
 
     // Get initials for avatar fallback
     const initials = user?.username
@@ -29,75 +27,6 @@ export function UserProfile() {
 
     const handleLogout = () => {
         logout();
-        // navigate("/login"); // Auth context handles state, but redirect might be safe
-    };
-
-    const [isExporting, setIsExporting] = useState(false);
-
-    const handleExport = async () => {
-        setIsExporting(true);
-        try {
-            const response = await fetch('/api/budget/all');
-            const result = await response.json();
-
-            if (!result.success || !result.data || result.data.length === 0) {
-                toast({ title: "Export Failed", description: "No transactions found to export.", variant: "destructive" });
-                return;
-            }
-
-            const transactions = result.data;
-            const headers = ["Date", "Name", "Category", "Amount", "Type"];
-            const incomeCategories = ['Paycheck', 'Bonus', 'Debt Added', 'income'];
-
-            const rows = transactions.map((t: any) => {
-                const isIncome = ['Paycheck', 'Bonus', 'Debt Added', 'income'].includes(t.category) || t.type === 'income';
-                const isSavings = t.category === 'Savings';
-                const isGoal = t.name.startsWith("Goal Reached:");
-
-                let type = "Expense";
-                if (t.type === 'transfer') type = "Transfer";
-                else if (isIncome) type = "Income";
-                else if (isSavings) type = "Savings";
-                else if (isGoal) type = "Goal Completion";
-
-                return [
-                    t.date,
-                    t.name,
-                    t.category,
-                    Math.abs(t.actual).toString(),
-                    type
-                ];
-            });
-
-            const escapeCsvField = (field: string) => {
-                if (field === null || field === undefined) return '';
-                const stringField = String(field);
-                if (stringField.includes(',') || stringField.includes('"') || stringField.includes('\n')) {
-                    return `"${stringField.replace(/"/g, '""')}"`;
-                }
-                return stringField;
-            };
-
-            const csvContent = "data:text/csv;charset=utf-8,"
-                + headers.join(",") + "\n"
-                + rows.map((row: any[]) => row.map(escapeCsvField).join(",")).join("\n");
-
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `budget_export_all_history.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-
-            toast({ title: "Export Successful", description: "Your transaction history has been downloaded." });
-
-        } catch (error) {
-            console.error("Export error:", error);
-            toast({ title: "Export Failed", description: "Could not fetch data.", variant: "destructive" });
-        } finally {
-            setIsExporting(false);
-        }
     };
 
     return (
@@ -125,9 +54,9 @@ export function UserProfile() {
                         <User className="mr-2 h-4 w-4" />
                         <span>Profile</span>
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleExport} disabled={isExporting}>
+                    <DropdownMenuItem onClick={() => setExportDialogOpen(true)}>
                         <Download className="mr-2 h-4 w-4" />
-                        <span>{isExporting ? "Exporting..." : "Export Data"}</span>
+                        <span>Export Data</span>
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => navigate("/recurring")}>
                         <Repeat className="mr-2 h-4 w-4" />
@@ -141,6 +70,9 @@ export function UserProfile() {
                     </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
+
+            {/* Export Dialog */}
+            <ExportDialog open={exportDialogOpen} onOpenChange={setExportDialogOpen} />
         </div>
     );
 }

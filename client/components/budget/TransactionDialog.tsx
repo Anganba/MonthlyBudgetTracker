@@ -13,7 +13,7 @@ import {
     TabsList,
     TabsTrigger,
 } from "@/components/ui/tabs";
-import { ArrowLeftRight, ArrowDown } from "lucide-react";
+import { ArrowLeftRight, ArrowDown, Receipt, TrendingUp, ArrowRightLeft } from "lucide-react";
 
 import {
     Select,
@@ -68,19 +68,17 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
     const { wallets } = useWallets();
     const { toast } = useToast();
 
-    // State
     const [type, setType] = useState<'expense' | 'income' | 'transfer'>('expense');
     const [category, setCategory] = useState<string>('Food');
     const [name, setName] = useState('');
     const [actual, setActual] = useState('');
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
     const [goalId, setGoalId] = useState<string>('');
-    const [walletId, setWalletId] = useState<string>(''); // Source / From
-    const [toWalletId, setToWalletId] = useState<string>(''); // Target / To
+    const [walletId, setWalletId] = useState<string>('');
+    const [toWalletId, setToWalletId] = useState<string>('');
 
     useEffect(() => {
         if (open && initialData) {
-            // Edit Mode
             setType(initialData.type || 'expense');
             setCategory(initialData.category || 'Food');
             setName(initialData.name || '');
@@ -91,7 +89,6 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
             setWalletId(initialData.walletId || '');
             setToWalletId(initialData.toWalletId || '');
         } else if (open && mode === 'add') {
-            // Add Mode - Reset
             setType('expense');
             setCategory('Food');
             setName('');
@@ -99,12 +96,10 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
             setDate(new Date().toISOString().split('T')[0]);
             setGoalId('');
 
-            // Defaults
             if (wallets.length > 0) {
                 const cashWallet = wallets.find(w => w.type === 'cash');
                 const def = wallets.find(w => w.isDefault);
                 setWalletId(cashWallet?.id || def?.id || wallets[0].id);
-                // For 'To', pick a different one if possible
                 const other = wallets.find(w => w.id !== (cashWallet?.id || def?.id || wallets[0].id));
                 setToWalletId(other?.id || '');
             } else {
@@ -114,14 +109,12 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
         }
     }, [open, initialData, mode, wallets]);
 
-    // Derived state
     const filteredCategories = TRANSACTION_CATEGORIES.filter(cat => {
         if (type === 'income') return cat.type === 'income';
         if (type === 'expense') return cat.type === 'expense' || cat.type === 'savings';
         return true;
     });
 
-    // Reset category when type changes if current category is invalid
     useEffect(() => {
         if (open) {
             const isValid = filteredCategories.some(c => c.id === category);
@@ -140,7 +133,6 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
-        // Basic Validation
         if (!name.trim()) {
             toast({
                 title: "Description Required",
@@ -150,11 +142,10 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
             return;
         }
         if (type === 'transfer' || category === 'Savings') {
-            if (!walletId || !toWalletId) return; // Need both wallets
-            if (walletId === toWalletId) return; // Cannot transfer to self
+            if (!walletId || !toWalletId) return;
+            if (walletId === toWalletId) return;
         }
 
-        // Only send goalId if category is Savings OR type is transfer
         const finalGoalId = (category === 'Savings' || type === 'transfer') ? goalId : undefined;
         const amount = parseFloat(actual) || 0;
 
@@ -174,33 +165,72 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
     };
 
     const title = mode === 'add' ? 'Add Transaction' : 'Edit Transaction';
+    const getTypeIcon = () => {
+        switch (type) {
+            case 'income': return TrendingUp;
+            case 'transfer': return ArrowRightLeft;
+            default: return Receipt;
+        }
+    };
+    const TypeIcon = getTypeIcon();
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="sm:max-w-md bg-zinc-900 border-white/10">
                 <DialogHeader>
-                    <DialogTitle className="font-serif text-2xl">{title}</DialogTitle>
-                    <DialogDescription className="text-muted-foreground">
+                    <DialogTitle className="font-serif text-2xl text-white flex items-center gap-3">
+                        <div className={cn(
+                            "p-2 rounded-xl",
+                            type === 'expense' ? 'bg-red-500/20' : type === 'income' ? 'bg-green-500/20' : 'bg-blue-500/20'
+                        )}>
+                            <TypeIcon className={cn(
+                                "h-5 w-5",
+                                type === 'expense' ? 'text-red-400' : type === 'income' ? 'text-green-400' : 'text-blue-400'
+                            )} />
+                        </div>
+                        {title}
+                    </DialogTitle>
+                    <DialogDescription className="text-gray-500">
                         {mode === 'add' ? 'Enter the details of your new transaction below.' : 'Modify the details of this transaction.'}
                     </DialogDescription>
                 </DialogHeader>
 
                 <Tabs value={type} onValueChange={(v) => setType(v as any)} className="w-full">
-                    <TabsList className="grid w-full grid-cols-3 mb-4">
-                        <TabsTrigger value="expense" className="data-[state=active]:bg-red-500 data-[state=active]:text-white">Expense</TabsTrigger>
-                        <TabsTrigger value="income" className="data-[state=active]:bg-green-500 data-[state=active]:text-white">Income</TabsTrigger>
-                        <TabsTrigger value="transfer" className="data-[state=active]:bg-blue-500 data-[state=active]:text-white">Transfer</TabsTrigger>
+                    <TabsList className="grid w-full grid-cols-3 mb-4 bg-zinc-800 p-1 rounded-xl">
+                        <TabsTrigger
+                            value="expense"
+                            className="rounded-lg data-[state=active]:bg-red-500 data-[state=active]:text-white text-gray-400"
+                        >
+                            Expense
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="income"
+                            className="rounded-lg data-[state=active]:bg-green-500 data-[state=active]:text-white text-gray-400"
+                        >
+                            Income
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="transfer"
+                            className="rounded-lg data-[state=active]:bg-blue-500 data-[state=active]:text-white text-gray-400"
+                        >
+                            Transfer
+                        </TabsTrigger>
                     </TabsList>
 
                     <form onSubmit={handleSubmit} className="space-y-4">
-                        {/* Common Fields: Date & Name */}
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label htmlFor="date">Date</Label>
-                                <Input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+                                <Label htmlFor="date" className="text-gray-400">Date</Label>
+                                <Input
+                                    id="date"
+                                    type="date"
+                                    value={date}
+                                    onChange={(e) => setDate(e.target.value)}
+                                    className="bg-zinc-800 border-zinc-700 rounded-xl h-11 focus:border-primary"
+                                />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="amount">Amount</Label>
+                                <Label htmlFor="amount" className="text-gray-400">Amount</Label>
                                 <Input
                                     id="amount"
                                     type="number"
@@ -211,21 +241,23 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
                                     value={actual}
                                     onChange={(e) => setActual(e.target.value)}
                                     onKeyDown={(e) => {
-                                        // Prevent +, -, e, E keys
                                         if (['+', '-', 'e', 'E'].includes(e.key)) {
                                             e.preventDefault();
                                         }
                                     }}
+                                    className="bg-zinc-800 border-zinc-700 rounded-xl h-11 focus:border-primary"
                                 />
                             </div>
                         </div>
 
                         {type !== 'transfer' && (
                             <div className="space-y-2">
-                                <Label htmlFor="category">Category</Label>
+                                <Label htmlFor="category" className="text-gray-400">Category</Label>
                                 <Select value={category} onValueChange={setCategory}>
-                                    <SelectTrigger><SelectValue placeholder="Category" /></SelectTrigger>
-                                    <SelectContent>
+                                    <SelectTrigger className="bg-zinc-800 border-zinc-700 rounded-xl h-11">
+                                        <SelectValue placeholder="Category" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-zinc-800 border-zinc-700">
                                         {filteredCategories.sort((a, b) => a.label.localeCompare(b.label)).map((cat) => (
                                             <SelectItem key={cat.id} value={cat.id}>{cat.label}</SelectItem>
                                         ))}
@@ -235,47 +267,47 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
                         )}
 
                         <div className="space-y-2">
-                            <Label htmlFor="name">Description</Label>
-                            <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder={type === 'transfer' ? "e.g. Savings Deposit" : "e.g. Grocery"} autoFocus />
+                            <Label htmlFor="name" className="text-gray-400">Description</Label>
+                            <Input
+                                id="name"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                placeholder={type === 'transfer' ? "e.g. Savings Deposit" : "e.g. Grocery"}
+                                autoFocus
+                                className="bg-zinc-800 border-zinc-700 rounded-xl h-11 focus:border-primary"
+                            />
                         </div>
 
-                        {/* Wallet Selection Logic */}
                         {(type === 'transfer' || category === 'Savings') ? (
-                            <div className="bg-muted/30 p-3 rounded-xl border border-border flex flex-col gap-1">
+                            <div className="bg-white/5 p-3 rounded-xl border border-white/10">
                                 <div className="space-y-1">
-                                    <Label className="text-muted-foreground text-[10px] uppercase tracking-wider font-bold">From Account</Label>
+                                    <Label className="text-gray-500 text-[10px] uppercase tracking-wider font-semibold">From Account</Label>
                                     <Select value={walletId} onValueChange={setWalletId}>
-                                        <SelectTrigger className="bg-background h-9 border-muted-foreground/20">
+                                        <SelectTrigger className="bg-zinc-800 border-zinc-700 rounded-xl h-10">
                                             <SelectValue placeholder="Select Source Wallet" />
                                         </SelectTrigger>
-                                        <SelectContent>
+                                        <SelectContent className="bg-zinc-800 border-zinc-700">
                                             {wallets.map(w => (
                                                 <SelectItem key={w.id} value={w.id} disabled={w.id === toWalletId}>
                                                     <span className="font-medium">{w.name}</span>
-                                                    <span className="ml-2 text-xs text-muted-foreground">({getWalletLabel(w.type)})</span>
+                                                    <span className="ml-2 text-xs text-gray-500">({getWalletLabel(w.type)})</span>
                                                 </SelectItem>
                                             ))}
                                         </SelectContent>
                                     </Select>
                                 </div>
 
-                                <div className="flex justify-center -my-1.5 z-20 relative top-2">
-                                    <div className="bg-background rounded-full border border-border p-1 shadow-sm">
-                                        <ArrowDown className="h-3 w-3 text-muted-foreground" />
-                                    </div>
-                                </div>
-
                                 <div className="space-y-1">
-                                    <Label className="text-muted-foreground text-[10px] uppercase tracking-wider font-bold">To Account</Label>
+                                    <Label className="text-gray-500 text-[10px] uppercase tracking-wider font-semibold">To Account</Label>
                                     <Select value={toWalletId} onValueChange={setToWalletId}>
-                                        <SelectTrigger className="bg-background h-9 border-muted-foreground/20">
+                                        <SelectTrigger className="bg-zinc-800 border-zinc-700 rounded-xl h-10">
                                             <SelectValue placeholder="Select Target Wallet" />
                                         </SelectTrigger>
-                                        <SelectContent>
+                                        <SelectContent className="bg-zinc-800 border-zinc-700">
                                             {wallets.map(w => (
                                                 <SelectItem key={w.id} value={w.id} disabled={w.id === walletId}>
                                                     <span className="font-medium">{w.name}</span>
-                                                    <span className="ml-2 text-xs text-muted-foreground">({getWalletLabel(w.type)})</span>
+                                                    <span className="ml-2 text-xs text-gray-500">({getWalletLabel(w.type)})</span>
                                                 </SelectItem>
                                             ))}
                                         </SelectContent>
@@ -284,10 +316,12 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
                             </div>
                         ) : (
                             <div className="space-y-2">
-                                <Label>{type === 'income' ? 'Deposit to' : 'Pay with'}</Label>
+                                <Label className="text-gray-400">{type === 'income' ? 'Deposit to' : 'Pay with'}</Label>
                                 <Select value={walletId} onValueChange={setWalletId}>
-                                    <SelectTrigger><SelectValue placeholder="Select Wallet" /></SelectTrigger>
-                                    <SelectContent>
+                                    <SelectTrigger className="bg-zinc-800 border-zinc-700 rounded-xl h-11">
+                                        <SelectValue placeholder="Select Wallet" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-zinc-800 border-zinc-700">
                                         {wallets.map(w => (
                                             <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
                                         ))}
@@ -296,13 +330,14 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
                             </div>
                         )}
 
-                        {/* Goal Link - Show for Savings OR Transfers */}
                         {(category === 'Savings' || type === 'transfer') && (
                             <div className="space-y-2">
-                                <Label>Link to Goal (Optional)</Label>
+                                <Label className="text-gray-400">Link to Goal (Optional)</Label>
                                 <Select value={goalId} onValueChange={setGoalId}>
-                                    <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
-                                    <SelectContent>
+                                    <SelectTrigger className="bg-zinc-800 border-zinc-700 rounded-xl h-11">
+                                        <SelectValue placeholder="None" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-zinc-800 border-zinc-700">
                                         <SelectItem value="unassigned">None</SelectItem>
                                         {goals.map(g => (
                                             <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
@@ -312,9 +347,21 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
                             </div>
                         )}
 
-                        <DialogFooter className="mt-6 gap-2 sm:gap-0">
-                            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-                            <Button type="submit">{mode === 'add' ? 'Save Transaction' : 'Update'}</Button>
+                        <DialogFooter className="mt-6 gap-2 sm:gap-0 pt-4">
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                onClick={() => onOpenChange(false)}
+                                className="text-gray-400 hover:text-white"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                type="submit"
+                                className="bg-primary text-black hover:bg-primary/90 font-bold rounded-xl px-6"
+                            >
+                                {mode === 'add' ? 'Save Transaction' : 'Update'}
+                            </Button>
                         </DialogFooter>
                     </form>
                 </Tabs>

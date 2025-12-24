@@ -1,13 +1,17 @@
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { useBudget } from "@/hooks/use-budget";
 import { EXPENSE_CATEGORIES } from "@/lib/categories";
-import { Edit2, Save, X } from "lucide-react";
+import { Edit2, Save, X, Plus, Trash2, PieChart, Target } from "lucide-react";
 import { getCategoryIcon } from "@/lib/category-icons";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover";
 
 interface BudgetLimitsSectionProps {
     month: string;
@@ -19,11 +23,33 @@ export function BudgetLimitsSection({ month, year }: BudgetLimitsSectionProps) {
     const [isEditing, setIsEditing] = useState(false);
     const [limits, setLimits] = useState<Record<string, number>>({});
     const [isSaving, setIsSaving] = useState(false);
+    const [visibleCategories, setVisibleCategories] = useState<Set<string>>(new Set());
+    const [addCategoryOpen, setAddCategoryOpen] = useState(false);
 
-    // Initialize limits from budget data
     useEffect(() => {
         if (budget?.categoryLimits) {
-            setLimits(budget.categoryLimits as Record<string, number>);
+            const budgetLimits = budget.categoryLimits as Record<string, number>;
+            setLimits(budgetLimits);
+
+            const initialVisible = new Set<string>();
+            EXPENSE_CATEGORIES.forEach(cat => {
+                const limit = budgetLimits[cat.id] || 0;
+                const spent = budget?.transactions
+                    ?.filter(t => t.category === cat.id)
+                    .reduce((sum, t) => sum + t.actual, 0) || 0;
+
+                if (limit > 0 || spent > 0) {
+                    initialVisible.add(cat.id);
+                }
+            });
+
+            Object.keys(budgetLimits).forEach(catId => {
+                if (budgetLimits[catId] > 0) {
+                    initialVisible.add(catId);
+                }
+            });
+
+            setVisibleCategories(initialVisible);
         }
     }, [budget]);
 
@@ -62,59 +88,114 @@ export function BudgetLimitsSection({ month, year }: BudgetLimitsSectionProps) {
         setIsEditing(false);
     };
 
+    const handleAddCategory = (categoryId: string) => {
+        setVisibleCategories(prev => new Set([...prev, categoryId]));
+        if (!limits[categoryId]) {
+            setLimits(prev => ({ ...prev, [categoryId]: 0 }));
+        }
+        setAddCategoryOpen(false);
+    };
+
+    const handleRemoveCategory = (categoryId: string) => {
+        setVisibleCategories(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(categoryId);
+            return newSet;
+        });
+        setLimits(prev => ({ ...prev, [categoryId]: 0 }));
+    };
+
     if (isLoading) {
-        return <div>Loading limits...</div>;
+        return (
+            <div className="rounded-2xl bg-zinc-900/50 border border-white/10 p-8 text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+            </div>
+        );
     }
 
-    // Prepare data for rendering
-    const categoryData = EXPENSE_CATEGORIES.map(cat => {
-        const limit = limits[cat.id] || 0;
-        // Find actual spend from local calculation or monthlyStats if available.
-        // Since we need live updates, let's rely on passed transactions if possible or use what we have.
-        // Use useBudget's monthlyStats if it has category breakdown, otherwise assume 0 for now or calculate.
-        // Looking at BudgetStatus logic, it calculates from transactions.
-        // Let's emulate that:
-        const spent = budget?.transactions
-            ?.filter(t => t.category === cat.id)
-            .reduce((sum, t) => sum + t.actual, 0) || 0;
+    const hiddenCategories = EXPENSE_CATEGORIES.filter(cat => !visibleCategories.has(cat.id));
 
-        const percent = limit > 0 ? Math.round((spent / limit) * 100) : 0;
-        const isOverBudget = percent > 100;
+    const categoryData = EXPENSE_CATEGORIES
+        .filter(cat => visibleCategories.has(cat.id))
+        .map(cat => {
+            const limit = limits[cat.id] || 0;
+            const spent = budget?.transactions
+                ?.filter(t => t.category === cat.id)
+                .reduce((sum, t) => sum + t.actual, 0) || 0;
 
-        return {
-            ...cat,
-            limit,
-            spent,
-            percent,
-            isOverBudget
-        };
-    }).sort((a, b) => {
-        // Sort by name for stable order during editing
-        return a.label.localeCompare(b.label);
-    });
+            const percent = limit > 0 ? Math.round((spent / limit) * 100) : 0;
+            const isOverBudget = percent > 100;
+
+            return { ...cat, limit, spent, percent, isOverBudget };
+        }).sort((a, b) => a.label.localeCompare(b.label));
 
     return (
-        <Card className="items-center bg-card border-none shadow-xl mt-8">
-            <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="text-xl font-bold font-serif text-white">Monthly Budget Limits ({month} {year})</CardTitle>
+        <div className="rounded-2xl bg-zinc-900/50 border border-white/10 overflow-hidden">
+            <div className="p-6 border-b border-white/10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                    <div className="p-3 rounded-xl bg-blue-500/20">
+                        <Target className="h-6 w-6 text-blue-400" />
+                    </div>
+                    <div>
+                        <h2 className="text-xl font-bold font-serif text-white">Monthly Budget Limits</h2>
+                        <p className="text-sm text-gray-500">{month} {year}</p>
+                    </div>
+                </div>
                 <div className="flex gap-2">
                     {isEditing ? (
                         <>
-                            <Button variant="ghost" size="sm" onClick={handleCancel} disabled={isSaving}>
+                            {hiddenCategories.length > 0 && (
+                                <Popover open={addCategoryOpen} onOpenChange={setAddCategoryOpen}>
+                                    <PopoverTrigger asChild>
+                                        <Button variant="outline" size="sm" className="border-primary/50 hover:bg-primary/20 hover:border-primary rounded-xl">
+                                            <Plus className="h-4 w-4 mr-1 text-primary" /> Add Category
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent
+                                        className="w-72 max-h-96 overflow-y-auto p-3 bg-zinc-900 border border-white/10 shadow-2xl"
+                                        align="end"
+                                    >
+                                        <div className="space-y-1">
+                                            <p className="text-xs font-semibold text-primary uppercase tracking-wider px-2 py-1 mb-2">
+                                                Select a category to add
+                                            </p>
+                                            <div className="space-y-0.5">
+                                                {hiddenCategories.map(cat => {
+                                                    const Icon = getCategoryIcon(cat.id);
+                                                    return (
+                                                        <button
+                                                            key={cat.id}
+                                                            onClick={() => handleAddCategory(cat.id)}
+                                                            className="w-full flex items-center gap-3 px-3 py-2 text-sm rounded-lg hover:bg-primary/10 hover:text-primary transition-all duration-200 text-left group border border-transparent hover:border-primary/30"
+                                                        >
+                                                            <div className="bg-white/5 group-hover:bg-primary/20 p-1.5 rounded-md transition-colors">
+                                                                <Icon className="h-4 w-4 text-gray-500 group-hover:text-primary transition-colors" />
+                                                            </div>
+                                                            <span className="font-medium text-gray-300 group-hover:text-primary">{cat.label}</span>
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    </PopoverContent>
+                                </Popover>
+                            )}
+                            <Button variant="ghost" size="sm" onClick={handleCancel} disabled={isSaving} className="rounded-xl">
                                 <X className="h-4 w-4 mr-1" /> Cancel
                             </Button>
-                            <Button size="sm" onClick={handleSave} disabled={isSaving}>
-                                <Save className="h-4 w-4 mr-1" /> {isSaving ? "Saving..." : "Save Changes"}
+                            <Button size="sm" onClick={handleSave} disabled={isSaving} className="bg-primary text-black hover:bg-primary/90 rounded-xl font-semibold">
+                                <Save className="h-4 w-4 mr-1" /> {isSaving ? "Saving..." : "Save"}
                             </Button>
                         </>
                     ) : (
-                        <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+                        <Button variant="outline" size="sm" onClick={() => setIsEditing(true)} className="border-zinc-700 hover:border-primary hover:bg-primary/10 rounded-xl">
                             <Edit2 className="h-4 w-4 mr-1" /> Edit Limits
                         </Button>
                     )}
                 </div>
-            </CardHeader>
-            <CardContent>
+            </div>
+
+            <div className="p-6">
                 {/* Overall Summary */}
                 {(() => {
                     const totalLimit = categoryData.reduce((sum, cat) => sum + cat.limit, 0);
@@ -124,40 +205,68 @@ export function BudgetLimitsSection({ month, year }: BudgetLimitsSectionProps) {
 
                     const percent = totalLimit > 0 ? Math.round((totalSpent / totalLimit) * 100) : 0;
                     const isOverBudget = percent > 100;
-                    const progressColor = isOverBudget ? "bg-red-500" : "bg-[#bef264]";
+                    const progressColor = isOverBudget ? "bg-red-500" : "bg-primary";
 
                     return (
-                        <div className="mb-8 p-6 bg-secondary/20 rounded-xl border border-white/5">
-                            <h4 className="text-sm font-semibold text-muted-foreground mb-2">Overall Status</h4>
-                            <div className="flex justify-between items-end mb-3">
-                                <span className="text-3xl font-bold text-white">{percent}%</span>
+                        <div className="mb-8 p-6 bg-white/5 rounded-2xl border border-white/10">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="p-2 rounded-xl bg-primary/20">
+                                    <PieChart className="h-5 w-5 text-primary" />
+                                </div>
+                                <span className="text-sm font-medium text-gray-400 uppercase tracking-wider">Overall Status</span>
+                            </div>
+                            <div className="flex justify-between items-end mb-4">
+                                <span className={`text-4xl font-bold ${isOverBudget ? 'text-red-400' : 'text-white'}`}>{percent}%</span>
                                 <div className="text-right">
-                                    <span className="text-white font-medium">${totalSpent.toLocaleString()}</span>
-                                    <span className="text-muted-foreground"> / ${totalLimit.toLocaleString()}</span>
+                                    <span className={`text-lg font-semibold ${isOverBudget ? 'text-red-400' : 'text-white'}`}>${totalSpent.toLocaleString()}</span>
+                                    <span className="text-gray-500"> / ${totalLimit.toLocaleString()}</span>
                                 </div>
                             </div>
                             <Progress
                                 value={percent > 100 ? 100 : percent}
                                 indicatorClassName={progressColor}
-                                className="h-4 bg-secondary/50"
+                                className="h-4 bg-white/10"
                             />
                         </div>
                     );
                 })()}
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {categoryData.length === 0 && isEditing && (
+                    <div className="text-center py-12 text-gray-500">
+                        <p>No categories selected. Click "Add Category" to add budget limits.</p>
+                    </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {categoryData.map(cat => {
                         const Icon = getCategoryIcon(cat.id);
                         return (
-                            <div key={cat.id} className="space-y-3 p-4 bg-secondary/10 rounded-lg border border-white/5">
-                                <div className="flex justify-between items-start">
+                            <div
+                                key={cat.id}
+                                className={`p-4 rounded-xl border relative group transition-all ${cat.isOverBudget
+                                        ? 'bg-red-500/10 border-red-500/30'
+                                        : 'bg-white/5 border-white/10 hover:border-white/20'
+                                    }`}
+                            >
+                                {isEditing && (
+                                    <button
+                                        onClick={() => handleRemoveCategory(cat.id)}
+                                        className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg hover:bg-red-500/20 text-red-400"
+                                        title="Remove category"
+                                    >
+                                        <Trash2 className="h-4 w-4" />
+                                    </button>
+                                )}
+                                <div className="flex justify-between items-start mb-4">
                                     <div className="flex items-center gap-3">
-                                        <div className="bg-secondary p-2 rounded-lg text-white shrink-0">
-                                            <Icon className="w-5 h-5" />
+                                        <div className={`p-2 rounded-xl ${cat.isOverBudget ? 'bg-red-500/20' : 'bg-white/10'}`}>
+                                            <Icon className={`w-5 h-5 ${cat.isOverBudget ? 'text-red-400' : 'text-primary'}`} />
                                         </div>
                                         <div>
-                                            <Label className="text-base font-semibold">{cat.label}</Label>
-                                            <div className="text-xs text-muted-foreground mt-1">
+                                            <Label className={`text-base font-semibold ${cat.isOverBudget ? 'text-red-400' : 'text-white'}`}>
+                                                {cat.label}
+                                            </Label>
+                                            <div className="text-xs text-gray-500 mt-0.5">
                                                 Spent: ${cat.spent.toFixed(0)} / Limit: ${cat.limit.toFixed(0)}
                                             </div>
                                         </div>
@@ -167,11 +276,18 @@ export function BudgetLimitsSection({ month, year }: BudgetLimitsSectionProps) {
                                             type="number"
                                             value={limits[cat.id] || ''}
                                             onChange={(e) => handleLimitChange(cat.id, e.target.value)}
-                                            className="w-24 h-8 text-right"
+                                            className="w-24 h-9 text-right bg-zinc-800 border-zinc-700 rounded-xl focus:border-primary"
                                             placeholder="0"
+                                            min="0"
+                                            onKeyDown={(e) => {
+                                                if (['+', '-', 'e', 'E'].includes(e.key)) {
+                                                    e.preventDefault();
+                                                }
+                                            }}
                                         />
                                     ) : (
-                                        <div className={`text-sm font-bold ${cat.isOverBudget ? 'text-red-500' : 'text-primary'}`}>
+                                        <div className={`text-sm font-bold px-2 py-1 rounded-lg ${cat.isOverBudget ? 'text-red-400 bg-red-500/20' : 'text-primary bg-primary/20'
+                                            }`}>
                                             {cat.percent}%
                                         </div>
                                     )}
@@ -179,14 +295,14 @@ export function BudgetLimitsSection({ month, year }: BudgetLimitsSectionProps) {
 
                                 <Progress
                                     value={Math.min(cat.percent, 100)}
-                                    className="h-2"
+                                    className="h-2 bg-white/10"
                                     indicatorClassName={cat.isOverBudget ? "bg-red-500" : "bg-primary"}
                                 />
                             </div>
                         );
                     })}
                 </div>
-            </CardContent>
-        </Card>
+            </div>
+        </div>
     );
 }

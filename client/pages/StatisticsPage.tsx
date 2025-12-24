@@ -23,7 +23,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ChevronLeft, ChevronRight, Calendar } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar, TrendingDown, TrendingUp, PieChart as PieChartIcon, Target, Wallet } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 
 import { useWallets } from "@/hooks/use-wallets";
@@ -254,386 +254,130 @@ export default function StatisticsPage() {
 
     if ((isLoadingBudget || isLoadingMonthlyStats) && !monthlyStats) {
         return (
-            <div className="flex items-center justify-center min-h-screen">
+            <div className="min-h-screen bg-black flex items-center justify-center">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-background text-foreground p-8">
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold font-serif">Statistics</h1>
-                    <div className="flex items-center gap-2 mt-2 text-muted-foreground">
-                        <Button variant="ghost" size="icon" onClick={handlePrevMonth} className="h-8 w-8">
-                            <ChevronLeft className="h-4 w-4" />
-                        </Button>
-                        <span className="font-semibold text-foreground min-w-[140px] text-center flex items-center justify-center gap-2">
-                            <Calendar className="h-4 w-4 text-primary" />
-                            {currentMonthName} {currentYear}
-                        </span>
-                        <Button variant="ghost" size="icon" onClick={handleNextMonth} className="h-8 w-8">
-                            <ChevronRight className="h-4 w-4" />
-                        </Button>
+        <div className="min-h-screen bg-black text-white p-6 md:p-8 relative overflow-hidden">
+            {/* Background decorations */}
+            <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-primary/5 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-purple-500/5 rounded-full blur-3xl pointer-events-none" />
+
+            <div className="relative z-10 max-w-[1800px] mx-auto">
+                {/* Header */}
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
+                    <div>
+                        <h1 className="text-3xl md:text-4xl font-bold font-serif text-white">Statistics</h1>
+                        <p className="text-gray-500 mt-1">Analyze your financial patterns</p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                        {/* Month Selector */}
+                        <div className="flex items-center bg-zinc-900/80 backdrop-blur-sm rounded-2xl border border-white/10 p-1.5">
+                            <Button variant="ghost" size="icon" onClick={handlePrevMonth} className="h-9 w-9 hover:bg-primary hover:text-black transition-all rounded-xl">
+                                <ChevronLeft className="h-4 w-4" />
+                            </Button>
+                            <span className="font-semibold text-white min-w-[150px] text-center flex items-center justify-center gap-2 px-2">
+                                <Calendar className="h-4 w-4 text-primary" />
+                                {currentMonthName} {currentYear}
+                            </span>
+                            <Button variant="ghost" size="icon" onClick={handleNextMonth} className="h-9 w-9 hover:bg-primary hover:text-black transition-all rounded-xl">
+                                <ChevronRight className="h-4 w-4" />
+                            </Button>
+                        </div>
+                        {/* Toggle Buttons */}
+                        <div className="flex gap-2">
+                            <Button
+                                variant={showIncome ? "default" : "outline"}
+                                onClick={() => setShowIncome(!showIncome)}
+                                className={`h-10 rounded-xl ${showIncome ? 'bg-green-500 hover:bg-green-600 text-black' : 'border-zinc-700 text-gray-400 hover:text-white hover:border-green-500/50'}`}
+                            >
+                                <TrendingUp className="h-4 w-4 mr-1" /> Income
+                            </Button>
+                            <Button
+                                variant={showExpense ? "default" : "outline"}
+                                onClick={() => setShowExpense(!showExpense)}
+                                className={`h-10 rounded-xl ${showExpense ? 'bg-red-500 hover:bg-red-600 text-white' : 'border-zinc-700 text-gray-400 hover:text-white hover:border-red-500/50'}`}
+                            >
+                                <TrendingDown className="h-4 w-4 mr-1" /> Expenses
+                            </Button>
+                            <Button
+                                variant={showSavings ? "default" : "outline"}
+                                onClick={() => setShowSavings(!showSavings)}
+                                className={`h-10 rounded-xl ${showSavings ? 'bg-blue-500 hover:bg-blue-600 text-white' : 'border-zinc-700 text-gray-400 hover:text-white hover:border-blue-500/50'}`}
+                            >
+                                <Target className="h-4 w-4 mr-1" /> Savings
+                            </Button>
+                        </div>
                     </div>
                 </div>
 
-                <div className="flex gap-2">
-                    <Button
-                        variant={showIncome ? "default" : "outline"}
-                        onClick={() => setShowIncome(!showIncome)}
-                        className="h-8 border-dashed"
-                    >
-                        Income
-                    </Button>
-                    <Button
-                        variant={showExpense ? "default" : "outline"}
-                        onClick={() => setShowExpense(!showExpense)}
-                        className="h-8 border-dashed"
-                    >
-                        Expenses
-                    </Button>
-                    <Button
-                        variant={showSavings ? "default" : "outline"}
-                        onClick={() => setShowSavings(!showSavings)}
-                        className="h-8 border-dashed"
-                    >
-                        Savings
-                    </Button>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Daily Financial Flow (Area Chart) */}
-                <Card className="col-span-1 lg:col-span-2 bg-card border-none shadow-xl">
-                    <CardHeader className="flex flex-row items-center justify-between">
-                        <CardTitle className="text-xl font-semibold text-card-foreground">Daily Financial Flow</CardTitle>
-                        <div className="flex gap-4">
-                            <Select value={xAxisMode} onValueChange={(v: any) => setXAxisMode(v)}>
-                                <SelectTrigger className="w-[120px]">
-                                    <SelectValue placeholder="X-Axis" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="daily">Daily</SelectItem>
-                                    <SelectItem value="weekly">Weekly</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <Select value={yAxisMode} onValueChange={(v: any) => setYAxisMode(v)}>
-                                <SelectTrigger className="w-[120px]">
-                                    <SelectValue placeholder="Y-Axis" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="standard">Standard</SelectItem>
-                                    <SelectItem value="cumulative">Cumulative</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <div className="w-[100px]">
-                                <Input
-                                    type="number"
-                                    placeholder="Y-Max"
-                                    value={yAxisMax}
-                                    onChange={(e) => setYAxisMax(e.target.value)}
-                                    className="bg-background"
-                                />
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Daily Financial Flow (Area Chart) */}
+                    <div className="col-span-1 lg:col-span-2 rounded-2xl bg-zinc-900/50 border border-white/10 overflow-hidden">
+                        <div className="p-6 border-b border-white/10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 rounded-xl bg-primary/20">
+                                    <TrendingUp className="h-5 w-5 text-primary" />
+                                </div>
+                                <h2 className="text-xl font-semibold font-serif text-white">Daily Financial Flow</h2>
+                            </div>
+                            <div className="flex gap-3">
+                                <Select value={xAxisMode} onValueChange={(v: any) => setXAxisMode(v)}>
+                                    <SelectTrigger className="w-[120px] bg-zinc-800 border-zinc-700 rounded-xl">
+                                        <SelectValue placeholder="X-Axis" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-zinc-800 border-zinc-700">
+                                        <SelectItem value="daily">Daily</SelectItem>
+                                        <SelectItem value="weekly">Weekly</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <Select value={yAxisMode} onValueChange={(v: any) => setYAxisMode(v)}>
+                                    <SelectTrigger className="w-[120px] bg-zinc-800 border-zinc-700 rounded-xl">
+                                        <SelectValue placeholder="Y-Axis" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-zinc-800 border-zinc-700">
+                                        <SelectItem value="standard">Standard</SelectItem>
+                                        <SelectItem value="cumulative">Cumulative</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <div className="w-[100px]">
+                                    <Input
+                                        type="number"
+                                        placeholder="Y-Max"
+                                        value={yAxisMax}
+                                        onChange={(e) => setYAxisMax(e.target.value)}
+                                        className="bg-zinc-800 border-zinc-700 rounded-xl"
+                                    />
+                                </div>
                             </div>
                         </div>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="h-[300px] w-full">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                                    <defs>
-                                        <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8} />
-                                            <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.1} />
-                                        </linearGradient>
-                                        <linearGradient id="colorExpense" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="hsl(var(--destructive))" stopOpacity={0.8} />
-                                            <stop offset="95%" stopColor="hsl(var(--destructive))" stopOpacity={0.1} />
-                                        </linearGradient>
-                                        <linearGradient id="colorSavings" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="hsl(var(--chart-2))" stopOpacity={0.8} />
-                                            <stop offset="95%" stopColor="hsl(var(--chart-2))" stopOpacity={0.1} />
-                                        </linearGradient>
-                                    </defs>
-                                    <XAxis
-                                        dataKey="date"
-                                        stroke="hsl(var(--muted-foreground))"
-                                        fontSize={12}
-                                        tickLine={false}
-                                        axisLine={false}
-                                    />
-                                    <YAxis
-                                        stroke="hsl(var(--muted-foreground))"
-                                        fontSize={12}
-                                        tickLine={false}
-                                        axisLine={false}
-                                        tickFormatter={(value) => `${currency}${value}`}
-                                        domain={[0, yAxisMax ? parseInt(yAxisMax) : 'auto']}
-                                    />
-                                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} opacity={0.4} />
-                                    <Tooltip
-                                        contentStyle={{ backgroundColor: 'hsl(var(--popover))', borderColor: 'hsl(var(--border))', borderRadius: 'var(--radius)', color: 'hsl(var(--popover-foreground))' }}
-                                        itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
-                                        labelStyle={{ color: 'hsl(var(--muted-foreground))' }}
-                                        formatter={(value: number) => [`${currency}${value.toFixed(2)}`, '']}
-                                    />
-                                    <Legend />
-                                    {showIncome && (
-                                        <Area
-                                            type="monotone"
-                                            dataKey="income"
-                                            name="Income"
-                                            stroke="hsl(var(--primary))"
-                                            fillOpacity={1}
-                                            fill="url(#colorIncome)"
-                                            strokeWidth={2}
-                                        />
-                                    )}
-                                    {showExpense && (
-                                        <Area
-                                            type="monotone"
-                                            dataKey="expense"
-                                            name="Expenses"
-                                            stroke="hsl(var(--destructive))"
-                                            fillOpacity={1}
-                                            fill="url(#colorExpense)"
-                                            strokeWidth={2}
-                                        />
-                                    )}
-                                    {showSavings && (
-                                        <Area
-                                            type="monotone"
-                                            dataKey="savings"
-                                            name="Savings"
-                                            stroke="hsl(var(--chart-2))"
-                                            fillOpacity={1}
-                                            fill="url(#colorSavings)"
-                                            strokeWidth={2}
-                                        />
-                                    )}
-                                </AreaChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* Expense Breakdown (Pie Chart) - Left Side */}
-                <Card className="col-span-1 bg-card border-none shadow-xl">
-                    <CardHeader>
-                        <CardTitle className="text-xl font-semibold text-card-foreground">Expense Breakdown</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="h-[350px] lg:h-[450px] w-full">
-                            {pieData.length > 0 ? (
+                        <div className="p-6">
+                            <div className="h-[300px] w-full">
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <PieChart>
-                                        <Pie
-                                            data={pieData}
-                                            cx="50%"
-                                            cy="50%"
-                                            innerRadius="45%"
-                                            outerRadius="60%"
-                                            paddingAngle={2}
-                                            dataKey="value"
-                                            labelLine={false}
-                                            label={(props) => {
-                                                const RADIAN = Math.PI / 180;
-                                                const { cx, cy, midAngle, innerRadius, outerRadius, percent, index, name } = props;
-                                                const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-                                                const x = cx + radius * Math.cos(-midAngle * RADIAN);
-                                                const y = cy + radius * Math.sin(-midAngle * RADIAN);
-
-                                                // Custom logic for "spider" legs
-                                                const sin = Math.sin(-RADIAN * midAngle);
-                                                const cos = Math.cos(-RADIAN * midAngle);
-                                                const sx = cx + (outerRadius + 10) * cos;
-                                                const sy = cy + (outerRadius + 10) * sin;
-                                                const mx = cx + (outerRadius + 30) * cos;
-                                                const my = cy + (outerRadius + 30) * sin;
-                                                const ex = mx + (cos >= 0 ? 1 : -1) * 22;
-                                                const ey = my;
-                                                const textAnchor = cos >= 0 ? 'start' : 'end';
-
-                                                return (
-                                                    <g>
-                                                        <path d={`M${sx},${sy}L${mx},${my}L${ex},${ey}`} stroke={pieColors[index % pieColors.length]} fill="none" />
-                                                        <circle cx={ex} cy={ey} r={2} fill={pieColors[index % pieColors.length]} stroke="none" />
-                                                        <text x={ex + (cos >= 0 ? 1 : -1) * 12} y={ey} dy={4} textAnchor={textAnchor} fill={pieColors[index % pieColors.length]} fontSize={14} fontWeight="500">
-                                                            {`${name} ${(percent * 100).toFixed(0)}%`}
-                                                        </text>
-                                                    </g>
-                                                );
-                                            }}
-                                            stroke="none"
-                                        >
-                                            {pieData.map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={pieColors[index % pieColors.length]} />
-                                            ))}
-                                            <Label
-                                                content={({ viewBox }) => {
-                                                    if (viewBox && 'cx' in viewBox && 'cy' in viewBox) {
-                                                        return (
-                                                            <text x={viewBox.cx} y={viewBox.cy} textAnchor="middle" dominantBaseline="middle">
-                                                                <tspan x={viewBox.cx} y={viewBox.cy} dy="-10" className="fill-muted-foreground text-xs font-medium uppercase tracking-wider">
-                                                                    Total Spent
-                                                                </tspan>
-                                                                <tspan x={viewBox.cx} y={viewBox.cy} dy="20" className="fill-primary text-xl font-bold" style={{ filter: 'drop-shadow(0 0 1px hsl(var(--primary)))' }}>
-                                                                    {currency}{totalMonthlyExpense.toFixed(2)}
-                                                                </tspan>
-                                                            </text>
-                                                        )
-                                                    }
-                                                    return null;
-                                                }}
-                                                position="center"
-                                            />
-                                        </Pie>
-                                        <Tooltip
-                                            contentStyle={{ backgroundColor: 'hsl(var(--popover))', borderColor: 'hsl(var(--border))', borderRadius: 'var(--radius)', color: 'hsl(var(--popover-foreground))' }}
-                                            itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
-                                            formatter={(value: number) => [`${currency}${value.toFixed(2)}`, 'Amount']}
-                                        />
-                                    </PieChart>
-                                </ResponsiveContainer>
-                            ) : (
-                                <div className="h-full flex items-center justify-center text-muted-foreground">
-                                    No expense data available
-                                </div>
-                            )}
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* Goals Progress (Bar Chart) - Right Side */}
-                <Card className="col-span-1 bg-card border-none shadow-xl">
-                    <CardHeader>
-                        <CardTitle className="text-xl font-semibold text-card-foreground">Goals Progress</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="h-[300px] w-full">
-                            {goalsData.length > 0 ? (
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart
-                                        layout="vertical"
-                                        data={goalsData}
-                                        margin={{ top: 20, right: 30, left: 40, bottom: 5 }}
-                                    >
-                                        <XAxis type="number" domain={[0, 100]} hide />
-                                        <YAxis dataKey="name" type="category" width={100} tick={{ fill: 'hsl(var(--foreground))', fontSize: 12, fontWeight: 500 }} />
-                                        <Tooltip
-                                            cursor={{ fill: 'transparent' }}
-                                            contentStyle={{ backgroundColor: 'hsl(var(--popover))', borderColor: 'hsl(var(--border))', borderRadius: 'var(--radius)', color: 'hsl(var(--popover-foreground))' }}
-                                            itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
-                                            formatter={(value: number, name: string, props: any) => {
-                                                const realValue = name === 'Saved' ? props.payload.saved : props.payload.remaining;
-                                                if (name === 'Saved') return [`${currency}${realValue} (${props.payload.percent}%)`, name];
-                                                return [`${currency}${realValue}`, name];
-                                            }}
-                                        />
-                                        <Bar dataKey="barSaved" name="Saved" stackId="a" radius={[4, 0, 0, 4]}>
-                                            {goalsData.map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={entry.color} />
-                                            ))}
-                                            {/* Label List rendered manually via Content */}
-                                            <LabelList content={renderSavedLabel} />
-                                        </Bar>
-                                        <Bar dataKey="barRemaining" name="Remaining" stackId="a" fill="hsl(var(--secondary))" radius={[0, 4, 4, 0]}>
-                                            <LabelList content={renderRemainingLabel} />
-                                        </Bar>
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            ) : (
-                                <div className="h-full flex items-center justify-center text-muted-foreground">
-                                    No goals set
-                                </div>
-                            )}
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* Wallet Spending (Redesigned) - Bottom Full Width */}
-                <Card className="col-span-1 lg:col-span-2 bg-card border-none shadow-xl">
-                    <CardHeader>
-                        <CardTitle className="text-xl font-semibold text-card-foreground">Wallet Spending</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="flex flex-col gap-6">
-                            {walletData.length > 0 ? (
-                                walletData.map((wallet: any, index: number) => (
-                                    <div key={wallet.id} className="space-y-2">
-                                        <div className="flex justify-between items-center text-sm">
-                                            <div className="flex items-center gap-2">
-                                                <div className="font-semibold">{wallet.name}</div>
-                                                <div className="text-primary text-xs">
-                                                    (Remaining: {currency}{wallet.remaining?.toFixed(2) || '0.00'})
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-4">
-                                                <span className={`${wallet.percentage > 90 ? 'text-destructive' : 'text-foreground'} font-medium`}>{currency}{wallet.expense.toFixed(2)}</span>
-                                                <span className="text-muted-foreground">/</span>
-                                                <span className="font-medium text-primary">{currency}{wallet.totalAvailable?.toFixed(2) || '0.00'}</span>
-                                            </div>
-                                        </div>
-                                        <div className="h-3 w-full bg-secondary rounded-full overflow-hidden">
-                                            <div
-                                                className="h-full bg-primary transition-all duration-500"
-                                                style={{ width: `${Math.min(100, wallet.percentage)}%` }}
-                                            />
-                                        </div>
-                                    </div>
-                                ))
-                            ) : (
-                                <div className="py-8 flex items-center justify-center text-muted-foreground">
-                                    No wallet activity this month
-                                </div>
-                            )}
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* Yearly Expense Overview - Moved to Bottom */}
-            {/* Yearly Expense Overview - Modern UI */}
-            <div className="mt-8 mb-8">
-                <Card className="bg-card border-none shadow-xl overflow-hidden relative">
-                    {/* Decorative background glow */}
-                    <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-primary/5 rounded-full blur-3xl -z-10 translate-x-1/2 -translate-y-1/2"></div>
-
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <div>
-                            <CardTitle className="text-xl font-semibold text-card-foreground">Yearly Overview</CardTitle>
-                            <p className="text-sm text-muted-foreground">Spending trends for {currentYear}</p>
-                        </div>
-                        <div className="text-right">
-                            <span className="text-2xl font-bold block text-primary">{currency}{totalYearlyExpense.toFixed(2)}</span>
-                            <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Total Spent</span>
-                        </div>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="h-[300px] w-full mt-4">
-                            {isLoadingYearly ? (
-                                <div className="h-full flex items-center justify-center">
-                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                                </div>
-                            ) : yearlyStats.length > 0 ? (
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={yearlyStats} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                    <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                                         <defs>
-                                            <linearGradient id="yearExpenseGradient" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="0%" stopColor="hsl(var(--destructive))" stopOpacity={0.8} />
-                                                <stop offset="95%" stopColor="hsl(var(--destructive))" stopOpacity={0.3} />
+                                            <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8} />
+                                                <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.1} />
+                                            </linearGradient>
+                                            <linearGradient id="colorExpense" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="hsl(var(--destructive))" stopOpacity={0.8} />
+                                                <stop offset="95%" stopColor="hsl(var(--destructive))" stopOpacity={0.1} />
+                                            </linearGradient>
+                                            <linearGradient id="colorSavings" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="hsl(var(--chart-2))" stopOpacity={0.8} />
+                                                <stop offset="95%" stopColor="hsl(var(--chart-2))" stopOpacity={0.1} />
                                             </linearGradient>
                                         </defs>
-                                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} opacity={0.4} />
                                         <XAxis
-                                            dataKey="name"
+                                            dataKey="date"
                                             stroke="hsl(var(--muted-foreground))"
                                             fontSize={12}
                                             tickLine={false}
                                             axisLine={false}
-                                            dy={10}
                                         />
                                         <YAxis
                                             stroke="hsl(var(--muted-foreground))"
@@ -641,36 +385,327 @@ export default function StatisticsPage() {
                                             tickLine={false}
                                             axisLine={false}
                                             tickFormatter={(value) => `${currency}${value}`}
+                                            domain={[0, yAxisMax ? parseInt(yAxisMax) : 'auto']}
                                         />
+                                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} opacity={0.4} />
                                         <Tooltip
-                                            cursor={{ fill: 'hsl(var(--muted)/0.2)' }}
-                                            contentStyle={{
-                                                backgroundColor: 'hsl(var(--popover))',
-                                                borderColor: 'hsl(var(--border))',
-                                                borderRadius: '0.5rem',
-                                                boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                                            }}
-                                            itemStyle={{ color: 'hsl(var(--destructive))', fontWeight: 600 }}
-                                            formatter={(value: number) => [`${currency}${value.toFixed(2)}`, 'Expense']}
+                                            contentStyle={{ backgroundColor: 'hsl(var(--popover))', borderColor: 'hsl(var(--border))', borderRadius: 'var(--radius)', color: 'hsl(var(--popover-foreground))' }}
+                                            itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
+                                            labelStyle={{ color: 'hsl(var(--muted-foreground))' }}
+                                            formatter={(value: number) => [`${currency}${value.toFixed(2)}`, '']}
                                         />
-                                        <Bar
-                                            dataKey="expense"
-                                            name="Expense"
-                                            fill="url(#yearExpenseGradient)"
-                                            radius={[6, 6, 0, 0]}
-                                            maxBarSize={50}
-                                        />
-                                    </BarChart>
+                                        <Legend />
+                                        {showIncome && (
+                                            <Area
+                                                type="monotone"
+                                                dataKey="income"
+                                                name="Income"
+                                                stroke="hsl(var(--primary))"
+                                                fillOpacity={1}
+                                                fill="url(#colorIncome)"
+                                                strokeWidth={2}
+                                            />
+                                        )}
+                                        {showExpense && (
+                                            <Area
+                                                type="monotone"
+                                                dataKey="expense"
+                                                name="Expenses"
+                                                stroke="hsl(var(--destructive))"
+                                                fillOpacity={1}
+                                                fill="url(#colorExpense)"
+                                                strokeWidth={2}
+                                            />
+                                        )}
+                                        {showSavings && (
+                                            <Area
+                                                type="monotone"
+                                                dataKey="savings"
+                                                name="Savings"
+                                                stroke="hsl(var(--chart-2))"
+                                                fillOpacity={1}
+                                                fill="url(#colorSavings)"
+                                                strokeWidth={2}
+                                            />
+                                        )}
+                                    </AreaChart>
                                 </ResponsiveContainer>
-                            ) : (
-                                <div className="h-full flex items-center justify-center text-muted-foreground">
-                                    No yearly data available
-                                </div>
-                            )}
+                            </div>
                         </div>
-                    </CardContent>
-                </Card>
+                    </div>
+
+                    {/* Expense Breakdown (Pie Chart) - Left Side */}
+                    <div className="col-span-1 rounded-2xl bg-zinc-900/50 border border-white/10 overflow-hidden">
+                        <div className="p-6 border-b border-white/10">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 rounded-xl bg-purple-500/20">
+                                    <PieChartIcon className="h-5 w-5 text-purple-400" />
+                                </div>
+                                <h2 className="text-xl font-semibold font-serif text-white">Expense Breakdown</h2>
+                            </div>
+                        </div>
+                        <div className="p-6">
+                            <div className="h-[350px] lg:h-[450px] w-full">
+                                {pieData.length > 0 ? (
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <PieChart>
+                                            <Pie
+                                                data={pieData}
+                                                cx="50%"
+                                                cy="50%"
+                                                innerRadius="45%"
+                                                outerRadius="60%"
+                                                paddingAngle={2}
+                                                dataKey="value"
+                                                labelLine={false}
+                                                label={(props) => {
+                                                    const RADIAN = Math.PI / 180;
+                                                    const { cx, cy, midAngle, innerRadius, outerRadius, percent, index, name } = props;
+                                                    const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+                                                    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                                                    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+
+                                                    // Custom logic for "spider" legs
+                                                    const sin = Math.sin(-RADIAN * midAngle);
+                                                    const cos = Math.cos(-RADIAN * midAngle);
+                                                    const sx = cx + (outerRadius + 10) * cos;
+                                                    const sy = cy + (outerRadius + 10) * sin;
+                                                    const mx = cx + (outerRadius + 30) * cos;
+                                                    const my = cy + (outerRadius + 30) * sin;
+                                                    const ex = mx + (cos >= 0 ? 1 : -1) * 22;
+                                                    const ey = my;
+                                                    const textAnchor = cos >= 0 ? 'start' : 'end';
+
+                                                    return (
+                                                        <g>
+                                                            <path d={`M${sx},${sy}L${mx},${my}L${ex},${ey}`} stroke={pieColors[index % pieColors.length]} fill="none" />
+                                                            <circle cx={ex} cy={ey} r={2} fill={pieColors[index % pieColors.length]} stroke="none" />
+                                                            <text x={ex + (cos >= 0 ? 1 : -1) * 12} y={ey} dy={4} textAnchor={textAnchor} fill={pieColors[index % pieColors.length]} fontSize={14} fontWeight="500">
+                                                                {`${name} ${(percent * 100).toFixed(0)}%`}
+                                                            </text>
+                                                        </g>
+                                                    );
+                                                }}
+                                                stroke="none"
+                                            >
+                                                {pieData.map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={pieColors[index % pieColors.length]} />
+                                                ))}
+                                                <Label
+                                                    content={({ viewBox }) => {
+                                                        if (viewBox && 'cx' in viewBox && 'cy' in viewBox) {
+                                                            return (
+                                                                <text x={viewBox.cx} y={viewBox.cy} textAnchor="middle" dominantBaseline="middle">
+                                                                    <tspan x={viewBox.cx} y={viewBox.cy} dy="-10" className="fill-muted-foreground text-xs font-medium uppercase tracking-wider">
+                                                                        Total Spent
+                                                                    </tspan>
+                                                                    <tspan x={viewBox.cx} y={viewBox.cy} dy="20" className="fill-primary text-xl font-bold" style={{ filter: 'drop-shadow(0 0 1px hsl(var(--primary)))' }}>
+                                                                        {currency}{totalMonthlyExpense.toFixed(2)}
+                                                                    </tspan>
+                                                                </text>
+                                                            )
+                                                        }
+                                                        return null;
+                                                    }}
+                                                    position="center"
+                                                />
+                                            </Pie>
+                                            <Tooltip
+                                                contentStyle={{ backgroundColor: 'hsl(var(--popover))', borderColor: 'hsl(var(--border))', borderRadius: 'var(--radius)', color: 'hsl(var(--popover-foreground))' }}
+                                                itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
+                                                formatter={(value: number) => [`${currency}${value.toFixed(2)}`, 'Amount']}
+                                            />
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                ) : (
+                                    <div className="h-full flex items-center justify-center text-muted-foreground">
+                                        No expense data available
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Goals Progress (Bar Chart) - Right Side */}
+                    <div className="col-span-1 rounded-2xl bg-zinc-900/50 border border-white/10 overflow-hidden">
+                        <div className="p-6 border-b border-white/10">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 rounded-xl bg-green-500/20">
+                                    <Target className="h-5 w-5 text-green-400" />
+                                </div>
+                                <h2 className="text-xl font-semibold font-serif text-white">Goals Progress</h2>
+                            </div>
+                        </div>
+                        <div className="p-6">
+                            <div className="h-[300px] w-full">
+                                {goalsData.length > 0 ? (
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart
+                                            layout="vertical"
+                                            data={goalsData}
+                                            margin={{ top: 20, right: 30, left: 40, bottom: 5 }}
+                                        >
+                                            <XAxis type="number" domain={[0, 100]} hide />
+                                            <YAxis dataKey="name" type="category" width={100} tick={{ fill: 'hsl(var(--foreground))', fontSize: 12, fontWeight: 500 }} />
+                                            <Tooltip
+                                                cursor={{ fill: 'transparent' }}
+                                                contentStyle={{ backgroundColor: 'hsl(var(--popover))', borderColor: 'hsl(var(--border))', borderRadius: 'var(--radius)', color: 'hsl(var(--popover-foreground))' }}
+                                                itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
+                                                formatter={(value: number, name: string, props: any) => {
+                                                    const realValue = name === 'Saved' ? props.payload.saved : props.payload.remaining;
+                                                    if (name === 'Saved') return [`${currency}${realValue} (${props.payload.percent}%)`, name];
+                                                    return [`${currency}${realValue}`, name];
+                                                }}
+                                            />
+                                            <Bar dataKey="barSaved" name="Saved" stackId="a" radius={[4, 0, 0, 4]}>
+                                                {goalsData.map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={entry.color} />
+                                                ))}
+                                                {/* Label List rendered manually via Content */}
+                                                <LabelList content={renderSavedLabel} />
+                                            </Bar>
+                                            <Bar dataKey="barRemaining" name="Remaining" stackId="a" fill="hsl(var(--secondary))" radius={[0, 4, 4, 0]}>
+                                                <LabelList content={renderRemainingLabel} />
+                                            </Bar>
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                ) : (
+                                    <div className="h-full flex items-center justify-center text-muted-foreground">
+                                        No goals set
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Wallet Spending (Redesigned) - Bottom Full Width */}
+                    <div className="col-span-1 lg:col-span-2 rounded-2xl bg-zinc-900/50 border border-white/10 overflow-hidden">
+                        <div className="p-6 border-b border-white/10">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 rounded-xl bg-blue-500/20">
+                                    <Wallet className="h-5 w-5 text-blue-400" />
+                                </div>
+                                <h2 className="text-xl font-semibold font-serif text-white">Wallet Spending</h2>
+                            </div>
+                        </div>
+                        <div className="p-6">
+                            <div className="flex flex-col gap-6">
+                                {walletData.length > 0 ? (
+                                    walletData.map((wallet: any, index: number) => (
+                                        <div key={wallet.id} className="space-y-2">
+                                            <div className="flex justify-between items-center text-sm">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="font-semibold">{wallet.name}</div>
+                                                    <div className="text-primary text-xs">
+                                                        (Remaining: {currency}{wallet.remaining?.toFixed(2) || '0.00'})
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-4">
+                                                    <span className={`${wallet.percentage > 90 ? 'text-destructive' : 'text-foreground'} font-medium`}>{currency}{wallet.expense.toFixed(2)}</span>
+                                                    <span className="text-muted-foreground">/</span>
+                                                    <span className="font-medium text-primary">{currency}{wallet.totalAvailable?.toFixed(2) || '0.00'}</span>
+                                                </div>
+                                            </div>
+                                            <div className="h-3 w-full bg-secondary rounded-full overflow-hidden">
+                                                <div
+                                                    className="h-full bg-primary transition-all duration-500"
+                                                    style={{ width: `${Math.min(100, wallet.percentage)}%` }}
+                                                />
+                                            </div>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="py-8 flex items-center justify-center text-muted-foreground">
+                                        No wallet activity this month
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Yearly Expense Overview */}
+                <div className="mt-8 mb-8">
+                    <div className="rounded-2xl bg-zinc-900/50 border border-white/10 overflow-hidden relative">
+                        {/* Decorative background glow */}
+                        <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-red-500/5 rounded-full blur-3xl pointer-events-none translate-x-1/2 -translate-y-1/2"></div>
+
+                        <div className="p-6 border-b border-white/10 flex flex-row items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 rounded-xl bg-red-500/20">
+                                    <TrendingDown className="h-5 w-5 text-red-400" />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-semibold font-serif text-white">Yearly Overview</h2>
+                                    <p className="text-sm text-gray-500">Spending trends for {currentYear}</p>
+                                </div>
+                            </div>
+                            <div className="text-right">
+                                <span className="text-2xl font-bold block text-red-400">{currency}{totalYearlyExpense.toFixed(2)}</span>
+                                <span className="text-xs text-gray-500 font-medium uppercase tracking-wider">Total Spent</span>
+                            </div>
+                        </div>
+                        <div className="p-6">
+                            <div className="h-[300px] w-full mt-4">
+                                {isLoadingYearly ? (
+                                    <div className="h-full flex items-center justify-center">
+                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                                    </div>
+                                ) : yearlyStats.length > 0 ? (
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={yearlyStats} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                            <defs>
+                                                <linearGradient id="yearExpenseGradient" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="0%" stopColor="hsl(var(--destructive))" stopOpacity={0.8} />
+                                                    <stop offset="95%" stopColor="hsl(var(--destructive))" stopOpacity={0.3} />
+                                                </linearGradient>
+                                            </defs>
+                                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} opacity={0.4} />
+                                            <XAxis
+                                                dataKey="name"
+                                                stroke="hsl(var(--muted-foreground))"
+                                                fontSize={12}
+                                                tickLine={false}
+                                                axisLine={false}
+                                                dy={10}
+                                            />
+                                            <YAxis
+                                                stroke="hsl(var(--muted-foreground))"
+                                                fontSize={12}
+                                                tickLine={false}
+                                                axisLine={false}
+                                                tickFormatter={(value) => `${currency}${value}`}
+                                            />
+                                            <Tooltip
+                                                cursor={{ fill: 'hsl(var(--muted)/0.2)' }}
+                                                contentStyle={{
+                                                    backgroundColor: 'hsl(var(--popover))',
+                                                    borderColor: 'hsl(var(--border))',
+                                                    borderRadius: '0.5rem',
+                                                    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                                                }}
+                                                itemStyle={{ color: 'hsl(var(--destructive))', fontWeight: 600 }}
+                                                formatter={(value: number) => [`${currency}${value.toFixed(2)}`, 'Expense']}
+                                            />
+                                            <Bar
+                                                dataKey="expense"
+                                                name="Expense"
+                                                fill="url(#yearExpenseGradient)"
+                                                radius={[6, 6, 0, 0]}
+                                                maxBarSize={50}
+                                            />
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                ) : (
+                                    <div className="h-full flex items-center justify-center text-muted-foreground">
+                                        No yearly data available
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-        </div >
+        </div>
     );
 }

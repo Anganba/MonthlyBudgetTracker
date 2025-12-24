@@ -85,7 +85,7 @@ export function Sidebar({ collapsed, setCollapsed, mobile = false }: SidebarProp
                 )}
             </div>
 
-            <nav className="flex-1 space-y-2">
+            <nav className="flex-1 space-y-1">
                 {links.map((link) => {
                     const Icon = link.icon;
                     const isActive = currentPath === link.href;
@@ -93,14 +93,21 @@ export function Sidebar({ collapsed, setCollapsed, mobile = false }: SidebarProp
                         <Link key={link.href} to={link.href} className="block" title={collapsed ? link.label : ""}>
                             <div
                                 className={cn(
-                                    "flex items-center gap-4 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200",
+                                    "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group",
                                     isActive
-                                        ? "bg-primary/20 text-primary border-l-4 border-primary"
-                                        : "text-gray-400 hover:text-white hover:bg-white/5",
+                                        ? "bg-primary text-black shadow-lg shadow-primary/30"
+                                        : "text-gray-400 hover:text-primary hover:bg-primary/10",
                                     collapsed ? "justify-center px-2" : ""
                                 )}
                             >
-                                <Icon className="w-5 h-5 shrink-0" />
+                                <div className={cn(
+                                    "p-1.5 rounded-lg transition-colors",
+                                    isActive
+                                        ? "bg-black/20"
+                                        : "bg-white/5 group-hover:bg-primary/20"
+                                )}>
+                                    <Icon className="w-4 h-4 shrink-0" />
+                                </div>
                                 {!collapsed && <span>{link.label}</span>}
                             </div>
                         </Link>

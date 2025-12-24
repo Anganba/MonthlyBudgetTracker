@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Goal } from '@shared/api';
+import { Target } from 'lucide-react';
 
 interface GoalDialogProps {
     open: boolean;
@@ -58,16 +59,21 @@ export function GoalDialog({ open, onOpenChange, onSubmit, initialData, mode = '
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="sm:max-w-md bg-zinc-900 border-white/10">
                 <DialogHeader>
-                    <DialogTitle className="font-serif">{title}</DialogTitle>
-                    <DialogDescription>
+                    <DialogTitle className="font-serif text-2xl text-white flex items-center gap-3">
+                        <div className="p-2 rounded-xl bg-primary/20">
+                            <Target className="h-5 w-5 text-primary" />
+                        </div>
+                        {title}
+                    </DialogTitle>
+                    <DialogDescription className="text-gray-500">
                         {description}
                     </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="space-y-2">
-                        <Label htmlFor="name">Goal Name</Label>
+                        <Label htmlFor="name" className="text-gray-400">Goal Name</Label>
                         <Input
                             id="name"
                             type="text"
@@ -75,12 +81,13 @@ export function GoalDialog({ open, onOpenChange, onSubmit, initialData, mode = '
                             onChange={(e) => setName(e.target.value)}
                             placeholder="e.g., New Car, Holiday"
                             autoFocus
+                            className="bg-zinc-800 border-zinc-700 rounded-xl h-11 focus:border-primary"
                         />
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <Label htmlFor="target">Target Amount</Label>
+                            <Label htmlFor="target" className="text-gray-400">Target Amount</Label>
                             <Input
                                 id="target"
                                 type="number"
@@ -88,10 +95,11 @@ export function GoalDialog({ open, onOpenChange, onSubmit, initialData, mode = '
                                 onChange={(e) => setTargetAmount(e.target.value)}
                                 placeholder="0.00"
                                 step="0.01"
+                                className="bg-zinc-800 border-zinc-700 rounded-xl h-11 focus:border-primary"
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="current">Current Saved</Label>
+                            <Label htmlFor="current" className="text-gray-400">Current Saved</Label>
                             <Input
                                 id="current"
                                 type="number"
@@ -99,19 +107,24 @@ export function GoalDialog({ open, onOpenChange, onSubmit, initialData, mode = '
                                 onChange={(e) => setCurrentAmount(e.target.value)}
                                 placeholder="0.00"
                                 step="0.01"
+                                className="bg-zinc-800 border-zinc-700 rounded-xl h-11 focus:border-primary"
                             />
                         </div>
                     </div>
 
-                    <DialogFooter className="mt-6">
+                    <DialogFooter className="mt-6 gap-2 sm:gap-0 pt-4">
                         <Button
                             type="button"
-                            variant="secondary"
+                            variant="ghost"
                             onClick={() => onOpenChange(false)}
+                            className="text-gray-400 hover:text-white"
                         >
                             Cancel
                         </Button>
-                        <Button type="submit">
+                        <Button
+                            type="submit"
+                            className="bg-primary text-black hover:bg-primary/90 font-bold rounded-xl px-6"
+                        >
                             {submitText}
                         </Button>
                     </DialogFooter>

@@ -8,6 +8,7 @@ export interface Wallet {
   name: string;
   type: 'cash' | 'mfs' | 'bank' | 'credit_card' | 'debit_card' | 'virtual_card' | 'other';
   balance: number;
+  description?: string;
   icon?: string;
   color?: string;
   isDefault?: boolean;
