@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQueryClient } from "@tanstack/react-query";
 import { BudgetMonth, Transaction } from '@shared/api';
 import { BudgetHeader } from '../components/budget/Header';
@@ -28,6 +29,7 @@ const MONTHS = [
 import { useBudget } from "@/hooks/use-budget";
 import { useWallets } from '@/hooks/use-wallets';
 import { useAuth } from "@/lib/auth";
+import { useToast } from "@/hooks/use-toast";
 
 export function TransactionsPage() {
     const queryClient = useQueryClient();
@@ -39,9 +41,11 @@ export function TransactionsPage() {
     const { user } = useAuth();
 
     const [currency, setCurrency] = useState('USD');
+    const [searchParams, setSearchParams] = useSearchParams();
     const [searchTerm, setSearchTerm] = useState('');
     const [categoryFilter, setCategoryFilter] = useState('all');
     const [typeFilter, setTypeFilter] = useState('all');
+    const [walletFilter, setWalletFilter] = useState(searchParams.get('wallet') || 'all');
     const [sortConfig, setSortConfig] = useState<{ key: keyof Transaction | 'wallet' | 'type'; direction: 'asc' | 'desc' } | null>(null);
 
     const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -75,21 +79,47 @@ export function TransactionsPage() {
     const getTypeInfo = (type: string) => {
         switch (type) {
             case 'income': return { icon: ArrowUpCircle, color: 'text-green-400', bg: 'bg-green-500/20' };
-            case 'expense': return { icon: ArrowDownCircle, color: 'text-red-400', bg: 'bg-red-500/20' };
+            case 'expense': return { icon: ArrowDownCircle, color: 'text-orange-400', bg: 'bg-orange-500/20' };
             case 'savings': return { icon: PiggyBank, color: 'text-blue-400', bg: 'bg-blue-500/20' };
             case 'transfer': return { icon: ArrowLeftRight, color: 'text-purple-400', bg: 'bg-purple-500/20' };
             default: return { icon: Receipt, color: 'text-gray-400', bg: 'bg-gray-500/20' };
         }
     };
 
-    const filteredTransactions = budget?.transactions.filter(t => {
-        const matchesSearch = t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            t.category.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesCategory = categoryFilter === 'all' || t.category === categoryFilter;
-        const type = getTransactionType(t);
-        const matchesType = typeFilter === 'all' || type === typeFilter;
-        return matchesSearch && matchesCategory && matchesType;
-    }) || [];
+    // Compute validated wallet filter - check if filter ID matches any wallet
+    // If wallets haven't loaded yet (length === 0), defer validation
+    const getValidatedWalletFilter = (): string => {
+        if (walletFilter === 'all') return 'all';
+        if (wallets.length === 0) return walletFilter; // Wait for wallets to load
+        const isValidWallet = wallets.some(w => w.id === walletFilter);
+        return isValidWallet ? walletFilter : 'all';
+    };
+    const validatedWalletFilter = getValidatedWalletFilter();
+
+    const filteredTransactions = React.useMemo(() => {
+        const source = budget?.transactions || [];
+
+        // Only filter by wallet if we have a valid wallet filter and wallets are loaded
+        const shouldFilterByWallet = validatedWalletFilter !== 'all' && wallets.length > 0;
+
+        const result = source.filter(t => {
+            const matchesSearch = t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                t.category.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchesCategory = categoryFilter === 'all' || t.category === categoryFilter;
+            const type = getTransactionType(t);
+            const matchesType = typeFilter === 'all' || type === typeFilter;
+
+            // Wallet matching: if transaction has no walletId, it won't match any specific wallet filter
+            let matchesWallet = true;
+            if (shouldFilterByWallet) {
+                matchesWallet = t.walletId === validatedWalletFilter || t.toWalletId === validatedWalletFilter;
+            }
+
+            return matchesSearch && matchesCategory && matchesType && matchesWallet;
+        });
+
+        return result;
+    }, [budget?.transactions, searchTerm, categoryFilter, typeFilter, validatedWalletFilter, wallets.length]);
 
     const sortedTransactions = [...filteredTransactions].sort((a, b) => {
         if (!sortConfig) {
@@ -125,7 +155,28 @@ export function TransactionsPage() {
 
     useEffect(() => {
         setCurrentPage(1);
-    }, [searchTerm, categoryFilter, typeFilter, month, year]);
+    }, [searchTerm, categoryFilter, typeFilter, walletFilter, month, year]);
+
+    // Sync wallet filter from URL when searchParams change
+    useEffect(() => {
+        const walletParam = searchParams.get('wallet');
+        if (walletParam && walletParam !== walletFilter) {
+            setWalletFilter(walletParam);
+        } else if (!walletParam && walletFilter !== 'all') {
+            setWalletFilter('all');
+        }
+    }, [searchParams]);
+
+    // Update URL when wallet filter changes
+    const handleWalletFilterChange = (value: string) => {
+        setWalletFilter(value);
+        if (value === 'all') {
+            searchParams.delete('wallet');
+        } else {
+            searchParams.set('wallet', value);
+        }
+        setSearchParams(searchParams);
+    };
 
     const requestSort = (key: keyof Transaction | 'wallet' | 'type') => {
         let direction: 'asc' | 'desc' = 'asc';
@@ -134,6 +185,8 @@ export function TransactionsPage() {
         }
         setSortConfig({ key, direction });
     };
+
+    const { toast } = useToast();
 
     const handleTransactionSubmit = async (data: TransactionData) => {
         const snapshot = queryClient.getQueryData(['budget', month, year, user?.id]);
@@ -175,7 +228,19 @@ export function TransactionsPage() {
             });
             const result = await response.json();
             if (result.success) {
-                await refreshBudget();
+                // If transaction was added for a different month, navigate to that month
+                if (!isCurrentView && dialogMode === 'add') {
+                    // Invalidate cache for the target month to ensure fresh data
+                    await queryClient.invalidateQueries({ queryKey: ['budget', tMonth, tYear, user?.id] });
+                    setMonth(tMonth);
+                    setYear(tYear);
+                    toast({
+                        title: "Transaction Added",
+                        description: `Navigated to ${tMonth} ${tYear} where the transaction was recorded.`,
+                    });
+                } else {
+                    await refreshBudget();
+                }
             } else {
                 if (snapshot && user?.id && isCurrentView) queryClient.setQueryData(['budget', month, year, user.id], snapshot);
             }
@@ -220,9 +285,11 @@ export function TransactionsPage() {
 
     return (
         <div className="min-h-screen bg-black text-white relative overflow-hidden">
-            {/* Background decorations */}
-            <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-primary/5 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-blue-500/5 rounded-full blur-3xl pointer-events-none" />
+            {/* Animated background decorations */}
+            <div className="hidden md:block absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-to-br from-amber-500/10 via-orange-500/10 to-transparent rounded-full blur-3xl pointer-events-none animate-pulse" style={{ animationDuration: '4s' }} />
+            <div className="hidden md:block absolute bottom-1/3 left-0 w-[500px] h-[500px] bg-gradient-to-tr from-cyan-500/10 via-blue-500/5 to-transparent rounded-full blur-3xl pointer-events-none animate-pulse" style={{ animationDuration: '5s' }} />
+            <div className="hidden md:block absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-gradient-to-tl from-violet-500/10 via-purple-500/5 to-transparent rounded-full blur-3xl pointer-events-none animate-pulse" style={{ animationDuration: '6s' }} />
+            <div className="hidden md:block absolute top-1/4 left-1/3 w-[350px] h-[350px] bg-gradient-to-br from-emerald-500/10 to-transparent rounded-full blur-3xl pointer-events-none animate-pulse" style={{ animationDuration: '7s' }} />
 
             <BudgetHeader
                 month={month}
@@ -241,7 +308,7 @@ export function TransactionsPage() {
                     </div>
                     <Button
                         onClick={openAddDialog}
-                        className="bg-primary text-black hover:bg-primary/90 rounded-2xl px-6 h-11 font-bold shadow-lg shadow-primary/20 gap-2"
+                        className="bg-gradient-to-r from-amber-500 to-orange-500 text-black hover:from-amber-400 hover:to-orange-400 rounded-2xl px-6 h-11 font-bold shadow-lg shadow-amber-500/30 gap-2 transition-all hover:shadow-amber-500/40 hover:scale-[1.02]"
                     >
                         <Plus className="h-4 w-4" /> Add Transaction
                     </Button>
@@ -249,43 +316,43 @@ export function TransactionsPage() {
 
                 {/* Stats Row */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    <div className="rounded-2xl bg-gradient-to-br from-zinc-900 to-zinc-800 border border-white/10 p-6">
+                    <div className="group rounded-2xl bg-gradient-to-br from-amber-500/20 via-amber-500/10 to-orange-500/5 border border-amber-500/30 p-6 shadow-lg shadow-amber-500/10 hover:shadow-amber-500/20 hover:scale-[1.02] transition-all">
                         <div className="flex items-center gap-4">
-                            <div className="p-3 rounded-xl bg-white/10">
-                                <Receipt className="h-6 w-6 text-gray-400" />
+                            <div className="p-3 rounded-xl bg-gradient-to-br from-amber-500/30 to-orange-500/20 shadow-inner">
+                                <Receipt className="h-6 w-6 text-amber-400" />
                             </div>
                             <div>
-                                <p className="text-sm text-gray-400">Total Transactions</p>
+                                <p className="text-sm text-amber-300/70">Total Transactions</p>
                                 <p className="text-2xl font-bold text-white">{sortedTransactions.length}</p>
                             </div>
                         </div>
                     </div>
-                    <div className="rounded-2xl bg-gradient-to-br from-green-500/10 to-green-500/5 border border-green-500/20 p-6">
+                    <div className="group rounded-2xl bg-gradient-to-br from-emerald-500/20 via-emerald-500/10 to-green-500/5 border border-emerald-500/30 p-6 shadow-lg shadow-emerald-500/10 hover:shadow-emerald-500/20 hover:scale-[1.02] transition-all">
                         <div className="flex items-center gap-4">
-                            <div className="p-3 rounded-xl bg-green-500/20">
-                                <ArrowUpCircle className="h-6 w-6 text-green-400" />
+                            <div className="p-3 rounded-xl bg-gradient-to-br from-emerald-500/30 to-green-500/20 shadow-inner">
+                                <ArrowUpCircle className="h-6 w-6 text-emerald-400" />
                             </div>
                             <div>
-                                <p className="text-sm text-gray-400">Total Income</p>
-                                <p className="text-2xl font-bold text-green-400">{symbol}{totalIncome.toLocaleString()}</p>
+                                <p className="text-sm text-emerald-300/70">Total Income</p>
+                                <p className="text-2xl font-bold text-emerald-400">{symbol}{totalIncome.toLocaleString()}</p>
                             </div>
                         </div>
                     </div>
-                    <div className="rounded-2xl bg-gradient-to-br from-red-500/10 to-red-500/5 border border-red-500/20 p-6">
+                    <div className="group rounded-2xl bg-gradient-to-br from-rose-500/20 via-rose-500/10 to-pink-500/5 border border-rose-500/30 p-6 shadow-lg shadow-rose-500/10 hover:shadow-rose-500/20 hover:scale-[1.02] transition-all">
                         <div className="flex items-center gap-4">
-                            <div className="p-3 rounded-xl bg-red-500/20">
-                                <ArrowDownCircle className="h-6 w-6 text-red-400" />
+                            <div className="p-3 rounded-xl bg-gradient-to-br from-rose-500/30 to-pink-500/20 shadow-inner">
+                                <ArrowDownCircle className="h-6 w-6 text-rose-400" />
                             </div>
                             <div>
-                                <p className="text-sm text-gray-400">Total Expenses</p>
-                                <p className="text-2xl font-bold text-red-400">{symbol}{totalExpenses.toLocaleString()}</p>
+                                <p className="text-sm text-rose-300/70">Total Expenses</p>
+                                <p className="text-2xl font-bold text-rose-400">{symbol}{totalExpenses.toLocaleString()}</p>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 {/* Filters */}
-                <div className="rounded-2xl bg-zinc-900/50 border border-white/10 p-4 mb-6 flex flex-col md:flex-row gap-4 items-center">
+                <div className="rounded-2xl bg-gradient-to-r from-violet-500/10 via-zinc-900/80 to-zinc-900/50 border border-violet-500/30 p-4 mb-6 flex flex-col md:flex-row gap-4 items-center shadow-lg shadow-violet-500/5">
                     <div className="relative flex-1 w-full">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
                         <Input
@@ -295,9 +362,9 @@ export function TransactionsPage() {
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
-                    <div className="flex gap-3 w-full md:w-auto">
+                    <div className="flex flex-wrap gap-3 w-full md:w-auto">
                         <Select value={typeFilter} onValueChange={setTypeFilter}>
-                            <SelectTrigger className="w-[140px] h-11 bg-zinc-800 border-zinc-700 rounded-xl">
+                            <SelectTrigger className="w-[130px] h-11 bg-zinc-800 border-zinc-700 rounded-xl">
                                 <SelectValue placeholder="All Types" />
                             </SelectTrigger>
                             <SelectContent className="bg-zinc-800 border-zinc-700">
@@ -309,8 +376,20 @@ export function TransactionsPage() {
                             </SelectContent>
                         </Select>
 
+                        <Select value={validatedWalletFilter} onValueChange={handleWalletFilterChange}>
+                            <SelectTrigger className={`w-[150px] h-11 bg-zinc-800 border-zinc-700 rounded-xl ${validatedWalletFilter !== 'all' ? 'border-primary/50 bg-primary/10' : ''}`}>
+                                <SelectValue placeholder="All Wallets" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-zinc-800 border-zinc-700">
+                                <SelectItem value="all">All Wallets</SelectItem>
+                                {wallets.map(w => (
+                                    <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+
                         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                            <SelectTrigger className="w-[180px] h-11 bg-zinc-800 border-zinc-700 rounded-xl">
+                            <SelectTrigger className="w-[160px] h-11 bg-zinc-800 border-zinc-700 rounded-xl">
                                 <SelectValue placeholder="All Categories" />
                             </SelectTrigger>
                             <SelectContent className="bg-zinc-800 border-zinc-700">
@@ -324,30 +403,30 @@ export function TransactionsPage() {
                 </div>
 
                 {/* Table */}
-                <div className="rounded-2xl bg-zinc-900/50 border border-white/10 overflow-hidden">
+                <div className="rounded-2xl bg-gradient-to-br from-cyan-500/10 via-zinc-900/80 to-zinc-900/50 border border-cyan-500/30 overflow-hidden shadow-lg shadow-cyan-500/5">
                     <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
+                        <table className="w-full text-sm table-fixed">
                             <thead>
-                                <tr className="bg-white/5 border-b border-white/10">
-                                    <th className="text-left py-4 px-4 font-medium text-gray-400 cursor-pointer hover:text-white transition-colors" onClick={() => requestSort('date')}>
+                                <tr className="bg-gradient-to-r from-cyan-500/10 to-transparent border-b border-cyan-500/20">
+                                    <th className="text-left py-4 px-4 font-medium text-gray-400 cursor-pointer hover:text-white transition-colors w-[120px]" onClick={() => requestSort('date')}>
                                         <div className="flex items-center gap-1">Date <ArrowUpDown className="h-3 w-3" /></div>
                                     </th>
-                                    <th className="text-left py-4 px-4 font-medium text-gray-400 cursor-pointer hover:text-white transition-colors" onClick={() => requestSort('name')}>
+                                    <th className="text-left py-4 px-4 font-medium text-gray-400 cursor-pointer hover:text-white transition-colors w-[200px]" onClick={() => requestSort('name')}>
                                         <div className="flex items-center gap-1">Description <ArrowUpDown className="h-3 w-3" /></div>
                                     </th>
-                                    <th className="text-left py-4 px-4 font-medium text-gray-400 cursor-pointer hover:text-white transition-colors" onClick={() => requestSort('category')}>
+                                    <th className="text-left py-4 px-4 font-medium text-gray-400 cursor-pointer hover:text-white transition-colors w-[130px]" onClick={() => requestSort('category')}>
                                         <div className="flex items-center gap-1">Category <ArrowUpDown className="h-3 w-3" /></div>
                                     </th>
-                                    <th className="text-left py-4 px-4 font-medium text-gray-400 cursor-pointer hover:text-white transition-colors" onClick={() => requestSort('wallet')}>
+                                    <th className="text-left py-4 px-4 font-medium text-gray-400 cursor-pointer hover:text-white transition-colors w-[120px]" onClick={() => requestSort('wallet')}>
                                         <div className="flex items-center gap-1">Wallet <ArrowUpDown className="h-3 w-3" /></div>
                                     </th>
-                                    <th className="text-left py-4 px-4 font-medium text-gray-400 cursor-pointer hover:text-white transition-colors" onClick={() => requestSort('type')}>
+                                    <th className="text-left py-4 px-4 font-medium text-gray-400 cursor-pointer hover:text-white transition-colors w-[100px]" onClick={() => requestSort('type')}>
                                         <div className="flex items-center gap-1">Type <ArrowUpDown className="h-3 w-3" /></div>
                                     </th>
-                                    <th className="text-right py-4 px-4 font-medium text-gray-400 cursor-pointer hover:text-white transition-colors" onClick={() => requestSort('actual')}>
+                                    <th className="text-right py-4 px-4 font-medium text-gray-400 cursor-pointer hover:text-white transition-colors w-[110px]" onClick={() => requestSort('actual')}>
                                         <div className="flex items-center justify-end gap-1">Amount <ArrowUpDown className="h-3 w-3" /></div>
                                     </th>
-                                    <th className="text-right py-4 px-4 font-medium text-gray-400">Actions</th>
+                                    <th className="text-right py-4 px-4 font-medium text-gray-400 w-[80px]">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -362,7 +441,7 @@ export function TransactionsPage() {
                                         const TypeIcon = typeInfo.icon;
                                         const isIncome = type === 'income';
                                         return (
-                                            <tr key={t.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                                            <tr key={t.id} className="border-b border-white/5 hover:bg-cyan-500/5 transition-colors">
                                                 <td className="py-4 px-4 text-gray-300">{t.date ? format(new Date(t.date), 'MMM dd, yyyy') : '-'}</td>
                                                 <td className="py-4 px-4 font-medium text-white">{t.name}</td>
                                                 <td className="py-4 px-4">

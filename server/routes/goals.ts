@@ -8,9 +8,13 @@ const mapToGoal = (doc: any): Goal => ({
     name: doc.name,
     targetAmount: doc.targetAmount,
     currentAmount: doc.currentAmount,
+    targetDate: doc.targetDate?.toISOString(),
+    category: doc.category,
+    description: doc.description,
     color: doc.color,
     status: doc.status || 'active',
     completedAt: doc.completedAt?.toISOString(),
+    startedAt: doc.startedAt?.toISOString(),
     createdAt: doc.createdAt?.toISOString(),
 });
 
@@ -31,7 +35,7 @@ export const createGoal: RequestHandler = async (req, res) => {
     const userId = req.session?.user?.id;
     if (!userId) return res.status(401).json({ success: false, message: "Not authenticated" });
 
-    const { name, targetAmount, currentAmount, color } = req.body;
+    const { name, targetAmount, currentAmount, color, targetDate, category, description, startedAt } = req.body;
 
     if (!name || targetAmount === undefined) {
         return res.status(400).json({ success: false, message: "Name and Target Amount are required" });
@@ -44,6 +48,10 @@ export const createGoal: RequestHandler = async (req, res) => {
             targetAmount,
             currentAmount: currentAmount || 0,
             color,
+            targetDate: targetDate ? new Date(targetDate) : undefined,
+            category,
+            description,
+            startedAt: startedAt ? new Date(startedAt) : new Date(),
             status: 'active'
         });
         res.json({ success: true, data: mapToGoal(goal) });
@@ -58,7 +66,7 @@ export const updateGoal: RequestHandler = async (req, res) => {
     const { id } = req.params;
     if (!userId) return res.status(401).json({ success: false, message: "Not authenticated" });
 
-    const { name, targetAmount, currentAmount, color, status } = req.body;
+    const { name, targetAmount, currentAmount, color, status, targetDate, category, description, startedAt, completedAt } = req.body;
     console.log(`[UpdateGoal] Request body for ${id}:`, req.body);
 
 
@@ -66,10 +74,15 @@ export const updateGoal: RequestHandler = async (req, res) => {
         const goal = await GoalModel.findOne({ _id: id, userId });
         if (!goal) return res.status(404).json({ success: false, message: "Goal not found" });
 
-        if (name) goal.name = name;
+        if (name !== undefined) goal.name = name;
         if (targetAmount !== undefined) goal.targetAmount = targetAmount;
         if (currentAmount !== undefined) goal.currentAmount = currentAmount;
         if (color !== undefined) goal.color = color;
+        if (targetDate !== undefined) goal.targetDate = targetDate ? new Date(targetDate) : undefined;
+        if (category !== undefined) goal.category = category;
+        if (description !== undefined) goal.description = description;
+        if (startedAt !== undefined) goal.startedAt = startedAt ? new Date(startedAt) : undefined;
+        if (completedAt !== undefined) goal.completedAt = completedAt ? new Date(completedAt) : undefined;
 
         if (status) {
             goal.status = status;

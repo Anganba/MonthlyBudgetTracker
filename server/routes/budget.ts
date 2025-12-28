@@ -409,12 +409,16 @@ export const addTransaction: RequestHandler = async (req, res) => {
   }
 
   try {
-    const dateObj = new Date(date);
+    // Parse date string directly to avoid timezone issues
+    // Frontend sends dates in "YYYY-MM-DD" format
+    const dateParts = date.split('-');
+    const targetYear = parseInt(dateParts[0], 10);
+    const targetMonthIndex = parseInt(dateParts[1], 10) - 1; // Month is 1-indexed in the string
     const monthNames = ["January", "February", "March", "April", "May", "June",
       "July", "August", "September", "October", "November", "December"
     ];
-    const targetMonth = monthNames[dateObj.getMonth()];
-    const targetYear = dateObj.getFullYear();
+    const targetMonth = monthNames[targetMonthIndex];
+    console.log('[API] Parsed date:', date, '-> Month:', targetMonth, 'Year:', targetYear);
 
     const budget = await getOrCreateBudget(targetMonth, targetYear, userId);
 
@@ -452,10 +456,11 @@ export const addTransaction: RequestHandler = async (req, res) => {
       const { WalletModel } = await import("../models/Wallet");
       const wallet = await WalletModel.findOne({ _id: walletId, userId });
 
-      // If Transfer OR Savings
       const transactionType = req.body.type || 'expense';
-      if (transactionType === 'transfer' || category === 'Savings') {
-        const toWalletId = req.body.toWalletId;
+      const toWalletId = req.body.toWalletId;
+
+      // Transfer or Savings with destination wallet (wallet-to-wallet transfer)
+      if (transactionType === 'transfer' || (category === 'Savings' && toWalletId)) {
         if (wallet && toWalletId) {
           // Deduct from Source
           wallet.balance -= actual;
@@ -467,6 +472,13 @@ export const addTransaction: RequestHandler = async (req, res) => {
             toWallet.balance += actual;
             await toWallet.save();
           }
+        }
+      } else if (category === 'Savings' && goalId && !toWalletId) {
+        // Goal savings without destination wallet - just deduct from source wallet
+        // The money is being saved towards a goal (not transferred to another wallet)
+        if (wallet) {
+          wallet.balance -= actual;
+          await wallet.save();
         }
       } else {
         // Standard Expense/Income
@@ -531,12 +543,14 @@ export const updateTransaction: RequestHandler = async (req, res) => {
     const newDate = req.body.date;
 
     if (newDate) {
-      const dateObj = new Date(newDate);
+      // Parse date string directly to avoid timezone issues
+      const dateParts = newDate.split('-');
+      targetYear = parseInt(dateParts[0], 10);
+      const targetMonthIndex = parseInt(dateParts[1], 10) - 1;
       const monthNames = ["January", "February", "March", "April", "May", "June",
         "July", "August", "September", "October", "November", "December"
       ];
-      targetMonth = monthNames[dateObj.getMonth()];
-      targetYear = dateObj.getFullYear();
+      targetMonth = monthNames[targetMonthIndex];
     }
 
     // Capture IDs for goal recalculation

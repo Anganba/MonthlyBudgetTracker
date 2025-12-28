@@ -1,25 +1,32 @@
 import React, { useState } from "react";
 import { useAuth } from "@/lib/auth";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-    User, Settings, LogOut, Shield, CreditCard, Mail, Loader2, Edit,
+    User, LogOut, Shield, Mail, Loader2, Edit,
     ChevronRight, Linkedin, Github, Sparkles, Crown, Key, UserCircle,
-    Zap, Heart, ExternalLink
+    Zap, Heart, Download, BarChart3, Target, TrendingUp, Clock, CheckCircle
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
+import { useBudget } from "@/hooks/use-budget";
+import { useWallets } from "@/hooks/use-wallets";
+import { useGoals } from "@/hooks/use-goals";
+import { ExportDialog } from "@/components/budget/ExportDialog";
 
 export default function ProfilePage() {
     const { user, logout, updateProfile, updatePassword } = useAuth();
     const { toast } = useToast();
+    const { stats, budget } = useBudget();
+    const { wallets } = useWallets();
+    const { goals } = useGoals();
 
     // Dialog States
     const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
     const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+    const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
 
     // Form States
     const [profileForm, setProfileForm] = useState({ username: "", email: "" });
@@ -77,6 +84,15 @@ export default function ProfilePage() {
         }
     };
 
+
+    // Calculate statistics
+    const totalTransactions = budget?.transactions?.length || 0;
+    const totalWallets = wallets?.length || 0;
+    const completedGoals = goals?.filter(g => g.status === 'fulfilled')?.length || 0;
+    const activeGoals = goals?.filter(g => g.status === 'active')?.length || 0;
+    const thisMonthSpent = stats.expenses || 0;
+    const savingsRate = stats.income > 0 ? Math.round((stats.savings / stats.income) * 100) : 0;
+
     const proFeatures = [
         "Unlimited wallets & transactions",
         "Advanced analytics & reports",
@@ -86,9 +102,11 @@ export default function ProfilePage() {
 
     return (
         <div className="min-h-screen bg-black text-white p-6 md:p-8 relative overflow-hidden">
-            {/* Background decorations */}
-            <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-primary/5 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+            {/* Animated Background Orbs */}
+            <div className="hidden md:block absolute top-20 right-20 w-[500px] h-[500px] bg-gradient-to-br from-violet-500/10 via-purple-500/5 to-transparent rounded-full blur-3xl pointer-events-none animate-pulse" style={{ animationDuration: '4s' }} />
+            <div className="hidden md:block absolute bottom-20 left-20 w-[400px] h-[400px] bg-gradient-to-tr from-cyan-500/10 via-blue-500/5 to-transparent rounded-full blur-3xl pointer-events-none animate-pulse" style={{ animationDuration: '5s' }} />
+            <div className="hidden md:block absolute top-1/2 left-1/3 w-[300px] h-[300px] bg-gradient-to-tl from-emerald-500/10 via-green-500/5 to-transparent rounded-full blur-3xl pointer-events-none animate-pulse" style={{ animationDuration: '6s' }} />
+            <div className="hidden md:block absolute bottom-1/3 right-1/4 w-[350px] h-[350px] bg-gradient-to-br from-amber-500/10 via-yellow-500/5 to-transparent rounded-full blur-3xl pointer-events-none animate-pulse" style={{ animationDuration: '7s' }} />
 
             {/* Header */}
             <div className="relative z-10 mb-8">
@@ -98,24 +116,27 @@ export default function ProfilePage() {
 
             <div className="max-w-5xl mx-auto space-y-8 relative z-10">
                 {/* Profile Header Card */}
-                <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-zinc-900 via-zinc-900 to-zinc-800 border border-white/10 p-8">
+                <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-violet-500/15 via-zinc-900/90 to-zinc-900/80 border border-violet-500/30 p-8 shadow-lg shadow-violet-500/5">
                     {/* Decorative elements */}
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl" />
-                    <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-primary/5 rounded-full blur-2xl" />
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-violet-500/20 rounded-full blur-3xl" />
+                    <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-cyan-500/10 rounded-full blur-2xl" />
 
                     <div className="relative z-10 flex flex-col lg:flex-row items-center gap-8">
-                        {/* Avatar */}
+                        {/* Avatar with gradient ring */}
                         <div className="relative">
-                            <div className="absolute inset-0 bg-primary/30 rounded-full blur-xl scale-110" />
-                            <Avatar className="h-32 w-32 border-4 border-primary/50 relative shadow-2xl">
+                            <div className="absolute inset-0 bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-500 rounded-full blur-xl scale-110 opacity-50" />
+                            <div className="absolute inset-0 bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-500 rounded-full p-1">
+                                <div className="w-full h-full bg-zinc-900 rounded-full" />
+                            </div>
+                            <Avatar className="h-32 w-32 border-4 border-transparent relative shadow-2xl" style={{ background: 'linear-gradient(135deg, #3b82f6, #6366f1, #8b5cf6)' }}>
                                 <AvatarImage src="" />
-                                <AvatarFallback className="bg-gradient-to-br from-primary/30 to-primary/10 text-primary text-4xl font-bold">
+                                <AvatarFallback className="bg-gradient-to-br from-violet-500/30 to-purple-500/20 text-violet-300 text-4xl font-bold">
                                     {user?.username ? getInitials(user.username) : "U"}
                                 </AvatarFallback>
                             </Avatar>
                             <button
                                 onClick={openEditProfile}
-                                className="absolute bottom-0 right-0 p-2 bg-primary rounded-full text-black hover:scale-110 transition-transform shadow-lg"
+                                className="absolute bottom-0 right-0 p-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full text-white hover:scale-110 transition-transform shadow-lg"
                             >
                                 <Edit className="h-4 w-4" />
                             </button>
@@ -134,11 +155,12 @@ export default function ProfilePage() {
                             </div>
 
                             <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3">
-                                <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/20 border border-primary/30 px-4 py-1.5 text-sm font-semibold text-primary">
+                                <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-violet-500/20 to-purple-500/20 border border-violet-500/30 px-4 py-1.5 text-sm font-semibold text-violet-300">
                                     <Sparkles className="h-4 w-4" />
                                     Free Plan
                                 </span>
-                                <span className="text-sm text-gray-500">
+                                <span className="text-sm text-gray-500 flex items-center gap-1">
+                                    <Clock className="h-3 w-3" />
                                     Member since {new Date().getFullYear()}
                                 </span>
                             </div>
@@ -156,81 +178,183 @@ export default function ProfilePage() {
                     </div>
                 </div>
 
+                {/* Quick Stats */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="group rounded-xl bg-gradient-to-br from-cyan-500/20 via-cyan-500/10 to-transparent border border-cyan-500/30 p-4 shadow-lg shadow-cyan-500/5 hover:shadow-cyan-500/10 hover:scale-[1.02] transition-all">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-lg bg-gradient-to-br from-cyan-500/30 to-blue-500/20 shadow-inner">
+                                <BarChart3 className="h-5 w-5 text-cyan-400" />
+                            </div>
+                            <div>
+                                <p className="text-xs text-cyan-300/70">This Month</p>
+                                <p className="text-xl font-bold text-white">${thisMonthSpent.toLocaleString()}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="group rounded-xl bg-gradient-to-br from-emerald-500/20 via-emerald-500/10 to-transparent border border-emerald-500/30 p-4 shadow-lg shadow-emerald-500/5 hover:shadow-emerald-500/10 hover:scale-[1.02] transition-all">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-lg bg-gradient-to-br from-emerald-500/30 to-green-500/20 shadow-inner">
+                                <TrendingUp className="h-5 w-5 text-emerald-400" />
+                            </div>
+                            <div>
+                                <p className="text-xs text-emerald-300/70">Savings Rate</p>
+                                <p className="text-xl font-bold text-emerald-400">{savingsRate}%</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="group rounded-xl bg-gradient-to-br from-violet-500/20 via-violet-500/10 to-transparent border border-violet-500/30 p-4 shadow-lg shadow-violet-500/5 hover:shadow-violet-500/10 hover:scale-[1.02] transition-all">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-lg bg-gradient-to-br from-violet-500/30 to-purple-500/20 shadow-inner">
+                                <Target className="h-5 w-5 text-violet-400" />
+                            </div>
+                            <div>
+                                <p className="text-xs text-violet-300/70">Active Goals</p>
+                                <p className="text-xl font-bold text-white">{activeGoals}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="group rounded-xl bg-gradient-to-br from-amber-500/20 via-amber-500/10 to-transparent border border-amber-500/30 p-4 shadow-lg shadow-amber-500/5 hover:shadow-amber-500/10 hover:scale-[1.02] transition-all">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-lg bg-gradient-to-br from-amber-500/30 to-yellow-500/20 shadow-inner">
+                                <CheckCircle className="h-5 w-5 text-amber-400" />
+                            </div>
+                            <div>
+                                <p className="text-xs text-amber-300/70">Goals Done</p>
+                                <p className="text-xl font-bold text-amber-400">{completedGoals}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Account Statistics */}
+                <div className="rounded-2xl bg-gradient-to-br from-emerald-500/10 via-zinc-900/80 to-zinc-900/50 border border-emerald-500/30 p-6 shadow-lg shadow-emerald-500/5">
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="p-3 rounded-xl bg-gradient-to-br from-emerald-500/30 to-green-500/20 shadow-inner">
+                            <BarChart3 className="h-6 w-6 text-emerald-400" />
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-semibold text-white">Account Statistics</h3>
+                            <p className="text-sm text-emerald-300/60">Your activity summary</p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                            <p className="text-2xl font-bold text-white">{totalTransactions}</p>
+                            <p className="text-sm text-gray-400">Transactions</p>
+                        </div>
+                        <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                            <p className="text-2xl font-bold text-white">{totalWallets}</p>
+                            <p className="text-sm text-gray-400">Wallets</p>
+                        </div>
+                        <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                            <p className="text-2xl font-bold text-white">{activeGoals}</p>
+                            <p className="text-sm text-gray-400">Active Goals</p>
+                        </div>
+                        <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                            <p className="text-2xl font-bold text-emerald-400">{completedGoals}</p>
+                            <p className="text-sm text-gray-400">Goals Achieved</p>
+                        </div>
+                    </div>
+                </div>
+
                 {/* Settings Grid */}
                 <div className="grid gap-6 md:grid-cols-2">
                     {/* Account Settings */}
-                    <div className="rounded-2xl bg-zinc-900/50 border border-white/5 p-6 space-y-4 hover:border-primary/30 transition-colors">
+                    <div className="rounded-2xl bg-gradient-to-br from-cyan-500/10 via-zinc-900/80 to-zinc-900/50 border border-cyan-500/30 p-6 space-y-4 shadow-lg shadow-cyan-500/5 hover:shadow-cyan-500/10 transition-shadow">
                         <div className="flex items-center gap-3">
-                            <div className="p-3 rounded-xl bg-primary/20">
-                                <UserCircle className="h-6 w-6 text-primary" />
+                            <div className="p-3 rounded-xl bg-gradient-to-br from-cyan-500/30 to-blue-500/20 shadow-inner">
+                                <UserCircle className="h-6 w-6 text-cyan-400" />
                             </div>
                             <div>
                                 <h3 className="text-lg font-semibold text-white">Account Settings</h3>
-                                <p className="text-sm text-gray-500">Manage your profile information</p>
+                                <p className="text-sm text-cyan-300/60">Manage your profile information</p>
                             </div>
                         </div>
 
                         <div className="space-y-2">
                             <button
                                 onClick={openEditProfile}
-                                className="w-full flex items-center justify-between p-4 rounded-xl bg-white/5 hover:bg-primary/10 border border-transparent hover:border-primary/30 transition-all group"
+                                className="w-full flex items-center justify-between p-4 rounded-xl bg-white/5 hover:bg-cyan-500/10 border border-transparent hover:border-cyan-500/30 transition-all group"
                             >
                                 <div className="flex items-center gap-3">
-                                    <User className="h-5 w-5 text-gray-400 group-hover:text-primary transition-colors" />
+                                    <User className="h-5 w-5 text-gray-400 group-hover:text-cyan-400 transition-colors" />
                                     <div className="text-left">
                                         <p className="font-medium text-white">Profile Information</p>
                                         <p className="text-sm text-gray-500">Update username and email</p>
                                     </div>
                                 </div>
-                                <ChevronRight className="h-5 w-5 text-gray-500 group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                                <ChevronRight className="h-5 w-5 text-gray-500 group-hover:text-cyan-400 group-hover:translate-x-1 transition-all" />
                             </button>
                         </div>
                     </div>
 
                     {/* Security */}
-                    <div className="rounded-2xl bg-zinc-900/50 border border-white/5 p-6 space-y-4 hover:border-primary/30 transition-colors">
+                    <div className="rounded-2xl bg-gradient-to-br from-violet-500/10 via-zinc-900/80 to-zinc-900/50 border border-violet-500/30 p-6 space-y-4 shadow-lg shadow-violet-500/5 hover:shadow-violet-500/10 transition-shadow">
                         <div className="flex items-center gap-3">
-                            <div className="p-3 rounded-xl bg-primary/20">
-                                <Shield className="h-6 w-6 text-primary" />
+                            <div className="p-3 rounded-xl bg-gradient-to-br from-violet-500/30 to-purple-500/20 shadow-inner">
+                                <Shield className="h-6 w-6 text-violet-400" />
                             </div>
                             <div>
                                 <h3 className="text-lg font-semibold text-white">Security</h3>
-                                <p className="text-sm text-gray-500">Keep your account safe</p>
+                                <p className="text-sm text-violet-300/60">Keep your account safe</p>
                             </div>
                         </div>
 
                         <div className="space-y-2">
                             <button
                                 onClick={openChangePassword}
-                                className="w-full flex items-center justify-between p-4 rounded-xl bg-white/5 hover:bg-primary/10 border border-transparent hover:border-primary/30 transition-all group"
+                                className="w-full flex items-center justify-between p-4 rounded-xl bg-white/5 hover:bg-violet-500/10 border border-transparent hover:border-violet-500/30 transition-all group"
                             >
                                 <div className="flex items-center gap-3">
-                                    <Key className="h-5 w-5 text-gray-400 group-hover:text-primary transition-colors" />
+                                    <Key className="h-5 w-5 text-gray-400 group-hover:text-violet-400 transition-colors" />
                                     <div className="text-left">
                                         <p className="font-medium text-white">Password</p>
                                         <p className="text-sm text-gray-500">Change your password</p>
                                     </div>
                                 </div>
-                                <ChevronRight className="h-5 w-5 text-gray-500 group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                                <ChevronRight className="h-5 w-5 text-gray-500 group-hover:text-violet-400 group-hover:translate-x-1 transition-all" />
                             </button>
                         </div>
                     </div>
                 </div>
 
+                {/* Data Management - Full Width */}
+                <div className="rounded-2xl bg-gradient-to-br from-orange-500/10 via-zinc-900/80 to-zinc-900/50 border border-orange-500/30 p-6 space-y-4 shadow-lg shadow-orange-500/5">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="p-3 rounded-xl bg-gradient-to-br from-orange-500/30 to-amber-500/20 shadow-inner">
+                                <Download className="h-6 w-6 text-orange-400" />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-semibold text-white">Data Management</h3>
+                                <p className="text-sm text-orange-300/60">Download your financial data in your preferred format</p>
+                            </div>
+                        </div>
+                        <Button
+                            onClick={() => setIsExportDialogOpen(true)}
+                            className="bg-gradient-to-r from-[#84CC16] to-[#65A30D] text-black font-semibold hover:opacity-90 shadow-lg shadow-lime-500/20"
+                        >
+                            <Download className="mr-2 h-4 w-4" />
+                            Export Data
+                        </Button>
+                    </div>
+                </div>
+
                 {/* Subscription Card */}
-                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 border border-white/10 p-8">
+                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-500/15 via-zinc-900/90 to-zinc-900/80 border border-amber-500/30 p-8 shadow-lg shadow-amber-500/5">
                     {/* Background glow */}
-                    <div className="absolute top-0 right-0 w-72 h-72 bg-yellow-500/10 rounded-full blur-3xl" />
+                    <div className="absolute top-0 right-0 w-72 h-72 bg-amber-500/20 rounded-full blur-3xl" />
 
                     <div className="relative z-10 flex flex-col lg:flex-row gap-8">
                         <div className="flex-1 space-y-4">
                             <div className="flex items-center gap-3">
-                                <div className="p-3 rounded-xl bg-yellow-500/20">
-                                    <Crown className="h-6 w-6 text-yellow-500" />
+                                <div className="p-3 rounded-xl bg-gradient-to-br from-amber-500/30 to-yellow-500/20 shadow-inner">
+                                    <Crown className="h-6 w-6 text-amber-400" />
                                 </div>
                                 <div>
                                     <h3 className="text-xl font-bold text-white">Subscription</h3>
-                                    <p className="text-sm text-gray-400">Manage your plan and billing</p>
+                                    <p className="text-sm text-amber-300/60">Manage your plan and billing</p>
                                 </div>
                             </div>
 
@@ -240,27 +364,27 @@ export default function ProfilePage() {
                                         <p className="text-lg font-semibold text-white">Free Plan</p>
                                         <p className="text-sm text-gray-400">You're on the free plan</p>
                                     </div>
-                                    <span className="text-2xl font-bold text-primary">$0</span>
+                                    <span className="text-2xl font-bold text-amber-400">$0</span>
                                 </div>
                             </div>
                         </div>
 
                         <div className="lg:w-80 space-y-4">
-                            <div className="p-4 rounded-xl bg-primary/10 border border-primary/30">
-                                <p className="text-sm font-semibold text-primary mb-3 flex items-center gap-2">
+                            <div className="p-4 rounded-xl bg-gradient-to-br from-amber-500/20 to-yellow-500/10 border border-amber-500/30">
+                                <p className="text-sm font-semibold text-amber-400 mb-3 flex items-center gap-2">
                                     <Zap className="h-4 w-4" /> Pro Features
                                 </p>
                                 <ul className="space-y-2">
                                     {proFeatures.map((feature, i) => (
                                         <li key={i} className="text-sm text-gray-300 flex items-center gap-2">
-                                            <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+                                            <div className="h-1.5 w-1.5 rounded-full bg-amber-400" />
                                             {feature}
                                         </li>
                                     ))}
                                 </ul>
                             </div>
                             <Button
-                                className="w-full h-12 bg-gradient-to-r from-primary to-lime-400 text-black font-bold shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-shadow"
+                                className="w-full h-12 bg-gradient-to-r from-amber-500 to-yellow-400 text-black font-bold shadow-lg shadow-amber-500/20 hover:shadow-amber-500/40 transition-shadow"
                                 onClick={() => toast({ title: "Coming Soon", description: "Pro plan is currently unavailable." })}
                             >
                                 <Crown className="mr-2 h-5 w-5" />
@@ -281,7 +405,7 @@ export default function ProfilePage() {
                             href="https://www.linkedin.com/in/anganbasingha/"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="p-3 rounded-xl bg-white/5 text-gray-400 hover:text-primary hover:bg-primary/10 transition-all"
+                            className="p-3 rounded-xl bg-white/5 text-gray-400 hover:text-cyan-400 hover:bg-cyan-500/10 transition-all"
                         >
                             <Linkedin className="h-5 w-5" />
                         </a>
@@ -289,7 +413,7 @@ export default function ProfilePage() {
                             href="https://github.com/anganba"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="p-3 rounded-xl bg-white/5 text-gray-400 hover:text-primary hover:bg-primary/10 transition-all"
+                            className="p-3 rounded-xl bg-white/5 text-gray-400 hover:text-violet-400 hover:bg-violet-500/10 transition-all"
                         >
                             <Github className="h-5 w-5" />
                         </a>
@@ -302,7 +426,7 @@ export default function ProfilePage() {
 
             {/* Edit Profile Dialog */}
             <Dialog open={isEditProfileOpen} onOpenChange={setIsEditProfileOpen}>
-                <DialogContent className="sm:max-w-[425px] bg-zinc-900 border-white/10">
+                <DialogContent className="sm:max-w-[425px] bg-zinc-900 border-violet-500/30">
                     <DialogHeader>
                         <DialogTitle className="text-xl font-serif">Edit Profile</DialogTitle>
                         <DialogDescription className="text-gray-400">
@@ -316,7 +440,7 @@ export default function ProfilePage() {
                                 id="username"
                                 value={profileForm.username}
                                 onChange={e => setProfileForm({ ...profileForm, username: e.target.value })}
-                                className="h-12 bg-zinc-800 border-zinc-700 focus:border-primary"
+                                className="h-12 bg-zinc-800 border-zinc-700 focus:border-violet-400"
                             />
                         </div>
                         <div className="space-y-2">
@@ -326,13 +450,13 @@ export default function ProfilePage() {
                                 value={profileForm.email}
                                 onChange={e => setProfileForm({ ...profileForm, email: e.target.value })}
                                 type="email"
-                                className="h-12 bg-zinc-800 border-zinc-700 focus:border-primary"
+                                className="h-12 bg-zinc-800 border-zinc-700 focus:border-violet-400"
                             />
                         </div>
                     </div>
                     <DialogFooter>
                         <Button variant="ghost" onClick={() => setIsEditProfileOpen(false)}>Cancel</Button>
-                        <Button onClick={handleUpdateProfile} disabled={isLoading} className="bg-primary text-black hover:bg-primary/90">
+                        <Button onClick={handleUpdateProfile} disabled={isLoading} className="bg-gradient-to-r from-violet-500 to-purple-500 text-white hover:opacity-90">
                             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                             Save changes
                         </Button>
@@ -342,7 +466,7 @@ export default function ProfilePage() {
 
             {/* Change Password Dialog */}
             <Dialog open={isChangePasswordOpen} onOpenChange={setIsChangePasswordOpen}>
-                <DialogContent className="sm:max-w-[425px] bg-zinc-900 border-white/10">
+                <DialogContent className="sm:max-w-[425px] bg-zinc-900 border-violet-500/30">
                     <DialogHeader>
                         <DialogTitle className="text-xl font-serif">Change Password</DialogTitle>
                         <DialogDescription className="text-gray-400">
@@ -357,7 +481,7 @@ export default function ProfilePage() {
                                 type="password"
                                 value={passwordForm.current}
                                 onChange={e => setPasswordForm({ ...passwordForm, current: e.target.value })}
-                                className="h-12 bg-zinc-800 border-zinc-700 focus:border-primary"
+                                className="h-12 bg-zinc-800 border-zinc-700 focus:border-violet-400"
                             />
                         </div>
                         <div className="space-y-2">
@@ -367,7 +491,7 @@ export default function ProfilePage() {
                                 type="password"
                                 value={passwordForm.new}
                                 onChange={e => setPasswordForm({ ...passwordForm, new: e.target.value })}
-                                className="h-12 bg-zinc-800 border-zinc-700 focus:border-primary"
+                                className="h-12 bg-zinc-800 border-zinc-700 focus:border-violet-400"
                             />
                         </div>
                         <div className="space-y-2">
@@ -377,19 +501,22 @@ export default function ProfilePage() {
                                 type="password"
                                 value={passwordForm.confirm}
                                 onChange={e => setPasswordForm({ ...passwordForm, confirm: e.target.value })}
-                                className="h-12 bg-zinc-800 border-zinc-700 focus:border-primary"
+                                className="h-12 bg-zinc-800 border-zinc-700 focus:border-violet-400"
                             />
                         </div>
                     </div>
                     <DialogFooter>
                         <Button variant="ghost" onClick={() => setIsChangePasswordOpen(false)}>Cancel</Button>
-                        <Button onClick={handleChangePassword} disabled={isLoading} className="bg-primary text-black hover:bg-primary/90">
+                        <Button onClick={handleChangePassword} disabled={isLoading} className="bg-gradient-to-r from-violet-500 to-purple-500 text-white hover:opacity-90">
                             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                             Update Password
                         </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Export Data Dialog */}
+            <ExportDialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen} />
         </div>
     );
 }

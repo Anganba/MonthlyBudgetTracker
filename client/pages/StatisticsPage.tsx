@@ -262,9 +262,11 @@ export default function StatisticsPage() {
 
     return (
         <div className="min-h-screen bg-black text-white p-6 md:p-8 relative overflow-hidden">
-            {/* Background decorations */}
-            <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-primary/5 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-purple-500/5 rounded-full blur-3xl pointer-events-none" />
+            {/* Animated background decorations */}
+            <div className="hidden md:block absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-to-br from-emerald-500/10 via-green-500/10 to-transparent rounded-full blur-3xl pointer-events-none animate-pulse" style={{ animationDuration: '4s' }} />
+            <div className="hidden md:block absolute bottom-1/3 left-0 w-[500px] h-[500px] bg-gradient-to-tr from-violet-500/10 via-purple-500/5 to-transparent rounded-full blur-3xl pointer-events-none animate-pulse" style={{ animationDuration: '5s' }} />
+            <div className="hidden md:block absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-gradient-to-tl from-rose-500/10 via-red-500/5 to-transparent rounded-full blur-3xl pointer-events-none animate-pulse" style={{ animationDuration: '6s' }} />
+            <div className="hidden md:block absolute top-1/4 left-1/3 w-[350px] h-[350px] bg-gradient-to-br from-cyan-500/10 to-transparent rounded-full blur-3xl pointer-events-none animate-pulse" style={{ animationDuration: '7s' }} />
 
             <div className="relative z-10 max-w-[1800px] mx-auto">
                 {/* Header */}
@@ -316,11 +318,11 @@ export default function StatisticsPage() {
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Daily Financial Flow (Area Chart) */}
-                    <div className="col-span-1 lg:col-span-2 rounded-2xl bg-zinc-900/50 border border-white/10 overflow-hidden">
-                        <div className="p-6 border-b border-white/10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                    <div className="col-span-1 lg:col-span-2 rounded-2xl bg-gradient-to-br from-emerald-500/10 via-zinc-900/80 to-zinc-900/50 border border-emerald-500/30 overflow-hidden shadow-lg shadow-emerald-500/5">
+                        <div className="p-6 border-b border-emerald-500/20 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-gradient-to-r from-emerald-500/10 to-transparent">
                             <div className="flex items-center gap-3">
-                                <div className="p-2 rounded-xl bg-primary/20">
-                                    <TrendingUp className="h-5 w-5 text-primary" />
+                                <div className="p-2 rounded-xl bg-gradient-to-br from-emerald-500/30 to-green-500/20 shadow-inner">
+                                    <TrendingUp className="h-5 w-5 text-emerald-400" />
                                 </div>
                                 <h2 className="text-xl font-semibold font-serif text-white">Daily Financial Flow</h2>
                             </div>
@@ -435,11 +437,11 @@ export default function StatisticsPage() {
                     </div>
 
                     {/* Expense Breakdown (Pie Chart) - Left Side */}
-                    <div className="col-span-1 rounded-2xl bg-zinc-900/50 border border-white/10 overflow-hidden">
-                        <div className="p-6 border-b border-white/10">
+                    <div className="col-span-1 rounded-2xl bg-gradient-to-br from-violet-500/10 via-zinc-900/80 to-zinc-900/50 border border-violet-500/30 overflow-hidden shadow-lg shadow-violet-500/5">
+                        <div className="p-6 border-b border-violet-500/20 bg-gradient-to-r from-violet-500/10 to-transparent">
                             <div className="flex items-center gap-3">
-                                <div className="p-2 rounded-xl bg-purple-500/20">
-                                    <PieChartIcon className="h-5 w-5 text-purple-400" />
+                                <div className="p-2 rounded-xl bg-gradient-to-br from-violet-500/30 to-purple-500/20 shadow-inner">
+                                    <PieChartIcon className="h-5 w-5 text-violet-400" />
                                 </div>
                                 <h2 className="text-xl font-semibold font-serif text-white">Expense Breakdown</h2>
                             </div>
@@ -527,11 +529,11 @@ export default function StatisticsPage() {
                     </div>
 
                     {/* Goals Progress (Bar Chart) - Right Side */}
-                    <div className="col-span-1 rounded-2xl bg-zinc-900/50 border border-white/10 overflow-hidden">
-                        <div className="p-6 border-b border-white/10">
+                    <div className="col-span-1 rounded-2xl bg-gradient-to-br from-amber-500/10 via-zinc-900/80 to-zinc-900/50 border border-amber-500/30 overflow-hidden shadow-lg shadow-amber-500/5">
+                        <div className="p-6 border-b border-amber-500/20 bg-gradient-to-r from-amber-500/10 to-transparent">
                             <div className="flex items-center gap-3">
-                                <div className="p-2 rounded-xl bg-green-500/20">
-                                    <Target className="h-5 w-5 text-green-400" />
+                                <div className="p-2 rounded-xl bg-gradient-to-br from-amber-500/30 to-yellow-500/20 shadow-inner">
+                                    <Target className="h-5 w-5 text-amber-400" />
                                 </div>
                                 <h2 className="text-xl font-semibold font-serif text-white">Goals Progress</h2>
                             </div>
@@ -579,11 +581,11 @@ export default function StatisticsPage() {
                     </div>
 
                     {/* Wallet Spending (Redesigned) - Bottom Full Width */}
-                    <div className="col-span-1 lg:col-span-2 rounded-2xl bg-zinc-900/50 border border-white/10 overflow-hidden">
-                        <div className="p-6 border-b border-white/10">
+                    <div className="col-span-1 lg:col-span-2 rounded-2xl bg-gradient-to-br from-cyan-500/10 via-zinc-900/80 to-zinc-900/50 border border-cyan-500/30 overflow-hidden shadow-lg shadow-cyan-500/5">
+                        <div className="p-6 border-b border-cyan-500/20 bg-gradient-to-r from-cyan-500/10 to-transparent">
                             <div className="flex items-center gap-3">
-                                <div className="p-2 rounded-xl bg-blue-500/20">
-                                    <Wallet className="h-5 w-5 text-blue-400" />
+                                <div className="p-2 rounded-xl bg-gradient-to-br from-cyan-500/30 to-blue-500/20 shadow-inner">
+                                    <Wallet className="h-5 w-5 text-cyan-400" />
                                 </div>
                                 <h2 className="text-xl font-semibold font-serif text-white">Wallet Spending</h2>
                             </div>
@@ -626,14 +628,14 @@ export default function StatisticsPage() {
 
                 {/* Yearly Expense Overview */}
                 <div className="mt-8 mb-8">
-                    <div className="rounded-2xl bg-zinc-900/50 border border-white/10 overflow-hidden relative">
+                    <div className="rounded-2xl bg-gradient-to-br from-rose-500/10 via-zinc-900/80 to-zinc-900/50 border border-rose-500/30 overflow-hidden relative shadow-lg shadow-rose-500/5">
                         {/* Decorative background glow */}
-                        <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-red-500/5 rounded-full blur-3xl pointer-events-none translate-x-1/2 -translate-y-1/2"></div>
+                        <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-rose-500/10 rounded-full blur-3xl pointer-events-none translate-x-1/2 -translate-y-1/2"></div>
 
-                        <div className="p-6 border-b border-white/10 flex flex-row items-center justify-between">
+                        <div className="p-6 border-b border-rose-500/20 flex flex-row items-center justify-between bg-gradient-to-r from-rose-500/10 to-transparent">
                             <div className="flex items-center gap-3">
-                                <div className="p-2 rounded-xl bg-red-500/20">
-                                    <TrendingDown className="h-5 w-5 text-red-400" />
+                                <div className="p-2 rounded-xl bg-gradient-to-br from-rose-500/30 to-red-500/20 shadow-inner">
+                                    <TrendingDown className="h-5 w-5 text-rose-400" />
                                 </div>
                                 <div>
                                     <h2 className="text-xl font-semibold font-serif text-white">Yearly Overview</h2>

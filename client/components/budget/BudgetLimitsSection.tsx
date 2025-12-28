@@ -130,15 +130,15 @@ export function BudgetLimitsSection({ month, year }: BudgetLimitsSectionProps) {
         }).sort((a, b) => a.label.localeCompare(b.label));
 
     return (
-        <div className="rounded-2xl bg-zinc-900/50 border border-white/10 overflow-hidden">
-            <div className="p-6 border-b border-white/10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="rounded-2xl bg-gradient-to-br from-violet-500/10 via-zinc-900/80 to-zinc-900/50 border border-violet-500/30 overflow-hidden shadow-lg shadow-violet-500/5">
+            <div className="p-6 border-b border-violet-500/20 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-gradient-to-r from-violet-500/10 to-transparent">
                 <div className="flex items-center gap-3">
-                    <div className="p-3 rounded-xl bg-blue-500/20">
-                        <Target className="h-6 w-6 text-blue-400" />
+                    <div className="p-3 rounded-xl bg-gradient-to-br from-violet-500/30 to-purple-500/20 shadow-inner">
+                        <Target className="h-6 w-6 text-violet-400" />
                     </div>
                     <div>
                         <h2 className="text-xl font-bold font-serif text-white">Monthly Budget Limits</h2>
-                        <p className="text-sm text-gray-500">{month} {year}</p>
+                        <p className="text-sm text-violet-300/60">{month} {year}</p>
                     </div>
                 </div>
                 <div className="flex gap-2">
@@ -147,8 +147,8 @@ export function BudgetLimitsSection({ month, year }: BudgetLimitsSectionProps) {
                             {hiddenCategories.length > 0 && (
                                 <Popover open={addCategoryOpen} onOpenChange={setAddCategoryOpen}>
                                     <PopoverTrigger asChild>
-                                        <Button variant="outline" size="sm" className="border-primary/50 hover:bg-primary/20 hover:border-primary rounded-xl">
-                                            <Plus className="h-4 w-4 mr-1 text-primary" /> Add Category
+                                        <Button variant="outline" size="sm" className="border-violet-500/50 text-violet-400 hover:bg-violet-500/20 hover:border-violet-400 rounded-xl">
+                                            <Plus className="h-4 w-4 mr-1 text-violet-400" /> Add Category
                                         </Button>
                                     </PopoverTrigger>
                                     <PopoverContent
@@ -208,23 +208,23 @@ export function BudgetLimitsSection({ month, year }: BudgetLimitsSectionProps) {
                     const progressColor = isOverBudget ? "bg-red-500" : "bg-primary";
 
                     return (
-                        <div className="mb-8 p-6 bg-white/5 rounded-2xl border border-white/10">
+                        <div className="mb-8 p-6 bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-transparent rounded-2xl border border-emerald-500/30 shadow-lg shadow-emerald-500/5">
                             <div className="flex items-center gap-3 mb-4">
-                                <div className="p-2 rounded-xl bg-primary/20">
-                                    <PieChart className="h-5 w-5 text-primary" />
+                                <div className="p-2 rounded-xl bg-gradient-to-br from-emerald-500/30 to-green-500/20 shadow-inner">
+                                    <PieChart className="h-5 w-5 text-emerald-400" />
                                 </div>
-                                <span className="text-sm font-medium text-gray-400 uppercase tracking-wider">Overall Status</span>
+                                <span className="text-sm font-medium text-emerald-300/80 uppercase tracking-wider">Overall Status</span>
                             </div>
                             <div className="flex justify-between items-end mb-4">
                                 <span className={`text-4xl font-bold ${isOverBudget ? 'text-red-400' : 'text-white'}`}>{percent}%</span>
                                 <div className="text-right">
-                                    <span className={`text-lg font-semibold ${isOverBudget ? 'text-red-400' : 'text-white'}`}>${totalSpent.toLocaleString()}</span>
+                                    <span className={`text-lg font-semibold ${isOverBudget ? 'text-red-400' : 'text-emerald-400'}`}>${totalSpent.toLocaleString()}</span>
                                     <span className="text-gray-500"> / ${totalLimit.toLocaleString()}</span>
                                 </div>
                             </div>
                             <Progress
                                 value={percent > 100 ? 100 : percent}
-                                indicatorClassName={progressColor}
+                                indicatorClassName={isOverBudget ? "bg-red-500" : "bg-gradient-to-r from-emerald-500 to-cyan-500"}
                                 className="h-4 bg-white/10"
                             />
                         </div>
@@ -243,9 +243,9 @@ export function BudgetLimitsSection({ month, year }: BudgetLimitsSectionProps) {
                         return (
                             <div
                                 key={cat.id}
-                                className={`p-4 rounded-xl border relative group transition-all ${cat.isOverBudget
-                                        ? 'bg-red-500/10 border-red-500/30'
-                                        : 'bg-white/5 border-white/10 hover:border-white/20'
+                                className={`p-4 rounded-xl border relative group transition-all hover:scale-[1.02] ${cat.isOverBudget
+                                    ? 'bg-gradient-to-br from-red-500/15 via-red-500/10 to-transparent border-red-500/40 shadow-lg shadow-red-500/10'
+                                    : 'bg-gradient-to-br from-white/5 via-white/[0.02] to-transparent border-white/10 hover:border-violet-500/30 hover:shadow-lg hover:shadow-violet-500/5'
                                     }`}
                             >
                                 {isEditing && (
@@ -259,8 +259,8 @@ export function BudgetLimitsSection({ month, year }: BudgetLimitsSectionProps) {
                                 )}
                                 <div className="flex justify-between items-start mb-4">
                                     <div className="flex items-center gap-3">
-                                        <div className={`p-2 rounded-xl ${cat.isOverBudget ? 'bg-red-500/20' : 'bg-white/10'}`}>
-                                            <Icon className={`w-5 h-5 ${cat.isOverBudget ? 'text-red-400' : 'text-primary'}`} />
+                                        <div className={`p-2 rounded-xl ${cat.isOverBudget ? 'bg-gradient-to-br from-red-500/30 to-red-500/20' : 'bg-gradient-to-br from-violet-500/20 to-purple-500/10'}`}>
+                                            <Icon className={`w-5 h-5 ${cat.isOverBudget ? 'text-red-400' : 'text-violet-400'}`} />
                                         </div>
                                         <div>
                                             <Label className={`text-base font-semibold ${cat.isOverBudget ? 'text-red-400' : 'text-white'}`}>
@@ -276,7 +276,7 @@ export function BudgetLimitsSection({ month, year }: BudgetLimitsSectionProps) {
                                             type="number"
                                             value={limits[cat.id] || ''}
                                             onChange={(e) => handleLimitChange(cat.id, e.target.value)}
-                                            className="w-24 h-9 text-right bg-zinc-800 border-zinc-700 rounded-xl focus:border-primary"
+                                            className="w-24 h-9 text-right bg-zinc-800 border-zinc-700 rounded-xl focus:border-violet-400"
                                             placeholder="0"
                                             min="0"
                                             onKeyDown={(e) => {
@@ -286,7 +286,7 @@ export function BudgetLimitsSection({ month, year }: BudgetLimitsSectionProps) {
                                             }}
                                         />
                                     ) : (
-                                        <div className={`text-sm font-bold px-2 py-1 rounded-lg ${cat.isOverBudget ? 'text-red-400 bg-red-500/20' : 'text-primary bg-primary/20'
+                                        <div className={`text-sm font-bold px-2 py-1 rounded-lg ${cat.isOverBudget ? 'text-red-400 bg-red-500/20' : 'text-violet-400 bg-violet-500/20'
                                             }`}>
                                             {cat.percent}%
                                         </div>
@@ -296,7 +296,7 @@ export function BudgetLimitsSection({ month, year }: BudgetLimitsSectionProps) {
                                 <Progress
                                     value={Math.min(cat.percent, 100)}
                                     className="h-2 bg-white/10"
-                                    indicatorClassName={cat.isOverBudget ? "bg-red-500" : "bg-primary"}
+                                    indicatorClassName={cat.isOverBudget ? "bg-gradient-to-r from-red-500 to-orange-500" : "bg-gradient-to-r from-violet-500 to-cyan-500"}
                                 />
                             </div>
                         );

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { TransactionData } from "./TransactionDialog";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,7 @@ export function Dashboard() {
 
   const { logout, user } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [showAllCategories, setShowAllCategories] = useState(false);
   const currency = "$";
 
   const queryClient = useQueryClient();
@@ -48,6 +50,8 @@ export function Dashboard() {
       return d;
     });
   };
+
+  const { toast } = useToast();
 
   const handleTransactionSubmit = async (data: TransactionData) => {
     // Snapshot strictly immutable
@@ -91,7 +95,19 @@ export function Dashboard() {
       const result = await response.json();
 
       if (result.success) {
-        await refreshBudget();
+        // If transaction was added for a different month, navigate to that month
+        if (!isCurrentView) {
+          // Invalidate cache for the target month to ensure fresh data
+          await queryClient.invalidateQueries({ queryKey: ['budget', tMonth, tYear, user?.id] });
+          const newDate = new Date(tYear, monthNames.indexOf(tMonth), 1);
+          setCurrentDate(newDate);
+          toast({
+            title: "Transaction Added",
+            description: `Navigated to ${tMonth} ${tYear} where the transaction was recorded.`,
+          });
+        } else {
+          await refreshBudget();
+        }
       } else {
         if (isCurrentView && snapshot) queryClient.setQueryData(['budget', month, year, user?.id], snapshot);
       }
@@ -134,9 +150,11 @@ export function Dashboard() {
 
   return (
     <div className="min-h-screen bg-black text-white p-4 md:p-6 lg:p-8 relative overflow-hidden">
-      {/* Background decorations - hidden on mobile for performance */}
-      <div className="hidden md:block absolute top-0 right-0 w-[600px] h-[600px] bg-primary/5 rounded-full blur-3xl pointer-events-none" />
-      <div className="hidden md:block absolute bottom-0 left-0 w-[400px] h-[400px] bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+      {/* Animated background decorations - hidden on mobile for performance */}
+      <div className="hidden md:block absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-to-br from-cyan-500/10 via-primary/10 to-transparent rounded-full blur-3xl pointer-events-none animate-pulse" style={{ animationDuration: '4s' }} />
+      <div className="hidden md:block absolute bottom-1/3 left-0 w-[500px] h-[500px] bg-gradient-to-tr from-violet-500/10 via-purple-500/5 to-transparent rounded-full blur-3xl pointer-events-none animate-pulse" style={{ animationDuration: '5s' }} />
+      <div className="hidden md:block absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-gradient-to-tl from-rose-500/10 via-orange-500/5 to-transparent rounded-full blur-3xl pointer-events-none animate-pulse" style={{ animationDuration: '6s' }} />
+      <div className="hidden md:block absolute top-1/4 left-1/3 w-[350px] h-[350px] bg-gradient-to-br from-emerald-500/10 to-transparent rounded-full blur-3xl pointer-events-none animate-pulse" style={{ animationDuration: '7s' }} />
 
       {/* Top Header Row */}
       <div className="relative z-10 flex flex-col gap-4 mb-6 md:mb-8">
@@ -205,7 +223,8 @@ export function Dashboard() {
           trend={`${trends.balance > 0 ? '+' : ''}${trends.balance}%`}
           trendUp={trends.balance >= 0}
           data={graphs.balance}
-          className="bg-gradient-to-br from-primary/20 to-primary/5 border-primary/30"
+          className="bg-gradient-to-br from-primary/25 via-emerald-500/15 to-primary/5 border-primary/40 shadow-lg shadow-primary/10 hover:shadow-primary/20 transition-shadow"
+          accentColor="primary"
         />
         <MetricCard
           title="Income"
@@ -213,6 +232,8 @@ export function Dashboard() {
           trend={`${trends.income > 0 ? '+' : ''}${trends.income}%`}
           trendUp={trends.income >= 0}
           data={graphs.income}
+          className="bg-gradient-to-br from-cyan-500/25 via-blue-500/15 to-cyan-500/5 border-cyan-500/40 shadow-lg shadow-cyan-500/10 hover:shadow-cyan-500/20 transition-shadow"
+          accentColor="cyan"
         />
         <MetricCard
           title="Expenses"
@@ -220,6 +241,8 @@ export function Dashboard() {
           trend={`${trends.expenses > 0 ? '+' : ''}${trends.expenses}%`}
           trendUp={trends.expenses >= 0}
           data={graphs.expenses}
+          className="bg-gradient-to-br from-rose-500/25 via-orange-500/15 to-rose-500/5 border-rose-500/40 shadow-lg shadow-rose-500/10 hover:shadow-rose-500/20 transition-shadow"
+          accentColor="rose"
         />
         <MetricCard
           title="Total Savings"
@@ -227,12 +250,14 @@ export function Dashboard() {
           trend={`${trends.savings > 0 ? '+' : ''}${trends.savings}%`}
           trendUp={trends.savings >= 0}
           data={graphs.savings}
+          className="bg-gradient-to-br from-violet-500/25 via-purple-500/15 to-violet-500/5 border-violet-500/40 shadow-lg shadow-violet-500/10 hover:shadow-violet-500/20 transition-shadow"
+          accentColor="violet"
         />
       </div>
 
       {/* Wallets Row */}
       {wallets.length > 0 && (
-        <div className="relative z-10 mb-6 md:mb-8">
+        <div className="relative z-10 mb-3 md:mb-4">
           <div className="flex items-center justify-between gap-3 mb-3 md:mb-4">
             <div className="flex items-center gap-2 md:gap-3">
               <div className="p-1.5 md:p-2 rounded-lg md:rounded-xl bg-primary/20">
@@ -240,49 +265,54 @@ export function Dashboard() {
               </div>
               <h2 className="text-base md:text-xl font-bold font-serif text-white">My Accounts</h2>
             </div>
-            <div className="px-2 md:px-4 py-1 md:py-1.5 rounded-full bg-gradient-to-r from-primary/20 to-primary/5 border border-primary/30">
+            <a href="/wallets" className="px-2 md:px-4 py-1 md:py-1.5 rounded-full bg-gradient-to-r from-primary/20 to-primary/5 border border-primary/30 hover:border-primary/50 transition-colors cursor-pointer">
               <span className="text-xs md:text-sm text-primary font-bold flex items-center gap-1 md:gap-1.5">
                 <Sparkles className="h-3 w-3 md:h-3.5 md:w-3.5" />
                 <span className="hidden sm:inline">Net Worth:</span> ${wallets.reduce((acc, w) => acc + w.balance, 0).toLocaleString()}
               </span>
-            </div>
+            </a>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 md:gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 md:gap-3">
             {wallets.map(w => {
               const Icon = getWalletIcon(w.type);
               const colorClass = getWalletColor(w.type);
+              const isLowBalance = w.balance < 100;
               return (
-                <div
+                <a
                   key={w.id}
-                  className={`bg-gradient-to-br ${colorClass} rounded-xl md:rounded-2xl p-3 md:p-4 flex flex-col justify-between hover:scale-[1.02] transition-transform border backdrop-blur-sm`}
+                  href="/wallets"
+                  className={`group bg-gradient-to-br ${colorClass} rounded-xl md:rounded-2xl p-2.5 md:p-4 flex flex-col justify-between hover:scale-[1.03] hover:shadow-lg transition-all border backdrop-blur-sm cursor-pointer`}
                 >
                   <div className="flex items-center gap-1.5 md:gap-2 mb-2 md:mb-3">
-                    <div className="p-1 md:p-1.5 rounded-md md:rounded-lg bg-white/10">
+                    <div className="p-1 md:p-1.5 rounded-md md:rounded-lg bg-white/10 group-hover:bg-white/20 transition-colors">
                       <Icon className="w-3 h-3 md:w-4 md:h-4 text-white" />
                     </div>
-                    <span className="text-[10px] md:text-xs font-medium text-white/70 truncate">{w.name}</span>
+                    <span className="text-[10px] md:text-xs font-medium text-white/70 truncate group-hover:text-white/90 transition-colors">{w.name}</span>
+                    {isLowBalance && (
+                      <span className="ml-auto text-[8px] text-yellow-400">Low</span>
+                    )}
                   </div>
-                  <div className="text-base md:text-xl font-bold text-white">${w.balance.toLocaleString()}</div>
-                </div>
+                  <div className="text-sm md:text-xl font-bold text-white">${w.balance.toLocaleString()}</div>
+                </a>
               );
             })}
           </div>
         </div>
       )}
 
-      {/* Lower Section */}
-      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 lg:gap-8">
+      {/* Lower Section - Both columns stretch to equal height */}
+      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-3 lg:gap-4 lg:items-stretch">
         {/* Left Column (Goals + Budget) takes up 1/3 */}
-        <div className="lg:col-span-1 space-y-4 md:space-y-6 order-2 lg:order-1">
+        <div className="lg:col-span-1 flex flex-col gap-4 md:gap-6 order-2 lg:order-1">
           <GoalsSection />
-          <BudgetStatus currency={currency} budget={budget} refreshBudget={refreshBudget} />
+          <div className="flex-1">
+            <BudgetStatus currency={currency} budget={budget} refreshBudget={refreshBudget} showAllCategories={showAllCategories} onToggleCategories={setShowAllCategories} />
+          </div>
         </div>
 
-        <div className="lg:col-span-2 relative order-1 lg:order-2">
-          <TransactionsList transactions={filteredTransactions} wallets={wallets} currency={currency} />
-
-          {/* Gradient overlay at bottom for smooth scroll fade effect if needed */}
-          <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-black to-transparent pointer-events-none"></div>
+        {/* Right Column - Transactions matches left column height */}
+        <div className="lg:col-span-2 order-1 lg:order-2 h-full">
+          <TransactionsList transactions={filteredTransactions} wallets={wallets} currency={currency} showMoreItems={showAllCategories} />
         </div>
       </div>
 

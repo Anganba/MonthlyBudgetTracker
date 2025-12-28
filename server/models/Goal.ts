@@ -5,9 +5,13 @@ export interface IGoal extends Document {
     name: string;
     targetAmount: number;
     currentAmount: number;
+    targetDate?: Date;
+    category?: 'car' | 'travel' | 'home' | 'electronics' | 'education' | 'wedding' | 'emergency' | 'gadget' | 'other';
+    description?: string;
     color?: string;
     status: 'active' | 'fulfilled' | 'archived';
     completedAt?: Date;
+    startedAt?: Date;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -18,9 +22,13 @@ const GoalSchema = new Schema<IGoal>(
         name: { type: String, required: true },
         targetAmount: { type: Number, required: true },
         currentAmount: { type: Number, default: 0 },
+        targetDate: { type: Date },
+        category: { type: String, enum: ['car', 'travel', 'home', 'electronics', 'education', 'wedding', 'emergency', 'gadget', 'other'] },
+        description: { type: String },
         color: { type: String },
         status: { type: String, enum: ['active', 'fulfilled', 'archived'], default: 'active' },
         completedAt: { type: Date },
+        startedAt: { type: Date },
     },
     { timestamps: true }
 );

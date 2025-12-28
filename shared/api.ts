@@ -55,15 +55,21 @@ export interface TransactionResponse {
   message?: string;
 }
 
+export type GoalCategory = 'car' | 'travel' | 'home' | 'electronics' | 'education' | 'wedding' | 'emergency' | 'gadget' | 'other';
+
 export interface Goal {
   id: string;
   userId: string;
   name: string;
   targetAmount: number;
   currentAmount: number;
+  targetDate?: string;
+  category?: GoalCategory;
+  description?: string;
   color?: string;
   status: 'active' | 'fulfilled' | 'archived';
   completedAt?: string;
+  startedAt?: string;
   createdAt?: string;
 }
 
