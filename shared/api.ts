@@ -20,7 +20,7 @@ export type TransactionCategory = string;
 export interface Transaction {
   id: string;
   name: string;
-  type?: 'expense' | 'income' | 'transfer';
+  type?: 'expense' | 'income' | 'transfer' | 'savings';
   planned: number;
   actual: number;
   category: TransactionCategory;

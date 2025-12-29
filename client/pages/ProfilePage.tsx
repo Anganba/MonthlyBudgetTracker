@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
     User, LogOut, Shield, Mail, Loader2, Edit,
-    ChevronRight, Linkedin, Github, Sparkles, Crown, Key, UserCircle,
+    ChevronRight, Linkedin, Github, Briefcase, Sparkles, Crown, Key, UserCircle,
     Zap, Heart, Download, BarChart3, Target, TrendingUp, Clock, CheckCircle
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -410,6 +410,14 @@ export default function ProfilePage() {
                             <Linkedin className="h-5 w-5" />
                         </a>
                         <a
+                            href="https://anganba.netlify.app/"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-3 rounded-xl bg-white/5 text-gray-400 hover:text-emerald-400 hover:bg-emerald-500/10 transition-all"
+                        >
+                            <Briefcase className="h-5 w-5" />
+                        </a>
+                        <a
                             href="https://github.com/anganba"
                             target="_blank"
                             rel="noopener noreferrer"
@@ -419,7 +427,7 @@ export default function ProfilePage() {
                         </a>
                     </div>
                     <p className="text-xs text-gray-600">
-                        &copy; {new Date().getFullYear()} Amar Taka Koi. All rights reserved.
+                        &copy; {new Date().getFullYear()} Anganba Singha. All rights reserved.
                     </p>
                 </div>
             </div>

@@ -80,23 +80,38 @@ export const login: RequestHandler = async (req, res) => {
 };
 
 export const register: RequestHandler = async (req, res) => {
-    const { username, password, email } = req.body;
+    const { username, password } = req.body;
+    let { email } = req.body;
 
     if (!username || !password) {
         return res.status(400).json({ success: false, message: "Missing credentials" });
     }
 
+    // Convert empty email to null to avoid unique index issues
+    if (!email || email.trim() === '') {
+        email = null;
+    }
+
     try {
-        const existingUser = await User.findOne({ username });
-        if (existingUser) {
-            return res.status(400).json({ success: false, message: "Username already exists" });
+        // Check for duplicate username
+        const existingUsername = await User.findOne({ username });
+        if (existingUsername) {
+            return res.status(400).json({ success: false, message: "This username is already taken. Please choose a different username." });
+        }
+
+        // Check for duplicate email (only if email is provided)
+        if (email) {
+            const existingEmail = await User.findOne({ email });
+            if (existingEmail) {
+                return res.status(400).json({ success: false, message: "This email address is already registered. Please use a different email or try logging in." });
+            }
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
 
         const user = await User.create({
             username,
-            email,
+            email: email || undefined, // Use undefined instead of null for optional fields
             passwordHash: hashedPassword,
         });
 
@@ -111,7 +126,41 @@ export const register: RequestHandler = async (req, res) => {
         res.json({ success: true, user: { id: (user._id as any).toString(), username: user.username, email: user.email } });
     } catch (error: any) {
         console.error("Registration error:", error);
-        return res.status(500).json({ success: false, message: `Registration error: ${error.message}` });
+
+        // Handle MongoDB duplicate key errors (E11000)
+        if (error.code === 11000 || error.message?.includes('E11000')) {
+            // Parse which field caused the duplicate
+            if (error.message?.includes('username')) {
+                return res.status(400).json({
+                    success: false,
+                    message: "This username is already taken. Please choose a different username."
+                });
+            } else if (error.message?.includes('email')) {
+                return res.status(400).json({
+                    success: false,
+                    message: "This email address is already registered. Please use a different email or try logging in."
+                });
+            } else {
+                return res.status(400).json({
+                    success: false,
+                    message: "An account with these credentials already exists. Please try different details."
+                });
+            }
+        }
+
+        // Handle validation errors
+        if (error.name === 'ValidationError') {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid input data. Please check your information and try again."
+            });
+        }
+
+        // Generic error fallback
+        return res.status(500).json({
+            success: false,
+            message: "An error occurred during registration. Please try again later."
+        });
     }
 };
 

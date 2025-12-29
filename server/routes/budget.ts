@@ -239,10 +239,26 @@ const recalculateGoalTotal = async (goalId: string, userId: string) => {
       {
         $project: {
           amount: "$transactions.actual",
+          type: "$transactions.type",
           category: "$transactions.category"
         }
       },
-      { $group: { _id: null, total: { $sum: "$amount" }, count: { $sum: 1 } } }
+      {
+        $group: {
+          _id: null,
+          total: {
+            $sum: {
+              $cond: [
+                // If type is 'expense', subtract; otherwise (savings/income/transfer), add
+                { $eq: ["$type", "expense"] },
+                { $multiply: ["$amount", -1] }, // Subtract expenses
+                "$amount" // Add savings/income/transfer
+              ]
+            }
+          },
+          count: { $sum: 1 }
+        }
+      }
     ]);
 
     console.log('[Recalc] Aggregation Result:', JSON.stringify(result));

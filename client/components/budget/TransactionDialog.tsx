@@ -13,7 +13,7 @@ import {
     TabsList,
     TabsTrigger,
 } from "@/components/ui/tabs";
-import { ArrowLeftRight, ArrowDown, Receipt, TrendingUp, ArrowRightLeft } from "lucide-react";
+import { ArrowLeftRight, ArrowDown, Receipt, TrendingUp, ArrowRightLeft, PiggyBank } from "lucide-react";
 
 import {
     Select,
@@ -35,7 +35,7 @@ export interface TransactionData {
     id?: string;
     category: string;
     name: string;
-    type?: 'expense' | 'income' | 'transfer';
+    type?: 'expense' | 'income' | 'transfer' | 'savings';
     planned: number;
     actual: number;
     date: string;
@@ -68,7 +68,7 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
     const { wallets } = useWallets();
     const { toast } = useToast();
 
-    const [type, setType] = useState<'expense' | 'income' | 'transfer'>('expense');
+    const [type, setType] = useState<'expense' | 'income' | 'transfer' | 'savings'>('expense');
     const [category, setCategory] = useState<string>('Food');
     const [name, setName] = useState('');
     const [actual, setActual] = useState('');
@@ -85,7 +85,7 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
             setActual(initialData.actual?.toString() || '');
             const rawDate = initialData.date || new Date().toISOString();
             setDate(rawDate.split('T')[0]);
-            setGoalId(initialData.goalId || '');
+            setGoalId(initialData.goalId || 'unassigned');
             setWalletId(initialData.walletId || '');
             setToWalletId(initialData.toWalletId || '');
         } else if (open && mode === 'add') {
@@ -94,7 +94,7 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
             setName('');
             setActual('');
             setDate(new Date().toISOString().split('T')[0]);
-            setGoalId('');
+            setGoalId('unassigned');
 
             if (wallets.length > 0) {
                 const cashWallet = wallets.find(w => w.type === 'cash');
@@ -111,9 +111,24 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
 
     const filteredCategories = TRANSACTION_CATEGORIES.filter(cat => {
         if (type === 'income') return cat.type === 'income';
-        if (type === 'expense') return cat.type === 'expense' || cat.type === 'savings';
+        if (type === 'expense') return cat.type === 'expense';
+        if (type === 'savings') return cat.type === 'savings';
         return true;
     });
+
+    // Validate when user tries to select Savings type with only one wallet
+    const handleTypeChange = (newType: 'expense' | 'income' | 'transfer' | 'savings') => {
+        // Check if user is trying to select Savings but only has one wallet
+        if (newType === 'savings' && wallets.length <= 1) {
+            toast({
+                title: "Add a Savings Wallet First",
+                description: "To track savings, please add a dedicated savings wallet (e.g., a savings account or goal-based wallet) from the Wallets page. Then you can transfer money between your wallets.",
+                variant: "destructive",
+            });
+            return; // Don't change the type
+        }
+        setType(newType);
+    };
 
     useEffect(() => {
         if (open) {
@@ -141,23 +156,39 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
             });
             return;
         }
-        if (type === 'transfer' || category === 'Savings') {
-            if (!walletId || !toWalletId) return;
-            if (walletId === toWalletId) return;
+
+        // Validation for transfers and savings - both require two different wallets
+        if (type === 'transfer' || type === 'savings') {
+            if (!walletId || !toWalletId) {
+                toast({
+                    title: "Wallets Required",
+                    description: `Both source and destination wallets are required for ${type === 'transfer' ? 'transfers' : 'savings'}.`,
+                    variant: "destructive",
+                });
+                return;
+            }
+            if (walletId === toWalletId) {
+                toast({
+                    title: type === 'transfer' ? "Invalid Transfer" : "Invalid Savings",
+                    description: "Source and destination wallets must be different.",
+                    variant: "destructive",
+                });
+                return;
+            }
         }
 
-        const finalGoalId = (category === 'Savings' || type === 'transfer') ? goalId : undefined;
+        const finalGoalId = goalId; // Allow goal linking for all transaction types
         const amount = parseFloat(actual) || 0;
 
         onSubmit({
             id: initialData?.id,
-            category: type === 'transfer' ? 'Transfer' : category,
+            category: type === 'transfer' ? 'Transfer' : type === 'savings' ? 'Savings' : category,
             name,
             type,
             planned: amount,
             actual: amount,
             date,
-            goalId: finalGoalId === 'unassigned' ? undefined : finalGoalId,
+            goalId: finalGoalId === 'unassigned' || !finalGoalId ? undefined : finalGoalId,
             walletId: walletId === 'unassigned' || !walletId ? undefined : walletId,
             toWalletId: toWalletId === 'unassigned' || !toWalletId ? undefined : toWalletId
         });
@@ -169,6 +200,7 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
         switch (type) {
             case 'income': return TrendingUp;
             case 'transfer': return ArrowRightLeft;
+            case 'savings': return PiggyBank;
             default: return Receipt;
         }
     };
@@ -181,11 +213,17 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
                     <DialogTitle className="font-serif text-2xl text-white flex items-center gap-3">
                         <div className={cn(
                             "p-2 rounded-xl",
-                            type === 'expense' ? 'bg-red-500/20' : type === 'income' ? 'bg-green-500/20' : 'bg-blue-500/20'
+                            type === 'expense' ? 'bg-red-500/20' :
+                                type === 'income' ? 'bg-green-500/20' :
+                                    type === 'savings' ? 'bg-purple-500/20' :
+                                        'bg-blue-500/20'
                         )}>
                             <TypeIcon className={cn(
                                 "h-5 w-5",
-                                type === 'expense' ? 'text-red-400' : type === 'income' ? 'text-green-400' : 'text-blue-400'
+                                type === 'expense' ? 'text-red-400' :
+                                    type === 'income' ? 'text-green-400' :
+                                        type === 'savings' ? 'text-purple-400' :
+                                            'text-blue-400'
                             )} />
                         </div>
                         {title}
@@ -195,8 +233,8 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
                     </DialogDescription>
                 </DialogHeader>
 
-                <Tabs value={type} onValueChange={(v) => setType(v as any)} className="w-full">
-                    <TabsList className="grid w-full grid-cols-3 mb-4 bg-zinc-800 p-1 rounded-xl">
+                <Tabs value={type} onValueChange={(v) => handleTypeChange(v as any)} className="w-full">
+                    <TabsList className="grid w-full grid-cols-4 mb-4 bg-zinc-800 p-1 rounded-xl">
                         <TabsTrigger
                             value="expense"
                             className="rounded-lg data-[state=active]:bg-red-500 data-[state=active]:text-white text-gray-400"
@@ -208,6 +246,12 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
                             className="rounded-lg data-[state=active]:bg-green-500 data-[state=active]:text-white text-gray-400"
                         >
                             Income
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="savings"
+                            className="rounded-lg data-[state=active]:bg-purple-500 data-[state=active]:text-white text-gray-400"
+                        >
+                            Savings
                         </TabsTrigger>
                         <TabsTrigger
                             value="transfer"
@@ -250,7 +294,7 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
                             </div>
                         </div>
 
-                        {type !== 'transfer' && (
+                        {type !== 'transfer' && type !== 'savings' && (
                             <div className="space-y-2">
                                 <Label htmlFor="category" className="text-gray-400">Category</Label>
                                 <Select value={category} onValueChange={setCategory}>
@@ -272,13 +316,13 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
                                 id="name"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
-                                placeholder={type === 'transfer' ? "e.g. Savings Deposit" : "e.g. Grocery"}
+                                placeholder={type === 'transfer' ? "e.g. Savings Deposit" : type === 'savings' ? "e.g. Monthly Savings" : "e.g. Grocery"}
                                 autoFocus
                                 className="bg-zinc-800 border-zinc-700 rounded-xl h-11 focus:border-primary"
                             />
                         </div>
 
-                        {(type === 'transfer' || category === 'Savings') ? (
+                        {(type === 'transfer' || type === 'savings') ? (
                             <div className="bg-white/5 p-3 rounded-xl border border-white/10">
                                 <div className="space-y-1">
                                     <Label className="text-gray-500 text-[10px] uppercase tracking-wider font-semibold">From Account</Label>
@@ -298,7 +342,9 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
                                 </div>
 
                                 <div className="space-y-1">
-                                    <Label className="text-gray-500 text-[10px] uppercase tracking-wider font-semibold">To Account</Label>
+                                    <Label className="text-gray-500 text-[10px] uppercase tracking-wider font-semibold">
+                                        To Account
+                                    </Label>
                                     <Select value={toWalletId} onValueChange={setToWalletId}>
                                         <SelectTrigger className="bg-zinc-800 border-zinc-700 rounded-xl h-10">
                                             <SelectValue placeholder="Select Target Wallet" />
@@ -330,22 +376,21 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
                             </div>
                         )}
 
-                        {(category === 'Savings' || type === 'transfer') && (
-                            <div className="space-y-2">
-                                <Label className="text-gray-400">Link to Goal (Optional)</Label>
-                                <Select value={goalId} onValueChange={setGoalId}>
-                                    <SelectTrigger className="bg-zinc-800 border-zinc-700 rounded-xl h-11">
-                                        <SelectValue placeholder="None" />
-                                    </SelectTrigger>
-                                    <SelectContent className="bg-zinc-800 border-zinc-700">
-                                        <SelectItem value="unassigned">None</SelectItem>
-                                        {goals.map(g => (
-                                            <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        )}
+                        {/* Link to Goal - Available for all transaction types */}
+                        <div className="space-y-2">
+                            <Label className="text-gray-400">Link to Goal (Optional)</Label>
+                            <Select value={goalId} onValueChange={setGoalId}>
+                                <SelectTrigger className="bg-zinc-800 border-zinc-700 rounded-xl h-11">
+                                    <SelectValue placeholder="None" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-zinc-800 border-zinc-700">
+                                    <SelectItem value="unassigned">None</SelectItem>
+                                    {goals.map(g => (
+                                        <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
 
                         <DialogFooter className="mt-6 gap-2 sm:gap-0 pt-4">
                             <Button

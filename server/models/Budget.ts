@@ -16,7 +16,7 @@ export interface IBudget extends Document {
 const TransactionSchema = new Schema<Transaction>({
     id: { type: String, required: true },
     name: { type: String, required: true },
-    type: { type: String, enum: ['expense', 'income', 'transfer'], default: 'expense' },
+    type: { type: String, enum: ['expense', 'income', 'transfer', 'savings'], default: 'expense' },
     planned: { type: Number, required: true },
     actual: { type: Number, required: true },
     category: {

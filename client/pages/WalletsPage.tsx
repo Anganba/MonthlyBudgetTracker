@@ -124,7 +124,7 @@ export default function WalletsPage() {
             .slice(0, 3);
     };
 
-    const handleOpen = (wallet?: Wallet) => {
+    const handleOpen = (wallet?: Wallet, defaultType?: string) => {
         if (wallet) {
             setEditingWallet(wallet);
             setFormData({
@@ -138,7 +138,7 @@ export default function WalletsPage() {
             setEditingWallet(null);
             setFormData({
                 name: "",
-                type: "mfs",
+                type: defaultType || "mfs",
                 balance: "0",
                 description: "",
                 color: "#ffffff"
@@ -296,13 +296,13 @@ export default function WalletsPage() {
                         <h3 className="text-xl font-semibold text-white mb-2">No wallets yet</h3>
                         <p className="text-gray-400 mb-4 max-w-md mx-auto">Get started by adding your first wallet. Track your cash, bank accounts, mobile payments, and more.</p>
                         <div className="flex flex-wrap justify-center gap-2">
-                            <Button onClick={() => { setFormData(prev => ({ ...prev, type: 'cash' })); handleOpen(); }} variant="outline" className="border-green-500/30 text-green-400 hover:bg-green-500/10">
+                            <Button onClick={() => handleOpen(undefined, 'cash')} variant="outline" className="border-green-500/30 text-green-400 hover:bg-green-500/10">
                                 <Banknote className="mr-2 h-4 w-4" /> Add Cash
                             </Button>
-                            <Button onClick={() => { setFormData(prev => ({ ...prev, type: 'bank' })); handleOpen(); }} variant="outline" className="border-blue-500/30 text-blue-400 hover:bg-blue-500/10">
+                            <Button onClick={() => handleOpen(undefined, 'bank')} variant="outline" className="border-blue-500/30 text-blue-400 hover:bg-blue-500/10">
                                 <Landmark className="mr-2 h-4 w-4" /> Add Bank
                             </Button>
-                            <Button onClick={() => { setFormData(prev => ({ ...prev, type: 'mfs' })); handleOpen(); }} variant="outline" className="border-pink-500/30 text-pink-400 hover:bg-pink-500/10">
+                            <Button onClick={() => handleOpen(undefined, 'mfs')} variant="outline" className="border-pink-500/30 text-pink-400 hover:bg-pink-500/10">
                                 <Smartphone className="mr-2 h-4 w-4" /> Add MFS
                             </Button>
                         </div>
