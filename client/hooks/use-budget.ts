@@ -53,16 +53,27 @@ export function useBudget(selectedMonth?: string, selectedYear?: number) {
         const transactions = b.transactions || [];
         const incomeCategories = ['income', 'Paycheck', 'Bonus', 'Debt Added'];
 
+        // Income: type='income' OR income categories
         const income = transactions
-            .filter(t => incomeCategories.includes(t.category))
+            .filter(t => t.type === 'income' || incomeCategories.includes(t.category))
             .reduce((sum, t) => sum + t.actual, 0);
 
+        // Expenses: type='expense' AND not Savings/Transfer categories AND not transfer/savings types
         const expenses = transactions
-            .filter(t => !incomeCategories.includes(t.category) && t.category !== 'Savings' && t.type !== 'transfer' && t.category !== 'Transfer')
+            .filter(t => {
+                // Exclude transfers and savings types
+                if (t.type === 'transfer' || t.type === 'savings') return false;
+                // Exclude Transfer and Savings categories
+                if (t.category === 'Transfer' || t.category === 'Savings') return false;
+                // Exclude income
+                if (t.type === 'income' || incomeCategories.includes(t.category)) return false;
+                return true;
+            })
             .reduce((sum, t) => sum + t.actual, 0);
 
+        // Savings: type='savings' OR category='Savings'
         const savings = transactions
-            .filter(t => t.category === 'Savings')
+            .filter(t => t.type === 'savings' || t.category === 'Savings')
             .reduce((sum, t) => sum + t.actual, 0);
 
         const startBalance = b.rolloverActual || 0;
@@ -107,14 +118,24 @@ export function useBudget(selectedMonth?: string, selectedYear?: number) {
             const incomeCategories = ['income', 'Paycheck', 'Bonus', 'Debt Added'];
 
             if (type === 'balance') {
+                // Income: type='income' OR income categories
                 const dayIncome = dailyTransactions
-                    .filter(t => incomeCategories.includes(t.category))
+                    .filter(t => t.type === 'income' || incomeCategories.includes(t.category))
                     .reduce((sum, t) => sum + t.actual, 0);
+
+                // Expenses: Everything else except income, savings types, and transfers
                 const dayExpenses = dailyTransactions
-                    .filter(t => !incomeCategories.includes(t.category) && t.category !== 'Savings' && t.type !== 'transfer' && t.category !== 'Transfer')
+                    .filter(t => {
+                        if (t.type === 'transfer' || t.type === 'savings') return false;
+                        if (t.category === 'Transfer' || t.category === 'Savings') return false;
+                        if (t.type === 'income' || incomeCategories.includes(t.category)) return false;
+                        return true;
+                    })
                     .reduce((sum, t) => sum + t.actual, 0);
+
+                // Savings: type='savings' OR category='Savings'
                 const daySavings = dailyTransactions
-                    .filter(t => t.category === 'Savings')
+                    .filter(t => t.type === 'savings' || t.category === 'Savings')
                     .reduce((sum, t) => sum + t.actual, 0);
 
                 runningBalance = runningBalance + dayIncome - dayExpenses - daySavings;
@@ -123,16 +144,24 @@ export function useBudget(selectedMonth?: string, selectedYear?: number) {
             } else {
                 let value = 0;
                 if (type === 'income') {
+                    // Income: type='income' OR income categories
                     value = dailyTransactions
-                        .filter(t => incomeCategories.includes(t.category))
+                        .filter(t => t.type === 'income' || incomeCategories.includes(t.category))
                         .reduce((sum, t) => sum + t.actual, 0);
                 } else if (type === 'expenses') {
+                    // Expenses: Everything else except income, savings types, and transfers
                     value = dailyTransactions
-                        .filter(t => !incomeCategories.includes(t.category) && t.category !== 'Savings' && t.type !== 'transfer' && t.category !== 'Transfer')
+                        .filter(t => {
+                            if (t.type === 'transfer' || t.type === 'savings') return false;
+                            if (t.category === 'Transfer' || t.category === 'Savings') return false;
+                            if (t.type === 'income' || incomeCategories.includes(t.category)) return false;
+                            return true;
+                        })
                         .reduce((sum, t) => sum + t.actual, 0);
                 } else if (type === 'savings') {
+                    // Savings: type='savings' OR category='Savings'
                     value = dailyTransactions
-                        .filter(t => t.category === 'Savings')
+                        .filter(t => t.type === 'savings' || t.category === 'Savings')
                         .reduce((sum, t) => sum + t.actual, 0);
                 }
                 // For non-balance, maybe we want cumulative? Or daily peaks? 

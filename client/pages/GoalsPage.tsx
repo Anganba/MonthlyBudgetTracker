@@ -37,6 +37,7 @@ export default function GoalsPage() {
 
     // Fulfillment State
     const [fulfillGoal, setFulfillGoal] = useState<Goal | null>(null);
+    const [fulfillWalletId, setFulfillWalletId] = useState<string>('');
 
     // Quick Add State
     const [quickAddGoal, setQuickAddGoal] = useState<Goal | null>(null);
@@ -80,6 +81,10 @@ export default function GoalsPage() {
     const handleFulfillClick = (e: React.MouseEvent, goal: Goal) => {
         e.stopPropagation();
         setFulfillGoal(goal);
+        // Default to first wallet
+        if (wallets.length > 0) {
+            setFulfillWalletId(wallets[0].id);
+        }
     };
 
     const handleReactivate = (e: React.MouseEvent, goal: Goal) => {
@@ -759,41 +764,99 @@ export default function GoalsPage() {
             </Dialog>
 
             {/* Fulfillment Dialog */}
-            <AlertDialog open={!!fulfillGoal} onOpenChange={(open) => !open && setFulfillGoal(null)}>
-                <AlertDialogContent className="bg-zinc-900 border-white/10">
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="text-xl font-serif flex items-center gap-2">
+            <Dialog open={!!fulfillGoal} onOpenChange={(open) => !open && setFulfillGoal(null)}>
+                <DialogContent className="sm:max-w-md bg-zinc-900 border-white/10">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-serif flex items-center gap-2">
                             <Trophy className="h-5 w-5 text-yellow-500" />
                             Goal Completed! 🎉
-                        </AlertDialogTitle>
-                        <AlertDialogDescription className="text-gray-400">
+                        </DialogTitle>
+                        <DialogDescription className="text-gray-400">
                             Congratulations on reaching your goal <strong className="text-white">{fulfillGoal?.name}</strong>!
                             <br /><br />
-                            You saved <strong className="text-primary">${fulfillGoal?.currentAmount.toLocaleString()}</strong> towards this goal.
+                            You're about to record the purchase of this item for <strong className="text-primary">${fulfillGoal?.targetAmount.toLocaleString()}</strong>.
                             <br /><br />
-                            <span className="text-gray-500 text-xs">
-                                Note: The money is already in your savings wallet from the savings transactions you recorded.
-                            </span>
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
+                            This will create an expense transaction and deduct from your chosen wallet.
+                        </DialogDescription>
+                    </DialogHeader>
 
-                    <AlertDialogFooter className="mt-4">
-                        <AlertDialogCancel className="border-zinc-700 hover:bg-zinc-800">Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={() => {
-                                if (fulfillGoal) {
-                                    updateGoal({ ...fulfillGoal, status: 'fulfilled', completedAt: new Date().toISOString() });
+                    <div className="py-4 space-y-4">
+                        <div className="p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/20">
+                            <p className="text-sm text-gray-400 mb-1">Purchase Amount</p>
+                            <p className="text-3xl font-bold text-yellow-400">
+                                ${fulfillGoal?.targetAmount.toLocaleString()}
+                            </p>
+                        </div>
+
+                        {wallets.length > 0 && (
+                            <div>
+                                <Label className="text-gray-400">Spend from Wallet</Label>
+                                <Select value={fulfillWalletId} onValueChange={setFulfillWalletId}>
+                                    <SelectTrigger className="mt-2 h-11 bg-zinc-800 border-zinc-700 rounded-xl">
+                                        <SelectValue placeholder="Select wallet" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-zinc-800 border-zinc-700">
+                                        {wallets.map(w => {
+                                            const hasEnough = w.balance >= (fulfillGoal?.targetAmount || 0);
+                                            return (
+                                                <SelectItem key={w.id} value={w.id}>
+                                                    {w.name} (${w.balance.toLocaleString()})
+                                                    {!hasEnough && ' ⚠️'}
+                                                </SelectItem>
+                                            );
+                                        })}
+                                    </SelectContent>
+                                </Select>
+                                {(() => {
+                                    const selected = wallets.find(w => w.id === fulfillWalletId);
+                                    const amount = fulfillGoal?.targetAmount || 0;
+                                    if (selected && amount > 0 && selected.balance < amount) {
+                                        return <p className="text-xs text-yellow-400 mt-1">⚠️ Insufficient balance in this wallet</p>;
+                                    }
+                                    return null;
+                                })()}
+                            </div>
+                        )}
+                    </div>
+
+                    <DialogFooter>
+                        <Button variant="ghost" onClick={() => { setFulfillGoal(null); setFulfillWalletId(''); }}>Cancel</Button>
+                        <Button
+                            onClick={async () => {
+                                if (fulfillGoal && fulfillWalletId) {
+                                    const categoryConfig = getCategoryConfig(fulfillGoal.category);
+
+                                    // Create expense transaction
+                                    await createTransaction({
+                                        name: `Bought: ${fulfillGoal.name}`,
+                                        category: categoryConfig.label,
+                                        type: 'expense',
+                                        planned: fulfillGoal.targetAmount,
+                                        actual: fulfillGoal.targetAmount,
+                                        date: new Date().toISOString().split('T')[0],
+                                        walletId: fulfillWalletId,
+                                        goalId: fulfillGoal.id,
+                                    });
+
+                                    // Mark goal as fulfilled
+                                    updateGoal({
+                                        ...fulfillGoal,
+                                        status: 'fulfilled',
+                                        completedAt: new Date().toISOString()
+                                    });
                                 }
                                 setFulfillGoal(null);
+                                setFulfillWalletId('');
                             }}
-                            className="bg-yellow-600 hover:bg-yellow-700 text-white"
+                            disabled={!fulfillWalletId}
+                            className="bg-yellow-600 hover:bg-yellow-700 text-white font-bold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             <Trophy className="h-4 w-4 mr-2" />
-                            Move to Hall of Fame
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+                            Record Purchase & Move to Hall of Fame
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
                 <AlertDialogContent className="bg-zinc-900 border-white/10">
