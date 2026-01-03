@@ -8,8 +8,19 @@ import {
     DialogContent,
     DialogHeader,
     DialogTitle,
+    DialogDescription,
     DialogFooter,
 } from "@/components/ui/dialog";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -95,13 +106,18 @@ export default function WalletsPage() {
     const { createTransaction } = useTransactions();
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [isTransferOpen, setIsTransferOpen] = useState(false);
+    const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+    const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+    const [walletToEdit, setWalletToEdit] = useState<Wallet | null>(null);
+    const [walletToDelete, setWalletToDelete] = useState<Wallet | null>(null);
     const [editingWallet, setEditingWallet] = useState<Wallet | null>(null);
     const [formData, setFormData] = useState({
         name: "",
         type: "mfs",
         balance: "",
         description: "",
-        color: "#ffffff"
+        color: "#ffffff",
+        isSavingsWallet: false
     });
     const [transferData, setTransferData] = useState({
         fromWalletId: "",
@@ -119,32 +135,51 @@ export default function WalletsPage() {
     // Get recent transactions for a specific wallet
     const getWalletTransactions = (walletId: string) => {
         return allTransactions
-            .filter(t => t.walletId === walletId || t.toWalletId === walletId)
+            .filter(t => {
+                // Primary wallet match
+                if (t.walletId === walletId) return true;
+                // For transfers only, also check destination wallet
+                if (t.type === 'transfer' && t.toWalletId === walletId) return true;
+                return false;
+            })
             .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
             .slice(0, 3);
     };
 
     const handleOpen = (wallet?: Wallet, defaultType?: string) => {
         if (wallet) {
-            setEditingWallet(wallet);
-            setFormData({
-                name: wallet.name,
-                type: wallet.type,
-                balance: wallet.balance.toString(),
-                description: wallet.description || "",
-                color: wallet.color || "#ffffff"
-            });
+            // Show confirmation dialog first when editing
+            setWalletToEdit(wallet);
+            setIsConfirmOpen(true);
         } else {
+            // Direct open for creating new wallet
             setEditingWallet(null);
             setFormData({
                 name: "",
                 type: defaultType || "mfs",
                 balance: "0",
                 description: "",
-                color: "#ffffff"
+                color: "#ffffff",
+                isSavingsWallet: false
             });
+            setIsDialogOpen(true);
         }
-        setIsDialogOpen(true);
+    };
+
+    const handleConfirmEdit = () => {
+        if (walletToEdit) {
+            setEditingWallet(walletToEdit);
+            setFormData({
+                name: walletToEdit.name,
+                type: walletToEdit.type,
+                balance: walletToEdit.balance.toString(),
+                description: walletToEdit.description || "",
+                color: walletToEdit.color || "#ffffff",
+                isSavingsWallet: walletToEdit.isSavingsWallet || false
+            });
+            setIsConfirmOpen(false);
+            setIsDialogOpen(true);
+        }
     };
 
     const handleOpenTransfer = (fromWalletId?: string) => {
@@ -163,7 +198,8 @@ export default function WalletsPage() {
             type: formData.type as any,
             balance: parseFloat(formData.balance) || 0,
             description: formData.description,
-            color: formData.color
+            color: formData.color,
+            isSavingsWallet: formData.isSavingsWallet
         };
 
         if (editingWallet) {
@@ -197,10 +233,17 @@ export default function WalletsPage() {
         setIsTransferOpen(false);
     };
 
-    const handleDelete = (id: string) => {
-        if (confirm("Are you sure? Transactions linked to this wallet might show incorrect data.")) {
-            deleteWallet.mutate(id);
+    const handleDelete = (wallet: Wallet) => {
+        setWalletToDelete(wallet);
+        setIsDeleteConfirmOpen(true);
+    };
+
+    const handleConfirmDelete = () => {
+        if (walletToDelete) {
+            deleteWallet.mutate(walletToDelete.id);
         }
+        setIsDeleteConfirmOpen(false);
+        setWalletToDelete(null);
     };
 
     const totalBalance = wallets.reduce((sum, w) => sum + w.balance, 0);
@@ -332,7 +375,14 @@ export default function WalletsPage() {
                                                 <Icon className="h-4 w-4 md:h-5 md:w-5" />
                                             </div>
                                             <div>
-                                                <h3 className="font-semibold text-white text-base md:text-lg">{wallet.name}</h3>
+                                                <div className="flex items-center gap-2">
+                                                    <h3 className="font-semibold text-white text-base md:text-lg">{wallet.name}</h3>
+                                                    {wallet.isSavingsWallet && (
+                                                        <span className="px-1.5 py-0.5 text-[10px] bg-emerald-500/20 text-emerald-400 rounded-md font-medium">
+                                                            Savings
+                                                        </span>
+                                                    )}
+                                                </div>
                                                 <p className="text-[10px] md:text-xs text-gray-400">{getWalletLabel(wallet.type)}</p>
                                             </div>
                                         </div>
@@ -354,7 +404,7 @@ export default function WalletsPage() {
                                                 <DropdownMenuItem onClick={() => handleOpen(wallet)} className="hover:bg-white/10">
                                                     <Pencil className="mr-2 h-4 w-4" /> Edit
                                                 </DropdownMenuItem>
-                                                <DropdownMenuItem className="text-red-400 hover:bg-red-500/10 hover:text-red-400" onClick={() => handleDelete(wallet.id)}>
+                                                <DropdownMenuItem className="text-red-400 hover:bg-red-500/10 hover:text-red-400" onClick={() => handleDelete(wallet)}>
                                                     <Trash2 className="mr-2 h-4 w-4" /> Delete
                                                 </DropdownMenuItem>
                                             </DropdownMenuContent>
@@ -372,12 +422,20 @@ export default function WalletsPage() {
                                             <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-2">Recent Activity</p>
                                             <div className="space-y-1.5">
                                                 {recentTransactions.slice(0, 2).map(t => {
-                                                    const isIncoming = t.toWalletId === wallet.id;
+                                                    // Determine if transaction is incoming or outgoing for THIS wallet
+                                                    const isIncoming =
+                                                        t.type === 'income' || // Income is always incoming
+                                                        t.toWalletId === wallet.id; // Transfers TO this wallet
+                                                    const isOutgoing =
+                                                        t.type === 'expense' || // Expense is always outgoing
+                                                        (t.type === 'transfer' && t.walletId === wallet.id) || // Transfers FROM this wallet
+                                                        (t.type === 'savings' && t.walletId === wallet.id); // Savings FROM this wallet
+
                                                     return (
                                                         <div key={t.id} className="flex items-center justify-between">
                                                             <span className="text-xs text-gray-400 truncate flex-1 mr-2">{t.name}</span>
-                                                            <span className={`text-xs font-medium ${isIncoming ? 'text-green-400' : 'text-red-400'}`}>
-                                                                {isIncoming ? '+' : '-'}${t.actual.toLocaleString()}
+                                                            <span className={`text-xs font-medium ${isOutgoing ? 'text-orange-400' : 'text-green-400'}`}>
+                                                                {isOutgoing ? '-' : '+'}${t.actual.toLocaleString()}
                                                             </span>
                                                         </div>
                                                     );
@@ -406,6 +464,9 @@ export default function WalletsPage() {
                 <DialogContent className="sm:max-w-[425px] bg-zinc-900 border-white/10">
                     <DialogHeader>
                         <DialogTitle className="text-2xl font-serif">{editingWallet ? "Edit Wallet" : "Add New Wallet"}</DialogTitle>
+                        <DialogDescription className="text-gray-400">
+                            {editingWallet ? "Update your wallet details" : "Add a new wallet to track your funds"}
+                        </DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleSubmit} className="space-y-4 pt-4">
                         <div className="space-y-2">
@@ -461,6 +522,47 @@ export default function WalletsPage() {
                                 className="min-h-[60px] resize-y bg-zinc-800 border-zinc-700 focus:border-primary"
                             />
                         </div>
+                        {/* Savings Wallet Toggle */}
+                        {(() => {
+                            const existingSavingsWallet = wallets.find(w => w.isSavingsWallet === true);
+                            const isCurrentWalletSavings = editingWallet && existingSavingsWallet && editingWallet.id === existingSavingsWallet.id;
+                            // Can toggle if: no existing savings wallet, OR the current wallet IS the savings wallet
+                            const canToggle = !existingSavingsWallet || isCurrentWalletSavings;
+
+                            return (
+                                <div className={`p-4 rounded-xl border space-y-3 ${canToggle ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-yellow-500/5 border-yellow-500/20'}`}>
+                                    <div className="flex items-start gap-3">
+                                        <input
+                                            type="checkbox"
+                                            id="isSavingsWallet"
+                                            checked={formData.isSavingsWallet}
+                                            onChange={(e) => setFormData({ ...formData, isSavingsWallet: e.target.checked })}
+                                            disabled={!canToggle}
+                                            className="mt-1 w-4 h-4 accent-emerald-500 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                                        />
+                                        <div>
+                                            <Label
+                                                htmlFor="isSavingsWallet"
+                                                className={`font-medium ${canToggle ? 'text-emerald-400 cursor-pointer' : 'text-gray-500 cursor-not-allowed'}`}
+                                            >
+                                                Use as Savings Wallet for Goals
+                                            </Label>
+                                            {canToggle ? (
+                                                <p className="text-xs text-gray-500 mt-1">
+                                                    Goal savings will be transferred to this wallet. When you complete a goal, the purchase expense will be deducted from here.
+                                                </p>
+                                            ) : (
+                                                <p className="text-xs text-yellow-400 mt-1">
+                                                    ⚠️ "{existingSavingsWallet?.name}" is already set as the savings wallet.
+                                                    <br />
+                                                    <span className="text-gray-500">Unmark it first to designate a different wallet.</span>
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })()}
                         <DialogFooter className="gap-2 sm:gap-0 pt-2">
                             <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
                             <Button type="submit" className="bg-primary text-black hover:bg-primary/90 font-bold">{editingWallet ? "Update" : "Create"}</Button>
@@ -556,6 +658,69 @@ export default function WalletsPage() {
                     </form>
                 </DialogContent>
             </Dialog>
+
+            {/* Confirmation Dialog for Edit */}
+            <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
+                <AlertDialogContent className="bg-zinc-900 border-white/10">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-2xl font-serif text-white">Edit Wallet?</AlertDialogTitle>
+                        <AlertDialogDescription className="text-gray-400">
+                            {walletToEdit && (
+                                <>
+                                    You are about to edit <span className="text-white font-semibold">{walletToEdit.name}</span> with a current balance of <span className="text-primary font-semibold">${walletToEdit.balance.toLocaleString()}</span>.
+                                    <div className="mt-3 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+                                        <p className="text-xs text-yellow-400/90">
+                                            ⚠️ Changing the balance will be tracked in the audit log. Make sure any changes reflect your actual wallet balance.
+                                        </p>
+                                    </div>
+                                </>
+                            )}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel className="bg-zinc-800 border-zinc-700 hover:bg-zinc-700">Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleConfirmEdit}
+                            className="bg-primary text-black hover:bg-primary/90 font-bold"
+                        >
+                            Continue to Edit
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Delete Confirmation Dialog */}
+            <AlertDialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
+                <AlertDialogContent className="bg-zinc-900 border-red-500/20">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-2xl font-serif text-white flex items-center gap-2">
+                            <Trash2 className="h-6 w-6 text-red-400" />
+                            Delete Wallet?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-gray-400">
+                            {walletToDelete && (
+                                <>
+                                    You are about to delete <span className="text-white font-semibold">{walletToDelete.name}</span> with a balance of <span className="text-primary font-semibold">${walletToDelete.balance.toLocaleString()}</span>.
+                                    <div className="mt-3 p-3 rounded-lg bg-red-500/10 border border-red-500/20">
+                                        <p className="text-xs text-red-400/90">
+                                            ⚠️ This action cannot be undone. Transactions linked to this wallet may show incorrect data after deletion.
+                                        </p>
+                                    </div>
+                                </>
+                            )}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel className="bg-zinc-800 border-zinc-700 hover:bg-zinc-700">Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleConfirmDelete}
+                            className="bg-red-500 text-white hover:bg-red-600 font-bold"
+                        >
+                            Delete Wallet
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

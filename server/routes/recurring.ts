@@ -1,6 +1,7 @@
 import { RequestHandler } from "express";
 import { RecurringTransactionModel } from "../models/RecurringTransaction";
 import { RecurringTransaction } from "@shared/api";
+import { AuditLogModel } from "../models/WalletAuditLog";
 
 export const getRecurringTransactions: RequestHandler = async (req, res) => {
     const userId = req.session?.user?.id;
@@ -52,6 +53,17 @@ export const createRecurringTransaction: RequestHandler = async (req, res) => {
             walletId: walletId || undefined
         });
 
+        // Create audit log for recurring rule creation
+        await AuditLogModel.create({
+            userId,
+            entityType: 'recurring',
+            entityId: newItem._id.toString(),
+            entityName: name,
+            changeType: 'recurring_created',
+            changeAmount: amount,
+            details: JSON.stringify({ category, frequency })
+        });
+
         res.json({ success: true, data: { ...newItem.toObject(), id: newItem._id.toString() } });
     } catch (error) {
         console.error("Error creating recurring transaction:", error);
@@ -88,6 +100,21 @@ export const deleteRecurringTransaction: RequestHandler = async (req, res) => {
     if (!userId) return res.status(401).json({ success: false, message: "Not authenticated" });
 
     try {
+        // Get recurring transaction info before deletion for audit log
+        const recurring = await RecurringTransactionModel.findOne({ _id: id, userId });
+        if (!recurring) return res.status(404).json({ success: false, message: "Not found" });
+
+        // Create audit log for recurring rule deletion
+        await AuditLogModel.create({
+            userId,
+            entityType: 'recurring',
+            entityId: id,
+            entityName: recurring.name,
+            changeType: 'recurring_deleted',
+            changeAmount: recurring.amount,
+            details: JSON.stringify({ category: recurring.category, frequency: recurring.frequency })
+        });
+
         await RecurringTransactionModel.deleteOne({ _id: id, userId });
         res.json({ success: true, message: "Deleted" });
     } catch (error) {

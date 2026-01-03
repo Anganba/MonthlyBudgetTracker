@@ -476,7 +476,7 @@ export const addTransaction: RequestHandler = async (req, res) => {
       const toWalletId = req.body.toWalletId;
 
       // Transfer or Savings with destination wallet (wallet-to-wallet transfer)
-      if (transactionType === 'transfer' || (category === 'Savings' && toWalletId)) {
+      if (transactionType === 'transfer' || transactionType === 'savings' || (category === 'Savings' && toWalletId)) {
         if (wallet && toWalletId) {
           // Deduct from Source
           wallet.balance -= actual;
@@ -644,7 +644,7 @@ export const updateTransaction: RequestHandler = async (req, res) => {
       const { WalletModel } = await import("../models/Wallet");
       const w = await WalletModel.findOne({ _id: oldWalletId, userId });
 
-      if ((oldType === 'transfer' || oldCategory === 'Savings') && oldToWalletId) {
+      if ((oldType === 'transfer' || oldType === 'savings' || oldCategory === 'Savings') && oldToWalletId) {
         // Revert Transfer/Savings: Add back to Source, Subtract from Target
         if (w) {
           w.balance += oldAmount;
@@ -679,7 +679,7 @@ export const updateTransaction: RequestHandler = async (req, res) => {
       const { WalletModel } = await import("../models/Wallet");
       const w = await WalletModel.findOne({ _id: newWalletId, userId });
 
-      if ((newType === 'transfer' || newCategory === 'Savings') && newToWalletId) {
+      if ((newType === 'transfer' || newType === 'savings' || newCategory === 'Savings') && newToWalletId) {
         // Apply Transfer/Savings: Deduct Source, Add Target
         if (w) {
           w.balance -= newAmount;
@@ -771,7 +771,7 @@ export const deleteTransaction: RequestHandler = async (req, res) => {
     if (deletedWalletId) {
       const { WalletModel } = await import("../models/Wallet");
 
-      if ((deletedType === 'transfer' || deletedCategory === 'Savings') && deletedToWalletId) {
+      if ((deletedType === 'transfer' || deletedType === 'savings' || deletedCategory === 'Savings') && deletedToWalletId) {
         // Revert Transfer/Savings: Add back to Source, Subtract from Target
         const w = await WalletModel.findOne({ _id: deletedWalletId, userId });
         if (w) {
@@ -810,6 +810,82 @@ export const deleteTransaction: RequestHandler = async (req, res) => {
   }
 };
 
+// Revert goal fulfillment - delete the "Bought:" expense transaction and refund the savings wallet
+export const revertGoalFulfillment: RequestHandler = async (req, res) => {
+  const { goalId } = req.body;
+  const userId = req.session?.user?.id;
+
+  if (!goalId) {
+    return res.status(400).json({ success: false, message: "Missing goalId" });
+  }
+
+  if (!userId) {
+    return res.status(401).json({ success: false, message: "Not authenticated" });
+  }
+
+  try {
+    // Find all budgets for this user and search for the "Bought:" transaction for this goal
+    const budgets = await Budget.find({ userId });
+
+    let foundTransaction = null;
+    let foundBudget = null;
+    let transactionIndex = -1;
+
+    for (const budget of budgets) {
+      const idx = budget.transactions.findIndex(
+        t => t.goalId === goalId && t.name.startsWith('Bought:') && t.type === 'expense'
+      );
+      if (idx !== -1) {
+        foundTransaction = budget.transactions[idx];
+        foundBudget = budget;
+        transactionIndex = idx;
+        break;
+      }
+    }
+
+    if (!foundTransaction || !foundBudget) {
+      // No purchase transaction found - goal might not have been fulfilled with a purchase
+      return res.json({ success: true, message: "No purchase transaction to revert" });
+    }
+
+    const deletedWalletId = foundTransaction.walletId;
+    const deletedAmount = foundTransaction.actual;
+    const deletedCategory = foundTransaction.category;
+    const deletedType = foundTransaction.type || 'expense';
+
+    // Remove the transaction
+    foundBudget.transactions.splice(transactionIndex, 1);
+    await foundBudget.save();
+
+    // Recalculate goal total
+    await recalculateGoalTotal(goalId, userId);
+
+    // Revert wallet balance (add the amount back to the wallet since it was an expense)
+    if (deletedWalletId) {
+      const { WalletModel } = await import("../models/Wallet");
+      const wallet = await WalletModel.findOne({ _id: deletedWalletId, userId });
+      if (wallet) {
+        // For expense, refund the amount
+        const isIncome = ['income', 'Paycheck', 'Bonus', 'Debt Added'].includes(deletedCategory) || deletedType === 'income';
+        if (isIncome) {
+          wallet.balance -= deletedAmount;
+        } else {
+          wallet.balance += deletedAmount; // Refund the expense
+        }
+        await wallet.save();
+        console.log(`[RevertFulfillment] Refunded $${deletedAmount} to wallet ${wallet.name}`);
+      }
+    }
+
+    // Recalculate rollovers
+    await recalculateRollovers(foundBudget.month, foundBudget.year, userId);
+
+    res.json({ success: true, data: foundTransaction, message: "Goal fulfillment reverted successfully" });
+  } catch (error) {
+    console.error("Error reverting goal fulfillment:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
 
 
 export const getYearlyStats: RequestHandler = async (req, res) => {

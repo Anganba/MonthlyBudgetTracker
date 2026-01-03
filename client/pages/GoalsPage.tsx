@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useGoals } from "@/hooks/use-goals";
 import { useWallets } from "@/hooks/use-wallets";
 import { useTransactions } from "@/hooks/use-transactions";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Plus, PiggyBank, Trash2, Trophy, ArrowRight, Target, Sparkles, CheckCircle2, Clock, CalendarDays, TrendingUp, Zap, Banknote } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
@@ -29,6 +30,7 @@ export default function GoalsPage() {
     const { goals, isLoading, createGoal, updateGoal, deleteGoal } = useGoals();
     const { wallets } = useWallets();
     const { createTransaction } = useTransactions();
+    const queryClient = useQueryClient();
 
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
@@ -38,6 +40,7 @@ export default function GoalsPage() {
     // Fulfillment State
     const [fulfillGoal, setFulfillGoal] = useState<Goal | null>(null);
     const [fulfillWalletId, setFulfillWalletId] = useState<string>('');
+    const [isProcessing, setIsProcessing] = useState(false);
 
     // Quick Add State
     const [quickAddGoal, setQuickAddGoal] = useState<Goal | null>(null);
@@ -81,15 +84,46 @@ export default function GoalsPage() {
     const handleFulfillClick = (e: React.MouseEvent, goal: Goal) => {
         e.stopPropagation();
         setFulfillGoal(goal);
-        // Default to first wallet
-        if (wallets.length > 0) {
+        // Auto-select designated Savings Wallet for purchase
+        const savingsWallet = wallets.find(w => w.isSavingsWallet);
+        if (savingsWallet) {
+            setFulfillWalletId(savingsWallet.id);
+        } else if (wallets.length > 0) {
             setFulfillWalletId(wallets[0].id);
         }
     };
 
-    const handleReactivate = (e: React.MouseEvent, goal: Goal) => {
+    const handleReactivate = async (e: React.MouseEvent, goal: Goal) => {
         e.stopPropagation();
-        updateGoal({ ...goal, status: 'active' });
+        try {
+            // First, revert the fulfillment (delete Bought: transaction and refund wallet)
+            const response = await fetch('/api/goals/revert-fulfillment', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ goalId: goal.id }),
+            });
+            const result = await response.json();
+            if (!result.success) {
+                console.error('Failed to revert fulfillment:', result.message);
+            }
+
+            // Update goal status to active (don't pass currentAmount - let server keep recalculated value)
+            await fetch(`/api/goals/${goal.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    status: 'active',
+                    completedAt: null
+                }),
+            });
+
+            // Refresh all data
+            queryClient.invalidateQueries({ queryKey: ['wallets'] });
+            queryClient.invalidateQueries({ queryKey: ['budget'] });
+            queryClient.invalidateQueries({ queryKey: ['goals'] });
+        } catch (error) {
+            console.error('Error reactivating goal:', error);
+        }
     };
 
     const handleQuickAdd = (e: React.MouseEvent, goal: Goal) => {
@@ -107,15 +141,24 @@ export default function GoalsPage() {
             const amount = parseFloat(quickAddAmount);
             const newAmount = quickAddGoal.currentAmount + amount;
 
-            // Create a savings transaction
+            // Find designated Savings Wallet
+            const savingsWallet = wallets.find(w => w.isSavingsWallet);
+
+            if (!savingsWallet) {
+                alert('Please designate a Savings Wallet first!\n\nGo to Wallets → Edit any wallet → Mark it as \"Savings Wallet\" to track your goal savings.');
+                return;
+            }
+
+            // Create a savings transaction to Savings Wallet
             await createTransaction({
                 name: `Savings: ${quickAddGoal.name}`,
                 category: 'Savings',
-                type: 'expense',
+                type: 'savings',
                 planned: amount,
                 actual: amount,
                 date: new Date().toISOString().split('T')[0],
                 walletId: quickAddWalletId,
+                toWalletId: savingsWallet.id,
                 goalId: quickAddGoal.id,
             });
 
@@ -137,30 +180,52 @@ export default function GoalsPage() {
     };
 
     const confirmQuickPay = async () => {
-        if (quickPayGoal && quickPayWalletId) {
+        if (quickPayGoal && quickPayWalletId && !isProcessing) {
+            setIsProcessing(true);
             const remainingAmount = quickPayGoal.targetAmount - quickPayGoal.currentAmount;
 
             if (remainingAmount <= 0) {
                 setQuickPayGoal(null);
+                setIsProcessing(false);
                 return;
             }
 
-            // Create a savings transaction for the remaining amount
-            await createTransaction({
-                name: `Savings: ${quickPayGoal.name} (Complete)`,
-                category: 'Savings',
-                type: 'expense',
-                planned: remainingAmount,
-                actual: remainingAmount,
-                date: new Date().toISOString().split('T')[0],
-                walletId: quickPayWalletId,
-                goalId: quickPayGoal.id,
-            });
+            try {
+                // Find designated Savings Wallet
+                const savingsWallet = wallets.find(w => w.isSavingsWallet);
 
-            // Update goal to target amount (100% complete)
-            updateGoal({ ...quickPayGoal, currentAmount: quickPayGoal.targetAmount });
-            setQuickPayGoal(null);
-            setQuickPayWalletId('');
+                if (!savingsWallet) {
+                    alert('Please designate a Savings Wallet first!\n\nGo to Wallets → Edit any wallet → Mark it as "Savings Wallet" to track your goal savings.');
+                    setIsProcessing(false);
+                    return;
+                }
+
+                // Create a savings transaction to Savings Wallet
+                await createTransaction({
+                    name: `Savings: ${quickPayGoal.name} (Complete)`,
+                    category: 'Savings',
+                    type: 'savings',
+                    planned: remainingAmount,
+                    actual: remainingAmount,
+                    date: new Date().toISOString().split('T')[0],
+                    walletId: quickPayWalletId,
+                    toWalletId: savingsWallet.id,
+                    goalId: quickPayGoal.id,
+                });
+
+                // Update goal to target amount (100% complete)
+                updateGoal({ ...quickPayGoal, currentAmount: quickPayGoal.targetAmount });
+
+                // Close Quick Pay dialog
+                setQuickPayGoal(null);
+                setQuickPayWalletId('');
+
+                // Open fulfillment dialog with Savings Wallet auto-selected
+                setFulfillGoal(quickPayGoal);
+                setFulfillWalletId(savingsWallet.id);
+            } finally {
+                setIsProcessing(false);
+            }
         }
     };
 
@@ -408,17 +473,17 @@ export default function GoalsPage() {
                                                             )}
                                                         </div>
                                                     </div>
-                                                    <div className="flex items-center gap-1">
+                                                    <div className="flex items-center gap-2">
                                                         {/* Quick Add Button */}
                                                         {!isCompleted && (
                                                             <Button
                                                                 variant="ghost"
                                                                 size="icon"
-                                                                className="h-7 w-7 md:h-8 md:w-8 text-violet-400 hover:text-violet-300 hover:bg-violet-500/20"
+                                                                className="h-8 w-8 text-violet-400 hover:text-violet-300 hover:bg-violet-500/20 rounded-xl transition-all"
                                                                 onClick={(e) => handleQuickAdd(e, goal)}
-                                                                title="Quick Add"
+                                                                title="Quick Add Savings"
                                                             >
-                                                                <Zap className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                                                                <Zap className="h-4 w-4" />
                                                             </Button>
                                                         )}
                                                         {/* Quick Pay Remaining Button */}
@@ -426,31 +491,33 @@ export default function GoalsPage() {
                                                             <Button
                                                                 variant="ghost"
                                                                 size="icon"
-                                                                className="h-7 w-7 md:h-8 md:w-8 text-green-400 hover:text-green-300 hover:bg-green-500/20"
+                                                                className="h-8 w-8 text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/20 rounded-xl transition-all"
                                                                 onClick={(e) => handleQuickPay(e, goal)}
                                                                 title={`Pay Remaining $${(goal.targetAmount - goal.currentAmount).toLocaleString()}`}
                                                             >
-                                                                <Banknote className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                                                                <Banknote className="h-4 w-4" />
                                                             </Button>
                                                         )}
                                                         {isCompleted && (
                                                             <Button
                                                                 variant="ghost"
-                                                                size="icon"
-                                                                className="h-7 w-7 md:h-8 md:w-8 text-green-400 hover:text-green-300 hover:bg-green-500/20"
+                                                                size="sm"
+                                                                className="h-8 px-3 gap-1.5 text-yellow-500 hover:text-yellow-400 bg-yellow-500/10 hover:bg-yellow-500/20 rounded-xl transition-all font-medium text-xs border border-yellow-500/30 hover:border-yellow-500/50"
                                                                 onClick={(e) => handleFulfillClick(e, goal)}
                                                                 title="Move to Hall of Fame"
                                                             >
-                                                                <Trophy className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                                                                <Trophy className="h-3.5 w-3.5" />
+                                                                <span className="hidden md:inline">Hall of Fame</span>
                                                             </Button>
                                                         )}
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            className="h-7 w-7 md:h-8 md:w-8 text-gray-500 hover:text-red-400 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                            className="h-8 w-8 text-gray-500 hover:text-red-400 hover:bg-red-500/15 rounded-xl transition-all border border-transparent hover:border-red-500/30"
                                                             onClick={(e) => handleDelete(e, goal.id)}
+                                                            title="Delete Goal"
                                                         >
-                                                            <Trash2 className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                                                            <Trash2 className="h-4 w-4" />
                                                         </Button>
                                                     </div>
                                                 </div>
@@ -528,68 +595,79 @@ export default function GoalsPage() {
                                     return (
                                         <div
                                             key={goal.id}
-                                            className="group relative overflow-hidden rounded-2xl p-4 md:p-6 cursor-pointer bg-gradient-to-br from-yellow-500/20 to-yellow-500/5 border border-yellow-500/30 hover:border-yellow-500/50 transition-all hover:scale-[1.02]"
-                                            onClick={() => handleEdit(goal)}
+                                            className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-zinc-900 via-zinc-900 to-zinc-800 border-2 border-yellow-500/50 hover:border-yellow-400/80 shadow-xl shadow-yellow-500/10 hover:shadow-yellow-500/20 transition-all hover:scale-[1.02]"
                                         >
-                                            <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-500/10 rounded-full blur-3xl" />
+                                            {/* Golden shimmer effect */}
+                                            <div className="absolute inset-0 bg-gradient-to-r from-yellow-500/5 via-amber-500/10 to-yellow-500/5 opacity-50" />
+                                            <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-yellow-500/20 via-amber-500/10 to-transparent rounded-full blur-3xl" />
+                                            <div className="absolute bottom-0 left-0 w-32 h-32 bg-gradient-to-tr from-orange-500/15 to-transparent rounded-full blur-2xl" />
 
-                                            <div className="relative z-10">
-                                                <div className="flex items-center justify-between mb-4">
-                                                    <div className="flex items-center gap-2 md:gap-3">
-                                                        <div className="p-2 md:p-2.5 rounded-xl bg-yellow-500/20">
-                                                            <Trophy className="h-4 w-4 md:h-5 md:w-5 text-yellow-400" />
+                                            {/* Trophy badge */}
+                                            <div className="absolute -top-2 -right-2 p-3 bg-gradient-to-br from-yellow-500 to-amber-600 rounded-2xl shadow-lg shadow-yellow-500/40 rotate-12">
+                                                <Trophy className="h-5 w-5 text-white" />
+                                            </div>
+
+                                            <div className="relative z-10 p-5 md:p-6">
+                                                {/* Header */}
+                                                <div className="flex items-start justify-between mb-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="p-2.5 rounded-xl bg-gradient-to-br from-yellow-500/30 to-amber-500/20 border border-yellow-500/30 shadow-inner">
+                                                            <CategoryIcon className="h-5 w-5 text-yellow-400" />
                                                         </div>
                                                         <div>
-                                                            <h3 className="font-semibold text-white text-sm md:text-lg">{goal.name}</h3>
+                                                            <h3 className="font-bold text-white text-lg">{goal.name}</h3>
                                                             {goal.completedAt && (
-                                                                <p className="text-[10px] md:text-xs text-gray-500">
+                                                                <p className="text-xs text-yellow-400/80 flex items-center gap-1 mt-0.5">
+                                                                    <Sparkles className="h-3 w-3" />
                                                                     Achieved {format(new Date(goal.completedAt), 'MMM d, yyyy')}
                                                                 </p>
                                                             )}
                                                         </div>
                                                     </div>
-                                                    <div className="flex items-center gap-1">
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-7 w-7 md:h-8 md:w-8 text-gray-500 hover:text-primary hover:bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                            onClick={(e) => handleReactivate(e, goal)}
-                                                            title="Move back to Active"
-                                                        >
-                                                            <ArrowRight className="h-3.5 w-3.5 md:h-4 md:w-4" />
-                                                        </Button>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-7 w-7 md:h-8 md:w-8 text-gray-500 hover:text-red-400 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                            onClick={(e) => handleDelete(e, goal.id)}
-                                                        >
-                                                            <Trash2 className="h-3.5 w-3.5 md:h-4 md:w-4" />
-                                                        </Button>
-                                                    </div>
                                                 </div>
 
                                                 {/* Description */}
                                                 {goal.description && (
-                                                    <p className="text-xs text-gray-500 mb-3 line-clamp-2">{goal.description}</p>
+                                                    <p className="text-xs text-gray-400 mb-4 line-clamp-2">{goal.description}</p>
                                                 )}
 
-                                                <div className="flex items-center justify-between mb-4">
-                                                    <span className="text-xs md:text-sm font-medium text-yellow-400 flex items-center gap-1.5">
-                                                        <Sparkles className="h-3 w-3 md:h-3.5 md:w-3.5" /> GOAL ACHIEVED
-                                                    </span>
-                                                    <span className="text-lg md:text-2xl font-bold text-white">${goal.targetAmount.toLocaleString()}</span>
+                                                {/* Amount saved with golden styling */}
+                                                <div className="flex items-center justify-between mb-4 p-3 rounded-xl bg-gradient-to-r from-yellow-500/10 to-amber-500/5 border border-yellow-500/20">
+                                                    <div>
+                                                        <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-0.5">Amount Saved</p>
+                                                        <p className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-yellow-400 to-amber-400 bg-clip-text text-transparent">
+                                                            ${goal.targetAmount.toLocaleString()}
+                                                        </p>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        {duration && (
+                                                            <div className="text-xs text-gray-400">
+                                                                <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-0.5">Duration</p>
+                                                                <p className="font-medium text-amber-300">{duration}</p>
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
 
-                                                {/* Duration info */}
-                                                {duration && (
-                                                    <div className="flex items-center gap-2 text-[10px] md:text-xs text-gray-500 mb-3">
-                                                        <CalendarDays className="h-3 w-3" />
-                                                        <span>Completed in {duration}</span>
-                                                    </div>
-                                                )}
+                                                {/* Progress bar with golden effect */}
+                                                <Progress value={100} className="h-2.5 bg-yellow-500/20 mb-4" indicatorClassName="bg-gradient-to-r from-yellow-500 via-amber-400 to-yellow-400" />
 
-                                                <Progress value={100} className="h-2 bg-yellow-500/20" indicatorClassName="bg-yellow-500" />
+                                                {/* Action buttons */}
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-xs font-semibold text-yellow-500 bg-yellow-500/10 px-2.5 py-1 rounded-lg border border-yellow-500/30">
+                                                        🏆 Goal Completed
+                                                    </span>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-8 px-3 gap-1.5 text-gray-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-all text-xs opacity-0 group-hover:opacity-100"
+                                                        onClick={(e) => handleReactivate(e, goal)}
+                                                        title="Move back to Active (reverses purchase)"
+                                                    >
+                                                        <ArrowRight className="h-3.5 w-3.5" />
+                                                        Reactivate
+                                                    </Button>
+                                                </div>
                                             </div>
                                         </div>
                                     );
@@ -642,7 +720,7 @@ export default function GoalsPage() {
                                         <SelectValue placeholder="Select wallet" />
                                     </SelectTrigger>
                                     <SelectContent className="bg-zinc-800 border-zinc-700">
-                                        {wallets.map(w => {
+                                        {wallets.filter(w => !w.isSavingsWallet).map(w => {
                                             const hasEnough = w.balance >= (parseFloat(quickAddAmount) || 0);
                                             return (
                                                 <SelectItem key={w.id} value={w.id}>
@@ -720,7 +798,7 @@ export default function GoalsPage() {
                                         <SelectValue placeholder="Select wallet" />
                                     </SelectTrigger>
                                     <SelectContent className="bg-zinc-800 border-zinc-700">
-                                        {wallets.map(w => {
+                                        {wallets.filter(w => !w.isSavingsWallet).map(w => {
                                             const remaining = (quickPayGoal?.targetAmount || 0) - (quickPayGoal?.currentAmount || 0);
                                             const hasEnough = w.balance >= remaining;
                                             return (
@@ -749,6 +827,7 @@ export default function GoalsPage() {
                             onClick={confirmQuickPay}
                             disabled={
                                 !quickPayWalletId ||
+                                isProcessing ||
                                 (() => {
                                     const selected = wallets.find(w => w.id === quickPayWalletId);
                                     const remaining = (quickPayGoal?.targetAmount || 0) - (quickPayGoal?.currentAmount || 0);
@@ -757,7 +836,7 @@ export default function GoalsPage() {
                             }
                             className="bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            Pay & Complete Goal
+                            {isProcessing ? 'Processing...' : 'Pay & Complete Goal'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -776,7 +855,7 @@ export default function GoalsPage() {
                             <br /><br />
                             You're about to record the purchase of this item for <strong className="text-primary">${fulfillGoal?.targetAmount.toLocaleString()}</strong>.
                             <br /><br />
-                            This will create an expense transaction and deduct from your chosen wallet.
+                            This will create an expense transaction and deduct from your <strong className="text-primary">Savings Wallet</strong> (where your goal savings have been accumulating).
                         </DialogDescription>
                     </DialogHeader>
 
@@ -796,7 +875,7 @@ export default function GoalsPage() {
                                         <SelectValue placeholder="Select wallet" />
                                     </SelectTrigger>
                                     <SelectContent className="bg-zinc-800 border-zinc-700">
-                                        {wallets.map(w => {
+                                        {wallets.filter(w => w.isSavingsWallet).map(w => {
                                             const hasEnough = w.balance >= (fulfillGoal?.targetAmount || 0);
                                             return (
                                                 <SelectItem key={w.id} value={w.id}>
@@ -823,36 +902,42 @@ export default function GoalsPage() {
                         <Button variant="ghost" onClick={() => { setFulfillGoal(null); setFulfillWalletId(''); }}>Cancel</Button>
                         <Button
                             onClick={async () => {
-                                if (fulfillGoal && fulfillWalletId) {
-                                    const categoryConfig = getCategoryConfig(fulfillGoal.category);
+                                if (fulfillGoal && fulfillWalletId && !isProcessing) {
+                                    setIsProcessing(true);
+                                    try {
+                                        const categoryConfig = getCategoryConfig(fulfillGoal.category);
 
-                                    // Create expense transaction
-                                    await createTransaction({
-                                        name: `Bought: ${fulfillGoal.name}`,
-                                        category: categoryConfig.label,
-                                        type: 'expense',
-                                        planned: fulfillGoal.targetAmount,
-                                        actual: fulfillGoal.targetAmount,
-                                        date: new Date().toISOString().split('T')[0],
-                                        walletId: fulfillWalletId,
-                                        goalId: fulfillGoal.id,
-                                    });
+                                        // Create expense transaction
+                                        await createTransaction({
+                                            name: `Bought: ${fulfillGoal.name}`,
+                                            category: categoryConfig.label,
+                                            type: 'expense',
+                                            planned: fulfillGoal.targetAmount,
+                                            actual: fulfillGoal.targetAmount,
+                                            date: new Date().toISOString().split('T')[0],
+                                            walletId: fulfillWalletId,
+                                            goalId: fulfillGoal.id,
+                                        });
 
-                                    // Mark goal as fulfilled
-                                    updateGoal({
-                                        ...fulfillGoal,
-                                        status: 'fulfilled',
-                                        completedAt: new Date().toISOString()
-                                    });
+                                        // Mark goal as fulfilled
+                                        updateGoal({
+                                            ...fulfillGoal,
+                                            status: 'fulfilled',
+                                            completedAt: new Date().toISOString()
+                                        });
+
+                                        setFulfillGoal(null);
+                                        setFulfillWalletId('');
+                                    } finally {
+                                        setIsProcessing(false);
+                                    }
                                 }
-                                setFulfillGoal(null);
-                                setFulfillWalletId('');
                             }}
-                            disabled={!fulfillWalletId}
+                            disabled={!fulfillWalletId || isProcessing}
                             className="bg-yellow-600 hover:bg-yellow-700 text-white font-bold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             <Trophy className="h-4 w-4 mr-2" />
-                            Record Purchase & Move to Hall of Fame
+                            {isProcessing ? 'Processing...' : 'Record Purchase & Move to Hall of Fame'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

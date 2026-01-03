@@ -112,7 +112,9 @@ export function TransactionsPage() {
             // Wallet matching: if transaction has no walletId, it won't match any specific wallet filter
             let matchesWallet = true;
             if (shouldFilterByWallet) {
-                matchesWallet = t.walletId === validatedWalletFilter || t.toWalletId === validatedWalletFilter;
+                const matchesSource = t.walletId === validatedWalletFilter;
+                const matchesDestination = t.toWalletId && t.toWalletId === validatedWalletFilter;
+                matchesWallet = matchesSource || matchesDestination;
             }
 
             return matchesSearch && matchesCategory && matchesType && matchesWallet;
@@ -450,7 +452,7 @@ export function TransactionsPage() {
                                                     </span>
                                                 </td>
                                                 <td className="py-4 px-4 text-gray-300">
-                                                    {type === 'transfer' && t.toWalletId ? (
+                                                    {(type === 'transfer' || type === 'savings') && t.toWalletId ? (
                                                         <div className="flex items-center gap-1 text-xs">
                                                             <span>{wallets.find(w => w.id === t.walletId)?.name}</span>
                                                             <ArrowRight className="h-3 w-3 text-gray-500" />

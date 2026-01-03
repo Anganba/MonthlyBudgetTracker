@@ -12,6 +12,7 @@ export interface Wallet {
   icon?: string;
   color?: string;
   isDefault?: boolean;
+  isSavingsWallet?: boolean;
   createdAt?: string;
 }
 
@@ -104,3 +105,47 @@ export interface RecurringTransactionResponse {
   data?: RecurringTransaction[];
   message?: string;
 }
+
+export type AuditEntityType = 'wallet' | 'goal' | 'recurring';
+
+export type AuditChangeType =
+  // Wallet changes
+  | 'balance_change'
+  | 'wallet_created'
+  | 'wallet_updated'
+  | 'wallet_deleted'
+  // Goal changes
+  | 'goal_created'
+  | 'goal_fulfilled'
+  | 'goal_reactivated'
+  | 'goal_deleted'
+  // Recurring changes
+  | 'recurring_created'
+  | 'recurring_deleted';
+
+export interface AuditLog {
+  id: string;
+  userId: string;
+  entityType: AuditEntityType;
+  entityId: string;
+  entityName: string;
+  changeType: AuditChangeType;
+  previousBalance?: number;
+  newBalance?: number;
+  changeAmount?: number;
+  details?: string;
+  reason?: string;
+  timestamp: string;
+}
+
+// Keep backward compatibility alias
+export type WalletAuditLog = AuditLog;
+
+export interface AuditLogResponse {
+  success: boolean;
+  data?: AuditLog[];
+  message?: string;
+}
+
+// Keep backward compatibility alias
+export type WalletAuditLogResponse = AuditLogResponse;

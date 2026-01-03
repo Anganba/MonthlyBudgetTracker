@@ -6,7 +6,7 @@ export interface IGoal extends Document {
     targetAmount: number;
     currentAmount: number;
     targetDate?: Date;
-    category?: 'car' | 'travel' | 'home' | 'electronics' | 'education' | 'wedding' | 'emergency' | 'gadget' | 'other';
+    category?: string; // Now accepts any category string (uses EXPENSE_CATEGORIES)
     description?: string;
     color?: string;
     status: 'active' | 'fulfilled' | 'archived';
@@ -23,7 +23,7 @@ const GoalSchema = new Schema<IGoal>(
         targetAmount: { type: Number, required: true },
         currentAmount: { type: Number, default: 0 },
         targetDate: { type: Date },
-        category: { type: String, enum: ['car', 'travel', 'home', 'electronics', 'education', 'wedding', 'emergency', 'gadget', 'other'] },
+        category: { type: String }, // Removed enum - now accepts any category from EXPENSE_CATEGORIES
         description: { type: String },
         color: { type: String },
         status: { type: String, enum: ['active', 'fulfilled', 'archived'], default: 'active' },

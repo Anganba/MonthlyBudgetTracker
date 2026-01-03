@@ -1,6 +1,7 @@
 import { RequestHandler } from "express";
 import { Goal as GoalModel } from "../models/Goal";
 import { Goal } from "@shared/api";
+import { AuditLogModel } from "../models/WalletAuditLog";
 
 const mapToGoal = (doc: any): Goal => ({
     id: doc._id.toString(),
@@ -74,6 +75,8 @@ export const updateGoal: RequestHandler = async (req, res) => {
         const goal = await GoalModel.findOne({ _id: id, userId });
         if (!goal) return res.status(404).json({ success: false, message: "Goal not found" });
 
+        const previousStatus = goal.status;
+
         if (name !== undefined) goal.name = name;
         if (targetAmount !== undefined) goal.targetAmount = targetAmount;
         if (currentAmount !== undefined) goal.currentAmount = currentAmount;
@@ -94,6 +97,36 @@ export const updateGoal: RequestHandler = async (req, res) => {
         }
 
         await goal.save();
+
+        // Create audit logs for status changes
+        if (status && status !== previousStatus) {
+            if (status === 'fulfilled') {
+                // Goal moved to Hall of Fame
+                await AuditLogModel.create({
+                    userId,
+                    entityType: 'goal',
+                    entityId: id,
+                    entityName: goal.name,
+                    changeType: 'goal_fulfilled',
+                    details: JSON.stringify({
+                        targetAmount: goal.targetAmount,
+                        currentAmount: goal.currentAmount,
+                        category: goal.category
+                    })
+                });
+            } else if (status === 'active' && (previousStatus === 'fulfilled' || previousStatus === 'archived')) {
+                // Goal reactivated from archived or fulfilled
+                await AuditLogModel.create({
+                    userId,
+                    entityType: 'goal',
+                    entityId: id,
+                    entityName: goal.name,
+                    changeType: 'goal_reactivated',
+                    details: JSON.stringify({ previousStatus })
+                });
+            }
+        }
+
         console.log(`[UpdateGoal] Updated goal ${id} status to ${goal.status}`);
         res.json({ success: true, data: mapToGoal(goal) });
     } catch (error) {

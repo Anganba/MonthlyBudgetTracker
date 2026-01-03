@@ -63,6 +63,7 @@ export function TransactionsList({ transactions, wallets, currency, showMoreItem
         const Icon = getCategoryIcon(item.category);
         const isIncome = incomeCategories.includes(item.category);
         const isTransfer = item.type === 'transfer' || item.category === 'Transfer';
+        const isSavings = item.type === 'savings' || item.category === 'Savings';
 
         return (
             <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-white/5 to-transparent rounded-xl border border-white/5 hover:border-amber-500/30 hover:bg-amber-500/5 transition-all">
@@ -77,8 +78,8 @@ export function TransactionsList({ transactions, wallets, currency, showMoreItem
                         <span className="truncate">{item.category}</span>
                     </div>
                 </div>
-                <div className={`text-sm font-semibold ${isIncome ? 'text-green-400' : 'text-white'}`}>
-                    {isIncome ? '+' : (isTransfer ? '' : '-')}{currency}{Math.abs(item.actual).toFixed(0)}
+                <div className={`text-sm font-semibold ${isIncome ? 'text-green-400' : isSavings ? 'text-blue-400' : 'text-white'}`}>
+                    {isIncome ? '+' : (isTransfer || isSavings ? '' : '-')}{currency}{Math.abs(item.actual).toFixed(0)}
                 </div>
             </div>
         );
@@ -89,6 +90,7 @@ export function TransactionsList({ transactions, wallets, currency, showMoreItem
         const Icon = getCategoryIcon(item.category);
         const isIncome = incomeCategories.includes(item.category);
         const isTransfer = item.type === 'transfer' || item.category === 'Transfer';
+        const isSavings = item.type === 'savings' || item.category === 'Savings';
 
         return (
             <div className="grid grid-cols-[2.5fr_1.2fr_1fr_1fr_1fr] gap-3 items-center py-3 border-b border-white/5 last:border-0 hover:bg-amber-500/5 hover:border-amber-500/20 px-3 rounded-lg transition-all">
@@ -135,8 +137,8 @@ export function TransactionsList({ transactions, wallets, currency, showMoreItem
                     )}
                 </div>
 
-                <div className={`text-sm font-semibold text-right ${isIncome ? 'text-green-400' : 'text-white'}`}>
-                    {isIncome ? '+' : (isTransfer ? '' : '-')}{currency}{Math.abs(item.actual).toFixed(2)}
+                <div className={`text-sm font-semibold text-right ${isIncome ? 'text-green-400' : isSavings ? 'text-blue-400' : 'text-white'}`}>
+                    {isIncome ? '+' : (isTransfer || isSavings ? '' : '-')}{currency}{Math.abs(item.actual).toFixed(2)}
                 </div>
             </div>
         );

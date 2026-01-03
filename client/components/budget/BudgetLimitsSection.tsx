@@ -198,14 +198,15 @@ export function BudgetLimitsSection({ month, year }: BudgetLimitsSectionProps) {
             <div className="p-6">
                 {/* Overall Summary */}
                 {(() => {
-                    const totalLimit = categoryData.reduce((sum, cat) => sum + cat.limit, 0);
-                    const totalSpent = categoryData.reduce((sum, cat) => sum + cat.spent, 0);
+                    // Only include categories that have a limit set for accurate percentage calculation
+                    const categoriesWithLimits = categoryData.filter(cat => cat.limit > 0);
+                    const totalLimit = categoriesWithLimits.reduce((sum, cat) => sum + cat.limit, 0);
+                    const totalSpent = categoriesWithLimits.reduce((sum, cat) => sum + cat.spent, 0);
 
-                    if (totalLimit === 0 && totalSpent === 0) return null;
+                    if (totalLimit === 0) return null;
 
-                    const percent = totalLimit > 0 ? Math.round((totalSpent / totalLimit) * 100) : 0;
+                    const percent = Math.round((totalSpent / totalLimit) * 100);
                     const isOverBudget = percent > 100;
-                    const progressColor = isOverBudget ? "bg-red-500" : "bg-primary";
 
                     return (
                         <div className="mb-8 p-6 bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-transparent rounded-2xl border border-emerald-500/30 shadow-lg shadow-emerald-500/5">
@@ -214,6 +215,7 @@ export function BudgetLimitsSection({ month, year }: BudgetLimitsSectionProps) {
                                     <PieChart className="h-5 w-5 text-emerald-400" />
                                 </div>
                                 <span className="text-sm font-medium text-emerald-300/80 uppercase tracking-wider">Overall Status</span>
+                                <span className="text-xs text-gray-500">({categoriesWithLimits.length} categories with limits)</span>
                             </div>
                             <div className="flex justify-between items-end mb-4">
                                 <span className={`text-4xl font-bold ${isOverBudget ? 'text-red-400' : 'text-white'}`}>{percent}%</span>

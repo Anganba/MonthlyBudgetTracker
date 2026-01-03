@@ -11,28 +11,45 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Goal, GoalCategory } from '@shared/api';
 import {
-    Target, Car, Plane, Home, Laptop, GraduationCap,
-    Gem, Shield, Smartphone, Gift
-} from 'lucide-react';
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import { Goal } from '@shared/api';
+import { Target } from 'lucide-react';
+import { EXPENSE_CATEGORIES } from '@/lib/categories';
+import { getCategoryIcon } from '@/lib/category-icons';
 
-// Goal category configuration with icons and colors
-export const GOAL_CATEGORIES: { id: GoalCategory; label: string; icon: React.ElementType; color: string }[] = [
-    { id: 'car', label: 'Car / Vehicle', icon: Car, color: 'text-blue-400 bg-blue-500/20' },
-    { id: 'travel', label: 'Travel / Holiday', icon: Plane, color: 'text-cyan-400 bg-cyan-500/20' },
-    { id: 'home', label: 'Home / Property', icon: Home, color: 'text-amber-400 bg-amber-500/20' },
-    { id: 'electronics', label: 'Electronics', icon: Laptop, color: 'text-purple-400 bg-purple-500/20' },
-    { id: 'education', label: 'Education', icon: GraduationCap, color: 'text-green-400 bg-green-500/20' },
-    { id: 'wedding', label: 'Wedding / Event', icon: Gem, color: 'text-pink-400 bg-pink-500/20' },
-    { id: 'emergency', label: 'Emergency Fund', icon: Shield, color: 'text-red-400 bg-red-500/20' },
-    { id: 'gadget', label: 'Phone / Gadget', icon: Smartphone, color: 'text-indigo-400 bg-indigo-500/20' },
-    { id: 'other', label: 'Other', icon: Gift, color: 'text-gray-400 bg-gray-500/20' },
-];
-
-export function getCategoryConfig(categoryId?: GoalCategory) {
-    return GOAL_CATEGORIES.find(c => c.id === categoryId) || GOAL_CATEGORIES[GOAL_CATEGORIES.length - 1];
+// Helper to get category config for display
+export function getCategoryConfig(categoryId?: string) {
+    const category = EXPENSE_CATEGORIES.find(c => c.id === categoryId);
+    if (category) {
+        return {
+            id: category.id,
+            label: category.label,
+            icon: getCategoryIcon(category.id),
+            color: 'text-primary bg-primary/20'
+        };
+    }
+    // Default fallback
+    return {
+        id: 'Other',
+        label: 'Other',
+        icon: Target,
+        color: 'text-gray-400 bg-gray-500/20'
+    };
 }
+
+// Export categories for external use (now using expense categories)
+export const GOAL_CATEGORIES = EXPENSE_CATEGORIES.map(cat => ({
+    id: cat.id,
+    label: cat.label,
+    icon: getCategoryIcon(cat.id),
+    color: 'text-primary bg-primary/20'
+}));
 
 interface GoalDialogProps {
     open: boolean;
@@ -45,25 +62,22 @@ interface GoalDialogProps {
 export function GoalDialog({ open, onOpenChange, onSubmit, initialData, mode = 'add' }: GoalDialogProps) {
     const [name, setName] = useState('');
     const [targetAmount, setTargetAmount] = useState('');
-    const [currentAmount, setCurrentAmount] = useState('');
     const [targetDate, setTargetDate] = useState('');
-    const [category, setCategory] = useState<GoalCategory>('other');
+    const [category, setCategory] = useState<string>('Other');
     const [description, setDescription] = useState('');
 
     useEffect(() => {
         if (open && initialData) {
             setName(initialData.name || '');
             setTargetAmount(initialData.targetAmount?.toString() || '');
-            setCurrentAmount(initialData.currentAmount?.toString() || '');
             setTargetDate(initialData.targetDate?.split('T')[0] || '');
-            setCategory(initialData.category || 'other');
+            setCategory(initialData.category || 'Other');
             setDescription(initialData.description || '');
         } else if (open && mode === 'add') {
             setName('');
             setTargetAmount('');
-            setCurrentAmount('');
             setTargetDate('');
-            setCategory('other');
+            setCategory('Other');
             setDescription('');
         }
     }, [open, initialData, mode]);
@@ -75,9 +89,9 @@ export function GoalDialog({ open, onOpenChange, onSubmit, initialData, mode = '
                 id: initialData?.id,
                 name,
                 targetAmount: parseFloat(targetAmount) || 0,
-                currentAmount: parseFloat(currentAmount) || 0,
+                currentAmount: initialData?.currentAmount || 0,
                 targetDate: targetDate || undefined,
-                category,
+                category: category as any,
                 description: description || undefined,
                 startedAt: initialData?.startedAt || new Date().toISOString(),
             });
@@ -109,31 +123,38 @@ export function GoalDialog({ open, onOpenChange, onSubmit, initialData, mode = '
                     </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    {/* Category Selection */}
+                    {/* Category Selection - Dropdown */}
                     <div className="space-y-2">
                         <Label className="text-gray-400">Category</Label>
-                        <div className="grid grid-cols-3 gap-2">
-                            {GOAL_CATEGORIES.map((cat) => {
-                                const Icon = cat.icon;
-                                const isSelected = category === cat.id;
-                                return (
-                                    <button
-                                        key={cat.id}
-                                        type="button"
-                                        onClick={() => setCategory(cat.id)}
-                                        className={`flex flex-col items-center gap-1 p-3 rounded-xl border transition-all ${isSelected
-                                                ? `${cat.color.split(' ')[1]} border-white/30`
-                                                : 'bg-zinc-800 border-zinc-700 hover:border-zinc-600'
-                                            }`}
-                                    >
-                                        <Icon className={`h-5 w-5 ${isSelected ? cat.color.split(' ')[0] : 'text-gray-400'}`} />
-                                        <span className={`text-[10px] text-center ${isSelected ? 'text-white' : 'text-gray-500'}`}>
-                                            {cat.label.split(' ')[0]}
-                                        </span>
-                                    </button>
-                                );
-                            })}
-                        </div>
+                        <Select value={category} onValueChange={setCategory}>
+                            <SelectTrigger className="h-11 bg-zinc-800 border-zinc-700 rounded-xl focus:border-primary">
+                                <SelectValue placeholder="Select a category">
+                                    {category && (
+                                        <div className="flex items-center gap-2">
+                                            <CategoryIcon className="h-4 w-4 text-primary" />
+                                            <span>{selectedCategory.label}</span>
+                                        </div>
+                                    )}
+                                </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent className="bg-zinc-800 border-zinc-700 max-h-60">
+                                {EXPENSE_CATEGORIES.map((cat) => {
+                                    const Icon = getCategoryIcon(cat.id);
+                                    return (
+                                        <SelectItem
+                                            key={cat.id}
+                                            value={cat.id}
+                                            className="focus:bg-primary/20 focus:text-white"
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <Icon className="h-4 w-4 text-gray-400" />
+                                                <span>{cat.label}</span>
+                                            </div>
+                                        </SelectItem>
+                                    );
+                                })}
+                            </SelectContent>
+                        </Select>
                     </div>
 
                     <div className="space-y-2">
@@ -149,31 +170,17 @@ export function GoalDialog({ open, onOpenChange, onSubmit, initialData, mode = '
                         />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="target" className="text-gray-400">Target Amount</Label>
-                            <Input
-                                id="target"
-                                type="number"
-                                value={targetAmount}
-                                onChange={(e) => setTargetAmount(e.target.value)}
-                                placeholder="0.00"
-                                step="0.01"
-                                className="bg-zinc-800 border-zinc-700 rounded-xl h-11 focus:border-primary"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="current" className="text-gray-400">Current Saved</Label>
-                            <Input
-                                id="current"
-                                type="number"
-                                value={currentAmount}
-                                onChange={(e) => setCurrentAmount(e.target.value)}
-                                placeholder="0.00"
-                                step="0.01"
-                                className="bg-zinc-800 border-zinc-700 rounded-xl h-11 focus:border-primary"
-                            />
-                        </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="target" className="text-gray-400">Target Amount</Label>
+                        <Input
+                            id="target"
+                            type="number"
+                            value={targetAmount}
+                            onChange={(e) => setTargetAmount(e.target.value)}
+                            placeholder="0.00"
+                            step="0.01"
+                            className="bg-zinc-800 border-zinc-700 rounded-xl h-11 focus:border-primary"
+                        />
                     </div>
 
                     <div className="space-y-2">
@@ -220,3 +227,4 @@ export function GoalDialog({ open, onOpenChange, onSubmit, initialData, mode = '
         </Dialog>
     );
 }
+

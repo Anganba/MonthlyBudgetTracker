@@ -16,6 +16,7 @@ import {
   getYearlyStats,
   getMonthlyStats,
   getAllTransactions,
+  revertGoalFulfillment,
 } from "./routes/budget";
 import {
   getGoals,
@@ -33,7 +34,9 @@ import {
   getWallets,
   createWallet,
   updateWallet,
-  deleteWallet
+  deleteWallet,
+  getWalletAuditLogs,
+  getUserAuditLogs
 } from "./routes/wallets";
 
 import { connectDB } from "./db";
@@ -112,6 +115,7 @@ export function createServer() {
   app.post("/api/goals", requireAuth, createGoal);
   app.put("/api/goals/:id", requireAuth, updateGoal);
   app.delete("/api/goals/:id", requireAuth, deleteGoal);
+  app.post("/api/goals/revert-fulfillment", requireAuth, revertGoalFulfillment);
 
   // Recurring Transactions API routes
   app.get("/api/recurring", requireAuth, getRecurringTransactions);
@@ -124,6 +128,10 @@ export function createServer() {
   app.post("/api/wallets", requireAuth, createWallet);
   app.put("/api/wallets/:id", requireAuth, updateWallet);
   app.delete("/api/wallets/:id", requireAuth, deleteWallet);
+
+  // Wallet Audit Logs API routes
+  app.get("/api/wallets/:id/audit-logs", requireAuth, getWalletAuditLogs);
+  app.get("/api/audit-logs", requireAuth, getUserAuditLogs);
 
   return app;
 }

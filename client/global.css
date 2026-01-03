@@ -80,11 +80,15 @@
 
 /* Hide scrollbar utility */
 .scrollbar-hide {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
+  -ms-overflow-style: none;
+  /* IE and Edge */
+  scrollbar-width: none;
+  /* Firefox */
 }
+
 .scrollbar-hide::-webkit-scrollbar {
-  display: none;  /* Chrome, Safari and Opera */
+  display: none;
+  /* Chrome, Safari and Opera */
 }
 
 @media print {
@@ -175,4 +179,21 @@
 ::-webkit-calendar-picker-indicator {
   filter: invert(1);
   opacity: 0.8;
+}
+
+/* Sidebar breathing animation - highlighting glow effect */
+@keyframes breathe {
+
+  0%,
+  100% {
+    filter: brightness(1);
+    box-shadow: 0 0 0px transparent;
+    background-color: rgba(163, 230, 53, 0);
+  }
+
+  50% {
+    filter: brightness(1.5);
+    box-shadow: 0 0 15px rgba(163, 230, 53, 0.6), 0 0 30px rgba(163, 230, 53, 0.3);
+    background-color: rgba(163, 230, 53, 0.15);
+  }
 }

@@ -528,52 +528,142 @@ export default function StatisticsPage() {
                         </div>
                     </div>
 
-                    {/* Goals Progress (Bar Chart) - Right Side */}
+                    {/* Goals Progress - Right Side (Revamped) */}
                     <div className="col-span-1 rounded-2xl bg-gradient-to-br from-amber-500/10 via-zinc-900/80 to-zinc-900/50 border border-amber-500/30 overflow-hidden shadow-lg shadow-amber-500/5">
                         <div className="p-6 border-b border-amber-500/20 bg-gradient-to-r from-amber-500/10 to-transparent">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 rounded-xl bg-gradient-to-br from-amber-500/30 to-yellow-500/20 shadow-inner">
-                                    <Target className="h-5 w-5 text-amber-400" />
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 rounded-xl bg-gradient-to-br from-amber-500/30 to-yellow-500/20 shadow-inner">
+                                        <Target className="h-5 w-5 text-amber-400" />
+                                    </div>
+                                    <h2 className="text-xl font-semibold font-serif text-white">Goals Progress</h2>
                                 </div>
-                                <h2 className="text-xl font-semibold font-serif text-white">Goals Progress</h2>
+                                {goalsData.length > 0 && (
+                                    <div className="text-right">
+                                        <span className="text-xs text-gray-500 uppercase tracking-wider">Active Goals</span>
+                                        <div className="text-lg font-bold text-amber-400">{goalsData.length}</div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                         <div className="p-6">
-                            <div className="h-[300px] w-full">
+                            <div className="h-[350px] lg:h-[450px] overflow-y-auto overflow-x-hidden custom-scrollbar">
                                 {goalsData.length > 0 ? (
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <BarChart
-                                            layout="vertical"
-                                            data={goalsData}
-                                            margin={{ top: 20, right: 30, left: 40, bottom: 5 }}
-                                        >
-                                            <XAxis type="number" domain={[0, 100]} hide />
-                                            <YAxis dataKey="name" type="category" width={100} tick={{ fill: 'hsl(var(--foreground))', fontSize: 12, fontWeight: 500 }} />
-                                            <Tooltip
-                                                cursor={{ fill: 'transparent' }}
-                                                contentStyle={{ backgroundColor: 'hsl(var(--popover))', borderColor: 'hsl(var(--border))', borderRadius: 'var(--radius)', color: 'hsl(var(--popover-foreground))' }}
-                                                itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
-                                                formatter={(value: number, name: string, props: any) => {
-                                                    const realValue = name === 'Saved' ? props.payload.saved : props.payload.remaining;
-                                                    if (name === 'Saved') return [`${currency}${realValue} (${props.payload.percent}%)`, name];
-                                                    return [`${currency}${realValue}`, name];
-                                                }}
-                                            />
-                                            <Bar dataKey="barSaved" name="Saved" stackId="a" radius={[4, 0, 0, 4]}>
-                                                {goalsData.map((entry, index) => (
-                                                    <Cell key={`cell-${index}`} fill={entry.color} />
-                                                ))}
-                                                {/* Label List rendered manually via Content */}
-                                                <LabelList content={renderSavedLabel} />
-                                            </Bar>
-                                            <Bar dataKey="barRemaining" name="Remaining" stackId="a" fill="hsl(var(--secondary))" radius={[0, 4, 4, 0]}>
-                                                <LabelList content={renderRemainingLabel} />
-                                            </Bar>
-                                        </BarChart>
-                                    </ResponsiveContainer>
+                                    <div className="space-y-3">
+                                        {goalsData.map((goal, index) => {
+                                            const isComplete = goal.percent >= 100;
+                                            const isAlmostComplete = goal.percent >= 80 && goal.percent < 100;
+                                            const progressColor = isComplete
+                                                ? 'from-green-500 to-emerald-400'
+                                                : isAlmostComplete
+                                                    ? 'from-yellow-500 to-amber-400'
+                                                    : 'from-primary to-lime-400';
+                                            const ringColor = isComplete
+                                                ? '#22c55e'
+                                                : isAlmostComplete
+                                                    ? '#eab308'
+                                                    : 'hsl(var(--primary))';
+
+                                            // Calculate SVG circle properties (smaller ring)
+                                            const radius = 18;
+                                            const circumference = 2 * Math.PI * radius;
+                                            const strokeDashoffset = circumference - (goal.percent / 100) * circumference;
+
+                                            return (
+                                                <div
+                                                    key={index}
+                                                    className={`group relative p-3 rounded-lg border transition-all duration-300 cursor-pointer ${isComplete
+                                                        ? 'bg-gradient-to-r from-green-500/15 to-green-500/5 border-green-500/40 hover:border-green-500/60'
+                                                        : isAlmostComplete
+                                                            ? 'bg-gradient-to-r from-yellow-500/15 to-yellow-500/5 border-yellow-500/40 hover:border-yellow-500/60'
+                                                            : 'bg-gradient-to-r from-zinc-800/50 to-zinc-900/50 border-zinc-700/50 hover:border-amber-500/50'
+                                                        }`}
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        {/* Circular Progress Ring (Compact) */}
+                                                        <div className="relative flex-shrink-0">
+                                                            <svg className="w-12 h-12 -rotate-90" viewBox="0 0 48 48">
+                                                                {/* Background circle */}
+                                                                <circle
+                                                                    cx="24"
+                                                                    cy="24"
+                                                                    r={radius}
+                                                                    fill="none"
+                                                                    stroke="hsl(var(--secondary))"
+                                                                    strokeWidth="4"
+                                                                />
+                                                                {/* Progress circle */}
+                                                                <circle
+                                                                    cx="24"
+                                                                    cy="24"
+                                                                    r={radius}
+                                                                    fill="none"
+                                                                    stroke={ringColor}
+                                                                    strokeWidth="4"
+                                                                    strokeLinecap="round"
+                                                                    strokeDasharray={circumference}
+                                                                    strokeDashoffset={strokeDashoffset}
+                                                                    className="transition-all duration-700 ease-out"
+                                                                    style={{
+                                                                        filter: `drop-shadow(0 0 4px ${ringColor})`
+                                                                    }}
+                                                                />
+                                                            </svg>
+                                                            {/* Percentage in center */}
+                                                            <div className="absolute inset-0 flex items-center justify-center">
+                                                                <span className={`text-xs font-bold ${isComplete ? 'text-green-400' : isAlmostComplete ? 'text-yellow-400' : 'text-primary'}`}>
+                                                                    {goal.percent}%
+                                                                </span>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Goal Details */}
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-center gap-2 mb-0.5">
+                                                                <h3 className="text-sm font-semibold text-white truncate">{goal.name}</h3>
+                                                                {isComplete && (
+                                                                    <span className="px-1.5 py-0.5 text-[9px] font-bold bg-green-500/20 text-green-400 rounded-full border border-green-500/30">
+                                                                        COMPLETE
+                                                                    </span>
+                                                                )}
+                                                                {isAlmostComplete && (
+                                                                    <span className="px-1.5 py-0.5 text-[9px] font-bold bg-yellow-500/20 text-yellow-400 rounded-full border border-yellow-500/30">
+                                                                        ALMOST
+                                                                    </span>
+                                                                )}
+                                                            </div>
+
+                                                            {/* Progress Bar */}
+                                                            <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden mb-1">
+                                                                <div
+                                                                    className={`h-full bg-gradient-to-r ${progressColor} transition-all duration-700 ease-out rounded-full`}
+                                                                    style={{ width: `${Math.min(100, goal.percent)}%` }}
+                                                                />
+                                                            </div>
+
+                                                            {/* Amount Details */}
+                                                            <div className="flex items-center justify-between text-xs">
+                                                                <span className={`font-medium ${isComplete ? 'text-green-400' : 'text-primary'}`}>
+                                                                    {currency}{goal.saved.toLocaleString()}
+                                                                </span>
+                                                                <span className="text-gray-500">
+                                                                    / {currency}{goal.target.toLocaleString()}
+                                                                    {!isComplete && goal.remaining > 0 && (
+                                                                        <span className="text-amber-400 ml-1">({currency}{goal.remaining.toLocaleString()} left)</span>
+                                                                    )}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
                                 ) : (
-                                    <div className="h-full flex items-center justify-center text-muted-foreground">
-                                        No goals set
+                                    <div className="h-full flex flex-col items-center justify-center text-muted-foreground gap-3">
+                                        <Target className="h-12 w-12 text-amber-500/30" />
+                                        <p>No goals set</p>
+                                        <p className="text-xs text-gray-600">Create a goal to track your savings progress</p>
                                     </div>
                                 )}
                             </div>

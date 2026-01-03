@@ -9,7 +9,7 @@ interface CreateTransactionData {
     actual: number;
     planned: number;
     category: string;
-    type: 'income' | 'expense' | 'transfer';
+    type: 'income' | 'expense' | 'transfer' | 'savings';
     date: string;
     walletId?: string;
     toWalletId?: string;

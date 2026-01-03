@@ -86,59 +86,73 @@ export function Sidebar({ collapsed, setCollapsed, mobile = false }: SidebarProp
                 {/* Total Balance Circle - Only show when NOT collapsed */}
                 {!collapsed ? (
                     <div className="relative w-48 h-48 mx-auto mb-8 flex items-center justify-center group">
-                        {/* Animated Background Glow */}
-                        <div className="absolute inset-0 rounded-full bg-gradient-to-br from-emerald-500/20 via-cyan-500/10 to-violet-500/20 blur-xl animate-pulse" style={{ animationDuration: '3s' }} />
+                        {/* Glow effects - outside the clipped area */}
+                        <div className="absolute inset-[-10px] rounded-full bg-gradient-to-br from-emerald-500/25 via-cyan-500/15 to-primary/25 blur-xl animate-pulse pointer-events-none" style={{ animationDuration: '2s' }} />
 
-                        {/* Outer Gradient Ring */}
-                        <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 100 100">
-                            <defs>
-                                <linearGradient id="netWorthGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                                    <stop offset="0%" stopColor={progressColors.start} />
-                                    <stop offset="50%" stopColor={progressColors.mid} />
-                                    <stop offset="100%" stopColor={progressColors.end} />
-                                </linearGradient>
-                            </defs>
-                            {/* Background Ring */}
-                            <circle
-                                cx="50"
-                                cy="50"
-                                r="45"
-                                fill="none"
-                                stroke="rgba(255,255,255,0.1)"
-                                strokeWidth="3"
-                            />
-                            {/* Dynamic Progress Ring */}
-                            <circle
-                                cx="50"
-                                cy="50"
-                                r="45"
-                                fill="none"
-                                stroke="url(#netWorthGradient)"
-                                strokeWidth="3"
-                                strokeLinecap="round"
-                                strokeDasharray={`${progressDash} ${circumference}`}
-                                className="drop-shadow-[0_0_8px_rgba(16,185,129,0.5)] transition-all duration-1000"
-                            />
-                        </svg>
+                        {/* Outer glowing ring with shadow */}
+                        <div className="absolute inset-0 rounded-full border-2 border-primary/50 shadow-[0_0_20px_rgba(163,230,53,0.4),0_0_40px_rgba(163,230,53,0.2)]" />
 
-                        {/* Inner Glowing Ring */}
-                        <div className="absolute inset-4 rounded-full border border-emerald-500/30 shadow-[inset_0_0_20px_rgba(16,185,129,0.1)]" />
+                        {/* Inner clipped container */}
+                        <div className="absolute inset-0 rounded-full overflow-hidden">
+                            {/* Inner dark background */}
+                            <div className="absolute inset-3 rounded-full bg-gradient-to-br from-zinc-900 via-zinc-950 to-black border border-primary/20" />
 
-                        {/* Center Content */}
-                        <div className="text-center z-10 relative">
-                            <p className="text-[10px] text-emerald-400/80 uppercase tracking-widest font-medium mb-1">{displayLabel}</p>
-                            <p className="text-2xl font-bold text-white drop-shadow-[0_0_10px_rgba(16,185,129,0.3)]">
-                                ${displayAmount.toLocaleString()}
-                            </p>
-                            {budgetLimit > 0 && (
-                                <p className="text-[10px] text-cyan-400/60 mt-1">
-                                    {Math.round(budgetProgress * 100)}% of budget used
-                                </p>
-                            )}
+                            {/* Progress Ring SVG */}
+                            <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 100 100">
+                                <defs>
+                                    <linearGradient id="netWorthGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" stopColor={progressColors.start} />
+                                        <stop offset="50%" stopColor={progressColors.mid} />
+                                        <stop offset="100%" stopColor={progressColors.end} />
+                                    </linearGradient>
+                                </defs>
+                                {/* Background Ring */}
+                                <circle
+                                    cx="50"
+                                    cy="50"
+                                    r="45"
+                                    fill="none"
+                                    stroke="rgba(163,230,53,0.15)"
+                                    strokeWidth="5"
+                                />
+                                {/* Progress Ring with strong glow */}
+                                <circle
+                                    cx="50"
+                                    cy="50"
+                                    r="45"
+                                    fill="none"
+                                    stroke="url(#netWorthGradient)"
+                                    strokeWidth="5"
+                                    strokeLinecap="round"
+                                    strokeDasharray={`${progressDash} ${circumference}`}
+                                    className="transition-all duration-1000"
+                                    style={{ filter: 'drop-shadow(0 0 8px rgba(16,185,129,0.6)) drop-shadow(0 0 15px rgba(16,185,129,0.3))' }}
+                                />
+                            </svg>
                         </div>
 
-                        {/* Hover Glow Effect */}
-                        <div className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-gradient-to-br from-emerald-500/10 via-transparent to-violet-500/10" />
+                        {/* Center Content - positioned above clipped container */}
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="text-center">
+                                <p className="text-[11px] text-emerald-400 uppercase tracking-[0.15em] font-bold mb-1.5 drop-shadow-[0_0_10px_rgba(16,185,129,0.5)]">{displayLabel}</p>
+                                <p
+                                    className="text-3xl font-black tracking-tight"
+                                    style={{
+                                        background: 'linear-gradient(135deg, #a3e635 0%, #22d3ee 50%, #a3e635 100%)',
+                                        WebkitBackgroundClip: 'text',
+                                        WebkitTextFillColor: 'transparent',
+                                        filter: 'drop-shadow(0 0 10px rgba(163,230,53,0.4))'
+                                    }}
+                                >
+                                    ${displayAmount.toLocaleString()}
+                                </p>
+                                {budgetLimit > 0 && (
+                                    <p className="text-[10px] text-cyan-400/70 mt-1.5 font-medium">
+                                        {Math.round(budgetProgress * 100)}% of budget used
+                                    </p>
+                                )}
+                            </div>
+                        </div>
                     </div>
                 ) : (
                     // Collapsed Balance View (Mini) - Enhanced
@@ -168,22 +182,35 @@ export function Sidebar({ collapsed, setCollapsed, mobile = false }: SidebarProp
                         >
                             <div
                                 className={cn(
-                                    "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group",
+                                    "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group relative overflow-hidden",
                                     isActive
                                         ? "bg-primary text-black shadow-lg shadow-primary/30"
                                         : "text-gray-400 hover:text-primary hover:bg-primary/10",
                                     collapsed ? "justify-center px-2" : ""
                                 )}
                             >
+                                {/* Breathing glow effect for inactive items */}
+                                {!isActive && (
+                                    <div
+                                        className="absolute inset-0 rounded-xl bg-gradient-to-r from-primary/0 via-primary/5 to-primary/0 animate-pulse opacity-0 group-hover:opacity-0"
+                                        style={{
+                                            animation: 'breathe 3s ease-in-out infinite',
+                                            animationDelay: `${links.indexOf(link) * 0.3}s`
+                                        }}
+                                    />
+                                )}
                                 <div className={cn(
-                                    "p-1.5 rounded-lg transition-colors",
+                                    "p-1.5 rounded-lg transition-colors relative z-10",
                                     isActive
                                         ? "bg-black/20"
-                                        : "bg-white/5 group-hover:bg-primary/20"
-                                )}>
+                                        : "bg-white/5 group-hover:bg-primary/20",
+                                    !isActive && "animate-[breathe_3s_ease-in-out_infinite]"
+                                )}
+                                    style={!isActive ? { animationDelay: `${links.indexOf(link) * 0.4}s` } : undefined}
+                                >
                                     <Icon className="w-4 h-4 shrink-0" />
                                 </div>
-                                {!collapsed && <span>{link.label}</span>}
+                                {!collapsed && <span className="relative z-10">{link.label}</span>}
                             </div>
                         </Link>
                     );
@@ -191,8 +218,16 @@ export function Sidebar({ collapsed, setCollapsed, mobile = false }: SidebarProp
             </nav>
 
             {!collapsed && (
-                <div className="mt-auto pt-4 text-xs text-gray-400 text-center border-t border-white/5">
-                    &copy; {new Date().getFullYear()} Anganba Singha
+                <div className="mt-auto pt-4 text-center border-t border-white/5">
+                    <p
+                        className="text-xs font-medium text-primary animate-pulse"
+                        style={{
+                            animationDuration: '3s',
+                            textShadow: '0 0 5px rgba(163, 230, 53, 0.8), 0 0 10px rgba(163, 230, 53, 0.5), 0 0 20px rgba(163, 230, 53, 0.3)'
+                        }}
+                    >
+                        &copy; {new Date().getFullYear()} Anganba Singha
+                    </p>
                 </div>
             )}
         </div>
