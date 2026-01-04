@@ -1,6 +1,7 @@
 import { RequestHandler } from "express";
 import { BudgetMonth, Transaction, TransactionCategory } from "@shared/api";
 import { Budget, IBudget } from "../models/Budget";
+import { AuditLogModel } from "../models/WalletAuditLog";
 
 const generateId = () => Math.random().toString(36).substring(2, 9);
 
@@ -127,6 +128,60 @@ const getOrCreateBudget = async (month: string, year: number, userId: string): P
       budget.markModified('categoryLimits');
       await budget.save();
     }
+  }
+
+  // Always recalculate rolloverActual from previous month to ensure it's current
+  // This fixes the issue where Monthly Leftover shows stale data from when the budget was first created
+  try {
+    const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const currentMonthIndex = months.indexOf(month);
+    let prevMonthIndex = currentMonthIndex - 1;
+    let prevYear = year;
+
+    if (prevMonthIndex < 0) {
+      prevMonthIndex = 11;
+      prevYear = year - 1;
+    }
+
+    const prevMonthName = months[prevMonthIndex];
+    const prevMonthBudget = await Budget.findOne({ userId, month: prevMonthName, year: prevYear });
+
+    let expectedRollover = 0;
+
+    if (prevMonthBudget) {
+      // Calculate what the rollover SHOULD be based on previous month's current data
+      const incomeCategories = ['income', 'Paycheck', 'Bonus', 'Debt Added'];
+
+      const income = prevMonthBudget.transactions
+        .filter(t => incomeCategories.includes(t.category) || t.type === 'income')
+        .reduce((sum, t) => sum + t.actual, 0);
+
+      const expenses = prevMonthBudget.transactions
+        .filter(t => {
+          if (t.type === 'transfer' || t.type === 'savings') return false;
+          if (t.category === 'Transfer' || t.category === 'Savings') return false;
+          if (t.type === 'income' || incomeCategories.includes(t.category)) return false;
+          return true;
+        })
+        .reduce((sum, t) => sum + t.actual, 0);
+
+      const savings = prevMonthBudget.transactions
+        .filter(t => t.category === 'Savings' || t.type === 'savings')
+        .reduce((sum, t) => sum + t.actual, 0);
+
+      const startBalance = prevMonthBudget.rolloverActual || 0;
+      expectedRollover = startBalance + income - expenses - savings;
+    }
+
+    // Update rolloverActual if it has drifted from expected value
+    if (Math.abs((budget.rolloverActual || 0) - expectedRollover) > 0.001) {
+      console.log(`[Budget] Updating rolloverActual for ${month} ${year} from ${budget.rolloverActual} to ${expectedRollover}`);
+      budget.rolloverActual = expectedRollover;
+      budget.markModified('rolloverActual');
+      await budget.save();
+    }
+  } catch (err) {
+    console.error("Error recalculating rollover:", err);
   }
 
   // Check and process recurring transactions
@@ -803,6 +858,24 @@ export const deleteTransaction: RequestHandler = async (req, res) => {
 
 
     await recalculateRollovers(month as string, parseInt(year as string), userId);
+
+    // Create audit log for transaction deletion
+    await AuditLogModel.create({
+      userId,
+      entityType: 'transaction',
+      entityId: transaction.id,
+      entityName: transaction.name,
+      changeType: 'transaction_deleted',
+      changeAmount: deletedAmount,
+      details: JSON.stringify({
+        category: deletedCategory,
+        type: deletedType,
+        date: transaction.date,
+        walletId: deletedWalletId,
+        month: month,
+        year: year
+      })
+    });
 
     res.json({ success: true, data: transaction });
   } catch (error) {

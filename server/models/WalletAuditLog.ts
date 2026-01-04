@@ -3,7 +3,7 @@ import mongoose, { Schema, Document } from "mongoose";
 export interface IAuditLog extends Document {
     _id: mongoose.Types.ObjectId;
     userId: string;
-    entityType: 'wallet' | 'goal' | 'recurring';
+    entityType: 'wallet' | 'goal' | 'recurring' | 'transaction';
     entityId: string;
     entityName: string;
     changeType:
@@ -16,7 +16,8 @@ export interface IAuditLog extends Document {
     | 'goal_reactivated'
     | 'goal_deleted'
     | 'recurring_created'
-    | 'recurring_deleted';
+    | 'recurring_deleted'
+    | 'transaction_deleted';
     previousBalance?: number;
     newBalance?: number;
     changeAmount?: number;
@@ -30,7 +31,7 @@ const AuditLogSchema = new Schema<IAuditLog>(
         userId: { type: String, required: true, index: true },
         entityType: {
             type: String,
-            enum: ['wallet', 'goal', 'recurring'],
+            enum: ['wallet', 'goal', 'recurring', 'transaction'],
             required: true
         },
         entityId: { type: String, required: true, index: true },
@@ -47,7 +48,8 @@ const AuditLogSchema = new Schema<IAuditLog>(
                 'goal_reactivated',
                 'goal_deleted',
                 'recurring_created',
-                'recurring_deleted'
+                'recurring_deleted',
+                'transaction_deleted'
             ],
             required: true
         },

@@ -55,6 +55,21 @@ export const createGoal: RequestHandler = async (req, res) => {
             startedAt: startedAt ? new Date(startedAt) : new Date(),
             status: 'active'
         });
+
+        // Create audit log for goal creation
+        await AuditLogModel.create({
+            userId,
+            entityType: 'goal',
+            entityId: goal._id.toString(),
+            entityName: name,
+            changeType: 'goal_created',
+            details: JSON.stringify({
+                targetAmount,
+                category,
+                targetDate
+            })
+        });
+
         res.json({ success: true, data: mapToGoal(goal) });
     } catch (error) {
         console.error("Error creating goal:", error);
@@ -141,8 +156,29 @@ export const deleteGoal: RequestHandler = async (req, res) => {
     if (!userId) return res.status(401).json({ success: false, message: "Not authenticated" });
 
     try {
+        const goal = await GoalModel.findOne({ _id: id, userId });
+        if (!goal) return res.status(404).json({ success: false, message: "Goal not found" });
+
+        const goalName = goal.name;
+        const goalDetails = {
+            targetAmount: goal.targetAmount,
+            currentAmount: goal.currentAmount,
+            category: goal.category,
+            status: goal.status
+        };
+
         const result = await GoalModel.deleteOne({ _id: id, userId });
         if (result.deletedCount === 0) return res.status(404).json({ success: false, message: "Goal not found" });
+
+        // Create audit log for goal deletion
+        await AuditLogModel.create({
+            userId,
+            entityType: 'goal',
+            entityId: id,
+            entityName: goalName,
+            changeType: 'goal_deleted',
+            details: JSON.stringify(goalDetails)
+        });
 
         res.json({ success: true, message: "Goal deleted" });
     } catch (error) {

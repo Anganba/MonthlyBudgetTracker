@@ -534,56 +534,152 @@ export default function ProfilePage() {
                     )}
                 </div>
 
-                {/* Subscription Card */}
-                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-500/15 via-zinc-900/90 to-zinc-900/80 border border-amber-500/30 p-8 shadow-lg shadow-amber-500/5">
-                    {/* Background glow */}
-                    <div className="absolute top-0 right-0 w-72 h-72 bg-amber-500/20 rounded-full blur-3xl" />
+                {/* Subscription Card - Revamped */}
+                <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-zinc-900 via-zinc-900/95 to-zinc-800 border border-white/10 shadow-2xl">
+                    {/* Animated gradient border effect */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-violet-500/20 via-amber-500/20 to-emerald-500/20 opacity-50 blur-xl" />
+                    <div className="absolute inset-[1px] bg-zinc-900 rounded-3xl" />
 
-                    <div className="relative z-10 flex flex-col lg:flex-row gap-8">
-                        <div className="flex-1 space-y-4">
-                            <div className="flex items-center gap-3">
-                                <div className="p-3 rounded-xl bg-gradient-to-br from-amber-500/30 to-yellow-500/20 shadow-inner">
-                                    <Crown className="h-6 w-6 text-amber-400" />
-                                </div>
-                                <div>
-                                    <h3 className="text-xl font-bold text-white">Subscription</h3>
-                                    <p className="text-sm text-amber-300/60">Manage your plan and billing</p>
+                    {/* Floating orbs */}
+                    <div className="absolute -top-20 -right-20 w-64 h-64 bg-gradient-to-br from-amber-500/30 to-yellow-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '4s' }} />
+                    <div className="absolute -bottom-20 -left-20 w-48 h-48 bg-gradient-to-br from-violet-500/20 to-purple-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '5s' }} />
+
+                    <div className="relative z-10 p-8">
+                        {/* Header */}
+                        <div className="flex items-center gap-4 mb-8">
+                            <div className="relative">
+                                <div className="absolute inset-0 bg-gradient-to-r from-amber-400 to-yellow-500 rounded-2xl blur-lg opacity-50" />
+                                <div className="relative p-4 rounded-2xl bg-gradient-to-br from-amber-500/30 to-yellow-500/20 border border-amber-500/30">
+                                    <Crown className="h-8 w-8 text-amber-400" />
                                 </div>
                             </div>
+                            <div>
+                                <h3 className="text-2xl font-bold font-serif text-white">Subscription Plans</h3>
+                                <p className="text-gray-400">Choose the plan that works for you</p>
+                            </div>
+                        </div>
 
-                            <div className="p-4 rounded-xl bg-white/5 border border-white/10">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="text-lg font-semibold text-white">Free Plan</p>
-                                        <p className="text-sm text-gray-400">You're on the free plan</p>
+                        {/* Plans Grid */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            {/* Free Plan */}
+                            <div className="relative group">
+                                <div className="relative p-6 rounded-2xl bg-gradient-to-br from-white/5 to-white/[0.02] border-2 border-emerald-500/50 shadow-lg shadow-emerald-500/10">
+                                    {/* Current Plan Badge */}
+                                    <div className="absolute -top-3 left-6">
+                                        <span className="px-3 py-1 rounded-full bg-emerald-500 text-black text-xs font-bold flex items-center gap-1.5">
+                                            <CheckCircle className="h-3 w-3" />
+                                            Current Plan
+                                        </span>
                                     </div>
-                                    <span className="text-2xl font-bold text-amber-400">$0</span>
+
+                                    <div className="pt-2">
+                                        <div className="flex items-end justify-between mb-6">
+                                            <div>
+                                                <h4 className="text-xl font-bold text-white mb-1">Free</h4>
+                                                <p className="text-sm text-gray-400">Perfect for getting started</p>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className="text-4xl font-bold text-white">$0</span>
+                                                <span className="text-gray-500">/month</span>
+                                            </div>
+                                        </div>
+
+                                        <ul className="space-y-3 mb-6">
+                                            <li className="flex items-center gap-3 text-gray-300">
+                                                <div className="p-1 rounded-full bg-emerald-500/20">
+                                                    <CheckCircle className="h-4 w-4 text-emerald-400" />
+                                                </div>
+                                                Up to 5 wallets
+                                            </li>
+                                            <li className="flex items-center gap-3 text-gray-300">
+                                                <div className="p-1 rounded-full bg-emerald-500/20">
+                                                    <CheckCircle className="h-4 w-4 text-emerald-400" />
+                                                </div>
+                                                Basic transaction tracking
+                                            </li>
+                                            <li className="flex items-center gap-3 text-gray-300">
+                                                <div className="p-1 rounded-full bg-emerald-500/20">
+                                                    <CheckCircle className="h-4 w-4 text-emerald-400" />
+                                                </div>
+                                                Monthly statistics
+                                            </li>
+                                            <li className="flex items-center gap-3 text-gray-300">
+                                                <div className="p-1 rounded-full bg-emerald-500/20">
+                                                    <CheckCircle className="h-4 w-4 text-emerald-400" />
+                                                </div>
+                                                Goal tracking
+                                            </li>
+                                        </ul>
+
+                                        <Button
+                                            variant="outline"
+                                            className="w-full h-12 border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/10"
+                                            disabled
+                                        >
+                                            <CheckCircle className="mr-2 h-4 w-4" />
+                                            Active
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Pro Plan */}
+                            <div className="relative group">
+                                {/* Glow effect */}
+                                <div className="absolute -inset-[1px] bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 rounded-2xl opacity-75 blur-sm group-hover:opacity-100 transition-opacity" />
+
+                                <div className="relative p-6 rounded-2xl bg-gradient-to-br from-amber-500/10 via-zinc-900 to-amber-500/5 border border-amber-500/30">
+                                    {/* Recommended Badge */}
+                                    <div className="absolute -top-3 left-6">
+                                        <span className="px-3 py-1 rounded-full bg-gradient-to-r from-amber-500 to-yellow-400 text-black text-xs font-bold flex items-center gap-1.5">
+                                            <Sparkles className="h-3 w-3" />
+                                            Recommended
+                                        </span>
+                                    </div>
+
+                                    <div className="pt-2">
+                                        <div className="flex items-end justify-between mb-6">
+                                            <div>
+                                                <h4 className="text-xl font-bold text-white mb-1 flex items-center gap-2">
+                                                    Pro
+                                                    <Crown className="h-5 w-5 text-amber-400" />
+                                                </h4>
+                                                <p className="text-sm text-amber-300/70">For power users</p>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className="text-4xl font-bold bg-gradient-to-r from-amber-400 to-yellow-300 bg-clip-text text-transparent">$9</span>
+                                                <span className="text-gray-500">/month</span>
+                                            </div>
+                                        </div>
+
+                                        <ul className="space-y-3 mb-6">
+                                            {proFeatures.map((feature, i) => (
+                                                <li key={i} className="flex items-center gap-3 text-gray-200">
+                                                    <div className="p-1 rounded-full bg-amber-500/20">
+                                                        <Zap className="h-4 w-4 text-amber-400" />
+                                                    </div>
+                                                    {feature}
+                                                </li>
+                                            ))}
+                                        </ul>
+
+                                        <Button
+                                            className="w-full h-12 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-black font-bold shadow-lg shadow-amber-500/30 hover:shadow-amber-500/50 hover:scale-[1.02] transition-all"
+                                            onClick={() => toast({ title: "Coming Soon", description: "Pro plan will be available soon!" })}
+                                        >
+                                            <Crown className="mr-2 h-5 w-5" />
+                                            Upgrade to Pro
+                                        </Button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="lg:w-80 space-y-4">
-                            <div className="p-4 rounded-xl bg-gradient-to-br from-amber-500/20 to-yellow-500/10 border border-amber-500/30">
-                                <p className="text-sm font-semibold text-amber-400 mb-3 flex items-center gap-2">
-                                    <Zap className="h-4 w-4" /> Pro Features
-                                </p>
-                                <ul className="space-y-2">
-                                    {proFeatures.map((feature, i) => (
-                                        <li key={i} className="text-sm text-gray-300 flex items-center gap-2">
-                                            <div className="h-1.5 w-1.5 rounded-full bg-amber-400" />
-                                            {feature}
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                            <Button
-                                className="w-full h-12 bg-gradient-to-r from-amber-500 to-yellow-400 text-black font-bold shadow-lg shadow-amber-500/20 hover:shadow-amber-500/40 transition-shadow"
-                                onClick={() => toast({ title: "Coming Soon", description: "Pro plan is currently unavailable." })}
-                            >
-                                <Crown className="mr-2 h-5 w-5" />
-                                Upgrade to Pro
-                            </Button>
-                        </div>
+                        {/* Footer Note */}
+                        <p className="text-center text-sm text-gray-500 mt-6">
+                            <Heart className="inline h-4 w-4 text-rose-400 mr-1" />
+                            Cancel anytime. No hidden fees.
+                        </p>
                     </div>
                 </div>
 

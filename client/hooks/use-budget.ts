@@ -76,8 +76,9 @@ export function useBudget(selectedMonth?: string, selectedYear?: number) {
             .filter(t => t.type === 'savings' || t.category === 'Savings')
             .reduce((sum, t) => sum + t.actual, 0);
 
-        const startBalance = b.rolloverActual || 0;
-        const balance = startBalance + income - expenses - savings;
+        // Monthly Leftover = just this month's: Income - Expenses - Savings
+        // The actual accumulated money is tracked in wallet balances (Net Worth)
+        const balance = income - expenses - savings;
 
         return { income, expenses, savings, balance, transactions };
     };
@@ -101,7 +102,7 @@ export function useBudget(selectedMonth?: string, selectedYear?: number) {
     const generateGraphData = (type: 'income' | 'expenses' | 'savings' | 'balance') => {
         const daysInMonth = new Date(year, currentDate.getMonth() + 1, 0).getDate();
         const data = [];
-        let runningBalance = budget?.rolloverActual || 0;
+        let runningBalance = 0; // Start at 0 for this month only (no rollover)
 
         for (let i = 1; i <= daysInMonth; i++) {
             // Find transactions for this day
