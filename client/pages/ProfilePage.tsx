@@ -447,14 +447,20 @@ export default function ProfilePage() {
                                                             return { icon: Plus, label: 'Wallet Created', color: 'green', bgColor: 'bg-green-500/20', textColor: 'text-green-400', borderColor: 'border-green-500/30' };
                                                         case 'wallet_deleted':
                                                             return { icon: Trash2, label: 'Wallet Deleted', color: 'red', bgColor: 'bg-red-500/20', textColor: 'text-red-400', borderColor: 'border-red-500/30' };
+                                                        case 'goal_created':
+                                                            return { icon: Plus, label: 'Goal Created', color: 'emerald', bgColor: 'bg-emerald-500/20', textColor: 'text-emerald-400', borderColor: 'border-emerald-500/30' };
                                                         case 'goal_fulfilled':
                                                             return { icon: Trophy, label: 'Goal Fulfilled', color: 'amber', bgColor: 'bg-amber-500/20', textColor: 'text-amber-400', borderColor: 'border-amber-500/30' };
                                                         case 'goal_reactivated':
                                                             return { icon: RefreshCw, label: 'Goal Reactivated', color: 'yellow', bgColor: 'bg-yellow-500/20', textColor: 'text-yellow-400', borderColor: 'border-yellow-500/30' };
+                                                        case 'goal_deleted':
+                                                            return { icon: Trash2, label: 'Goal Deleted', color: 'red', bgColor: 'bg-red-500/20', textColor: 'text-red-400', borderColor: 'border-red-500/30' };
                                                         case 'recurring_created':
                                                             return { icon: Plus, label: 'Recurring Added', color: 'violet', bgColor: 'bg-violet-500/20', textColor: 'text-violet-400', borderColor: 'border-violet-500/30' };
                                                         case 'recurring_deleted':
                                                             return { icon: Trash2, label: 'Recurring Removed', color: 'rose', bgColor: 'bg-rose-500/20', textColor: 'text-rose-400', borderColor: 'border-rose-500/30' };
+                                                        case 'transaction_deleted':
+                                                            return { icon: Trash2, label: 'Transaction Deleted', color: 'orange', bgColor: 'bg-orange-500/20', textColor: 'text-orange-400', borderColor: 'border-orange-500/30' };
                                                         default:
                                                             return { icon: History, label: log.changeType, color: 'gray', bgColor: 'bg-gray-500/20', textColor: 'text-gray-400', borderColor: 'border-gray-500/30' };
                                                     }
@@ -464,6 +470,20 @@ export default function ProfilePage() {
                                                 const TypeIcon = typeDisplay.icon;
                                                 const hasAmountChange = log.changeType === 'balance_change' && log.changeAmount !== undefined;
                                                 const isIncrease = (log.changeAmount || 0) > 0;
+
+                                                // Parse details JSON for extra info
+                                                let parsedDetails: any = null;
+                                                try {
+                                                    if (log.details) {
+                                                        parsedDetails = JSON.parse(log.details);
+                                                    }
+                                                } catch (e) {
+                                                    // Invalid JSON, ignore
+                                                }
+
+                                                // Check if this is a transaction deletion with amount
+                                                const isTransactionDeletion = log.changeType === 'transaction_deleted';
+                                                const isGoalEvent = ['goal_created', 'goal_deleted', 'goal_fulfilled'].includes(log.changeType);
 
                                                 return (
                                                     <div key={log.id} className="p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
@@ -479,10 +499,46 @@ export default function ProfilePage() {
                                                                 <p className="text-xs text-gray-500">
                                                                     {timestamp.toLocaleDateString()} at {timestamp.toLocaleTimeString()}
                                                                 </p>
+                                                                {/* Transaction details */}
+                                                                {isTransactionDeletion && parsedDetails && (
+                                                                    <div className="flex flex-wrap gap-2 mt-2">
+                                                                        {parsedDetails.category && (
+                                                                            <span className="px-2 py-0.5 rounded text-xs bg-zinc-700/50 text-gray-300">
+                                                                                {parsedDetails.category}
+                                                                            </span>
+                                                                        )}
+                                                                        {parsedDetails.type && (
+                                                                            <span className="px-2 py-0.5 rounded text-xs bg-zinc-700/50 text-gray-300 capitalize">
+                                                                                {parsedDetails.type}
+                                                                            </span>
+                                                                        )}
+                                                                        {parsedDetails.date && (
+                                                                            <span className="px-2 py-0.5 rounded text-xs bg-zinc-700/50 text-gray-300">
+                                                                                {new Date(parsedDetails.date).toLocaleDateString()}
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                )}
+                                                                {/* Goal details */}
+                                                                {isGoalEvent && parsedDetails && (
+                                                                    <div className="flex flex-wrap gap-2 mt-2">
+                                                                        {parsedDetails.targetAmount && (
+                                                                            <span className="px-2 py-0.5 rounded text-xs bg-zinc-700/50 text-gray-300">
+                                                                                Target: ${parsedDetails.targetAmount.toLocaleString()}
+                                                                            </span>
+                                                                        )}
+                                                                        {parsedDetails.category && (
+                                                                            <span className="px-2 py-0.5 rounded text-xs bg-zinc-700/50 text-gray-300 capitalize">
+                                                                                {parsedDetails.category}
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                )}
                                                                 {log.reason && (
                                                                     <p className="text-xs text-gray-400 italic">Note: {log.reason}</p>
                                                                 )}
                                                             </div>
+                                                            {/* Balance change amount */}
                                                             {hasAmountChange && (
                                                                 <div className="flex items-center gap-4">
                                                                     <div className="text-sm text-gray-400">
@@ -490,6 +546,14 @@ export default function ProfilePage() {
                                                                     </div>
                                                                     <div className={`px-3 py-1 rounded-lg ${isIncrease ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'} font-semibold text-sm min-w-[80px] text-center`}>
                                                                         {isIncrease ? '+' : ''}${Math.abs(log.changeAmount || 0).toLocaleString()}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                            {/* Transaction deletion amount */}
+                                                            {isTransactionDeletion && log.changeAmount && (
+                                                                <div className="flex items-center">
+                                                                    <div className="px-3 py-1 rounded-lg bg-red-500/10 text-red-400 font-semibold text-sm min-w-[80px] text-center">
+                                                                        -${Math.abs(log.changeAmount).toLocaleString()}
                                                                     </div>
                                                                 </div>
                                                             )}

@@ -33,10 +33,7 @@ const getOrCreateBudget = async (month: string, year: number, userId: string): P
   }
 
   if (!budget) {
-    let rolloverAmount = 0;
-    let savingsTransaction: any = null;
-
-    // Calculate rollover from the immediate previous month
+    // Calculate default limits from previous month if available
     const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
     const currentMonthIndex = months.indexOf(month);
     let prevMonthIndex = currentMonthIndex - 1;
@@ -55,48 +52,17 @@ const getOrCreateBudget = async (month: string, year: number, userId: string): P
       if (Object.keys(prevMonthBudget.categoryLimits || {}).length > 0) {
         defaultLimits = prevMonthBudget.categoryLimits;
       }
-
-      // Calculate balance: (Rollover + Income) - (Expenses + Savings)
-      const incomeCategories = ['income', 'Paycheck', 'Bonus', 'Debt Added'];
-
-      const income = prevMonthBudget.transactions
-        .filter(t => incomeCategories.includes(t.category))
-        .reduce((sum, t) => sum + t.actual, 0);
-
-      const expenses = prevMonthBudget.transactions
-        .filter(t => !incomeCategories.includes(t.category) && t.category !== 'Savings')
-        .reduce((sum, t) => sum + t.actual, 0);
-
-      const savings = prevMonthBudget.transactions
-        .filter(t => t.category === 'Savings')
-        .reduce((sum, t) => sum + t.actual, 0);
-
-      const startBalance = prevMonthBudget.rolloverActual || 0;
-      const balance = startBalance + income - expenses - savings;
-
-      if (balance > 0) {
-        rolloverAmount = balance;
-        console.log(`[Auto-Rollover] Found ${balance} from ${prevMonthName} ${prevYear}. Creating savings transaction.`);
-
-        savingsTransaction = {
-          id: generateId(),
-          name: "Savings from previous month",
-          planned: balance,
-          actual: balance,
-          category: "Savings",
-          date: `${year}-${(months.indexOf(month) + 1).toString().padStart(2, '0')}-01`,
-          goalId: undefined
-        };
-      }
     }
 
+    // Create new budget with empty transactions
+    // Wallet balances track actual money, so no need for auto-rollover transactions
     budget = await Budget.create({
       month,
       year,
       rolloverPlanned: 0,
-      rolloverActual: rolloverAmount, // Set the rollover
+      rolloverActual: 0,
       categoryLimits: defaultLimits,
-      transactions: savingsTransaction ? [savingsTransaction] : [], // Add the transaction
+      transactions: [],
       userId,
     });
   } else {
@@ -128,60 +94,6 @@ const getOrCreateBudget = async (month: string, year: number, userId: string): P
       budget.markModified('categoryLimits');
       await budget.save();
     }
-  }
-
-  // Always recalculate rolloverActual from previous month to ensure it's current
-  // This fixes the issue where Monthly Leftover shows stale data from when the budget was first created
-  try {
-    const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-    const currentMonthIndex = months.indexOf(month);
-    let prevMonthIndex = currentMonthIndex - 1;
-    let prevYear = year;
-
-    if (prevMonthIndex < 0) {
-      prevMonthIndex = 11;
-      prevYear = year - 1;
-    }
-
-    const prevMonthName = months[prevMonthIndex];
-    const prevMonthBudget = await Budget.findOne({ userId, month: prevMonthName, year: prevYear });
-
-    let expectedRollover = 0;
-
-    if (prevMonthBudget) {
-      // Calculate what the rollover SHOULD be based on previous month's current data
-      const incomeCategories = ['income', 'Paycheck', 'Bonus', 'Debt Added'];
-
-      const income = prevMonthBudget.transactions
-        .filter(t => incomeCategories.includes(t.category) || t.type === 'income')
-        .reduce((sum, t) => sum + t.actual, 0);
-
-      const expenses = prevMonthBudget.transactions
-        .filter(t => {
-          if (t.type === 'transfer' || t.type === 'savings') return false;
-          if (t.category === 'Transfer' || t.category === 'Savings') return false;
-          if (t.type === 'income' || incomeCategories.includes(t.category)) return false;
-          return true;
-        })
-        .reduce((sum, t) => sum + t.actual, 0);
-
-      const savings = prevMonthBudget.transactions
-        .filter(t => t.category === 'Savings' || t.type === 'savings')
-        .reduce((sum, t) => sum + t.actual, 0);
-
-      const startBalance = prevMonthBudget.rolloverActual || 0;
-      expectedRollover = startBalance + income - expenses - savings;
-    }
-
-    // Update rolloverActual if it has drifted from expected value
-    if (Math.abs((budget.rolloverActual || 0) - expectedRollover) > 0.001) {
-      console.log(`[Budget] Updating rolloverActual for ${month} ${year} from ${budget.rolloverActual} to ${expectedRollover}`);
-      budget.rolloverActual = expectedRollover;
-      budget.markModified('rolloverActual');
-      await budget.save();
-    }
-  } catch (err) {
-    console.error("Error recalculating rollover:", err);
   }
 
   // Check and process recurring transactions
