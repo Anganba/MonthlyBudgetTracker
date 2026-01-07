@@ -252,6 +252,31 @@ export default function StatisticsPage() {
         return yearlyStats.reduce((acc: number, curr: any) => acc + (curr.expense || 0), 0);
     }, [yearlyStats]);
 
+    // Calculate daily averages based on actual spending days
+    const dailyAverages = useMemo(() => {
+        if (!monthlyStats?.dailyData) return { avgExpense: 0, avgIncome: 0, avgSavings: 0, daysWithExpense: 0, daysWithIncome: 0 };
+
+        const daysWithExpense = monthlyStats.dailyData.filter((d: any) => d.expense > 0).length;
+        const daysWithIncome = monthlyStats.dailyData.filter((d: any) => d.income > 0).length;
+        const daysWithSavings = monthlyStats.dailyData.filter((d: any) => d.savings > 0).length;
+
+        const totalExpense = monthlyStats.dailyData.reduce((sum: number, d: any) => sum + d.expense, 0);
+        const totalIncome = monthlyStats.dailyData.reduce((sum: number, d: any) => sum + d.income, 0);
+        const totalSavings = monthlyStats.dailyData.reduce((sum: number, d: any) => sum + d.savings, 0);
+
+        return {
+            avgExpense: daysWithExpense > 0 ? totalExpense / daysWithExpense : 0,
+            avgIncome: daysWithIncome > 0 ? totalIncome / daysWithIncome : 0,
+            avgSavings: daysWithSavings > 0 ? totalSavings / daysWithSavings : 0,
+            totalExpense,
+            totalIncome,
+            totalSavings,
+            daysWithExpense,
+            daysWithIncome,
+            daysWithSavings,
+        };
+    }, [monthlyStats]);
+
     if ((isLoadingBudget || isLoadingMonthlyStats) && !monthlyStats) {
         return (
             <div className="min-h-screen bg-black flex items-center justify-center">
@@ -319,16 +344,51 @@ export default function StatisticsPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Daily Financial Flow (Area Chart) */}
                     <div className="col-span-1 lg:col-span-2 rounded-2xl bg-gradient-to-br from-emerald-500/10 via-zinc-900/80 to-zinc-900/50 border border-emerald-500/30 overflow-hidden shadow-lg shadow-emerald-500/5">
-                        <div className="p-6 border-b border-emerald-500/20 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-gradient-to-r from-emerald-500/10 to-transparent">
+                        <div className="p-4 md:p-6 border-b border-emerald-500/20 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 bg-gradient-to-r from-emerald-500/10 to-transparent">
                             <div className="flex items-center gap-3">
                                 <div className="p-2 rounded-xl bg-gradient-to-br from-emerald-500/30 to-green-500/20 shadow-inner">
                                     <TrendingUp className="h-5 w-5 text-emerald-400" />
                                 </div>
                                 <h2 className="text-xl font-semibold font-serif text-white">Daily Financial Flow</h2>
                             </div>
-                            <div className="flex gap-3">
+
+                            {/* Daily Averages - Inline Stats */}
+                            <div className="flex items-center gap-3 flex-wrap">
+                                {showExpense && (
+                                    <div className="flex items-center gap-2.5 px-4 py-2 rounded-xl bg-red-500/10 border border-red-500/20">
+                                        <TrendingDown className="h-4 w-4 text-red-400" />
+                                        <div className="text-sm">
+                                            <span className="text-gray-400">Avg/day: </span>
+                                            <span className="font-bold text-red-400 text-base">{currency}{dailyAverages.avgExpense.toFixed(0)}</span>
+                                            <span className="text-gray-500 ml-1.5">({dailyAverages.daysWithExpense}d)</span>
+                                        </div>
+                                    </div>
+                                )}
+                                {showIncome && (
+                                    <div className="flex items-center gap-2.5 px-4 py-2 rounded-xl bg-green-500/10 border border-green-500/20">
+                                        <TrendingUp className="h-4 w-4 text-green-400" />
+                                        <div className="text-sm">
+                                            <span className="text-gray-400">Avg/day: </span>
+                                            <span className="font-bold text-green-400 text-base">{currency}{dailyAverages.avgIncome.toFixed(0)}</span>
+                                            <span className="text-gray-500 ml-1.5">({dailyAverages.daysWithIncome}d)</span>
+                                        </div>
+                                    </div>
+                                )}
+                                {showSavings && (
+                                    <div className="flex items-center gap-2.5 px-4 py-2 rounded-xl bg-blue-500/10 border border-blue-500/20">
+                                        <Target className="h-4 w-4 text-blue-400" />
+                                        <div className="text-sm">
+                                            <span className="text-gray-400">Avg/day: </span>
+                                            <span className="font-bold text-blue-400 text-base">{currency}{dailyAverages.avgSavings.toFixed(0)}</span>
+                                            <span className="text-gray-500 ml-1.5">({dailyAverages.daysWithSavings}d)</span>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="flex gap-2 md:gap-3">
                                 <Select value={xAxisMode} onValueChange={(v: any) => setXAxisMode(v)}>
-                                    <SelectTrigger className="w-[120px] bg-zinc-800 border-zinc-700 rounded-xl">
+                                    <SelectTrigger className="w-[100px] md:w-[120px] bg-zinc-800 border-zinc-700 rounded-xl text-xs md:text-sm">
                                         <SelectValue placeholder="X-Axis" />
                                     </SelectTrigger>
                                     <SelectContent className="bg-zinc-800 border-zinc-700">
@@ -337,7 +397,7 @@ export default function StatisticsPage() {
                                     </SelectContent>
                                 </Select>
                                 <Select value={yAxisMode} onValueChange={(v: any) => setYAxisMode(v)}>
-                                    <SelectTrigger className="w-[120px] bg-zinc-800 border-zinc-700 rounded-xl">
+                                    <SelectTrigger className="w-[100px] md:w-[120px] bg-zinc-800 border-zinc-700 rounded-xl text-xs md:text-sm">
                                         <SelectValue placeholder="Y-Axis" />
                                     </SelectTrigger>
                                     <SelectContent className="bg-zinc-800 border-zinc-700">
@@ -345,13 +405,13 @@ export default function StatisticsPage() {
                                         <SelectItem value="cumulative">Cumulative</SelectItem>
                                     </SelectContent>
                                 </Select>
-                                <div className="w-[100px]">
+                                <div className="w-[80px] md:w-[100px]">
                                     <Input
                                         type="number"
                                         placeholder="Y-Max"
                                         value={yAxisMax}
                                         onChange={(e) => setYAxisMax(e.target.value)}
-                                        className="bg-zinc-800 border-zinc-700 rounded-xl"
+                                        className="bg-zinc-800 border-zinc-700 rounded-xl text-xs md:text-sm"
                                     />
                                 </div>
                             </div>

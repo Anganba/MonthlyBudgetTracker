@@ -124,6 +124,7 @@ export default function WalletsPage() {
         toWalletId: "",
         amount: ""
     });
+    const [showAllDistribution, setShowAllDistribution] = useState(false);
 
     // Get current month's budget for recent transactions
     const currentDate = new Date();
@@ -309,7 +310,7 @@ export default function WalletsPage() {
                         <div className="space-y-2">
                             {wallets
                                 .sort((a, b) => b.balance - a.balance)
-                                .slice(0, 4)
+                                .slice(0, showAllDistribution ? wallets.length : 4)
                                 .map(wallet => {
                                     const percent = totalBalance > 0 ? (wallet.balance / totalBalance) * 100 : 0;
                                     const barColor = getWalletBarColor(wallet.type);
@@ -324,7 +325,12 @@ export default function WalletsPage() {
                                     );
                                 })}
                             {wallets.length > 4 && (
-                                <p className="text-[10px] text-gray-500 text-center">+{wallets.length - 4} more</p>
+                                <button
+                                    onClick={() => setShowAllDistribution(!showAllDistribution)}
+                                    className="w-full text-[10px] text-primary hover:text-primary/80 text-center py-1 transition-colors cursor-pointer"
+                                >
+                                    {showAllDistribution ? 'Show less' : `+${wallets.length - 4} more`}
+                                </button>
                             )}
                         </div>
                     </div>

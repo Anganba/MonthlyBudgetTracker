@@ -8,6 +8,7 @@ const RecurringTransactionSchema = new Schema<IRecurringTransaction>(
         userId: { type: String, required: true },
         name: { type: String, required: true },
         amount: { type: Number, required: true },
+        type: { type: String, enum: ['income', 'expense'], required: true, default: 'expense' },
         category: { type: String, required: true },
         frequency: {
             type: String,

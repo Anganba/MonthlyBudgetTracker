@@ -90,6 +90,7 @@ export interface RecurringTransaction {
   userId: string;
   name: string;
   amount: number;
+  type: 'income' | 'expense';
   category: TransactionCategory;
   frequency: 'daily' | 'weekly' | 'monthly' | 'yearly';
   startDate: string;

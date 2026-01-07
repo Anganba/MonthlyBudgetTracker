@@ -14,6 +14,7 @@ export const getRecurringTransactions: RequestHandler = async (req, res) => {
             userId: doc.userId,
             name: doc.name,
             amount: doc.amount,
+            type: (doc as any).type || 'expense',
             category: doc.category,
             frequency: doc.frequency,
             startDate: doc.startDate,
@@ -34,7 +35,7 @@ export const createRecurringTransaction: RequestHandler = async (req, res) => {
     const userId = req.session?.user?.id;
     if (!userId) return res.status(401).json({ success: false, message: "Not authenticated" });
 
-    const { name, amount, category, frequency, startDate, walletId } = req.body;
+    const { name, amount, type, category, frequency, startDate, walletId } = req.body;
 
     if (!name || amount === undefined || !category || !frequency || !startDate) {
         return res.status(400).json({ success: false, message: "Missing required fields" });
@@ -45,6 +46,7 @@ export const createRecurringTransaction: RequestHandler = async (req, res) => {
             userId,
             name,
             amount,
+            type: type || 'expense',
             category,
             frequency,
             startDate,
@@ -81,10 +83,21 @@ export const updateRecurringTransaction: RequestHandler = async (req, res) => {
         const item = await RecurringTransactionModel.findOne({ _id: id, userId });
         if (!item) return res.status(404).json({ success: false, message: "Not found" });
 
-        const allowedUpdates = ['name', 'amount', 'category', 'frequency', 'startDate', 'nextRunDate', 'active', 'walletId'];
+        const allowedUpdates = ['name', 'amount', 'type', 'category', 'frequency', 'startDate', 'nextRunDate', 'active', 'walletId'];
         allowedUpdates.forEach(key => {
             if (req.body[key] !== undefined) (item as any)[key] = req.body[key];
         });
+
+        // If startDate is updated but nextRunDate is not explicitly provided, update nextRunDate to match
+        // This ensures that when user changes start date, the next run reflects the new date
+        if (req.body.startDate && !req.body.nextRunDate) {
+            const newStartDate = new Date(req.body.startDate);
+            const now = new Date();
+            // If the new start date is in the future or today, use it as nextRunDate
+            if (newStartDate >= new Date(now.toDateString())) {
+                item.nextRunDate = req.body.startDate;
+            }
+        }
 
         await item.save();
         res.json({ success: true, data: { ...item.toObject(), id: item._id.toString() } });

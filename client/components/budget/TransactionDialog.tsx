@@ -341,6 +341,25 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
                                     </Select>
                                 </div>
 
+                                {/* Swap Button */}
+                                <div className="flex justify-center my-2">
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
+                                            const temp = walletId;
+                                            setWalletId(toWalletId);
+                                            setToWalletId(temp);
+                                        }}
+                                        disabled={!walletId || !toWalletId}
+                                        className="h-8 px-3 text-xs text-gray-400 hover:text-primary hover:bg-primary/10 rounded-lg gap-1.5"
+                                    >
+                                        <ArrowLeftRight className="h-3.5 w-3.5" />
+                                        Swap
+                                    </Button>
+                                </div>
+
                                 <div className="space-y-1">
                                     <Label className="text-gray-500 text-[10px] uppercase tracking-wider font-semibold">
                                         To Account

@@ -83,9 +83,8 @@ export default function RecurringPage() {
     };
 
     // Stats
-    const incomeCategories = INCOME_CATEGORIES.map(c => c.id);
-    const totalMonthlyExpenses = recurringList?.filter(r => r.frequency === 'monthly' && !incomeCategories.includes(r.category)).reduce((sum, r) => sum + r.amount, 0) || 0;
-    const totalMonthlyIncome = recurringList?.filter(r => r.frequency === 'monthly' && incomeCategories.includes(r.category)).reduce((sum, r) => sum + r.amount, 0) || 0;
+    const totalMonthlyExpenses = recurringList?.filter(r => r.frequency === 'monthly' && r.type === 'expense').reduce((sum, r) => sum + r.amount, 0) || 0;
+    const totalMonthlyIncome = recurringList?.filter(r => r.frequency === 'monthly' && r.type === 'income').reduce((sum, r) => sum + r.amount, 0) || 0;
     const totalRules = recurringList?.length || 0;
 
     // Format next run date nicely
@@ -202,7 +201,7 @@ export default function RecurringPage() {
                     ) : (
                         <div className="divide-y divide-white/5">
                             {recurringList?.map((item) => {
-                                const isIncome = incomeCategories.includes(item.category);
+                                const isIncome = item.type === 'income';
                                 return (
                                     <div
                                         key={item.id}
@@ -305,8 +304,7 @@ function RecurringDialog({ open, onOpenChange, onSubmit, initialData, mode }: Re
     // Initialize form when editing
     useEffect(() => {
         if (open && initialData) {
-            const incomeCategories = INCOME_CATEGORIES.map(c => c.id);
-            setType(incomeCategories.includes(initialData.category) ? 'income' : 'expense');
+            setType(initialData.type || 'expense');
             setName(initialData.name);
             setAmount(initialData.amount.toString());
             setCategory(initialData.category);
@@ -339,6 +337,7 @@ function RecurringDialog({ open, onOpenChange, onSubmit, initialData, mode }: Re
         onSubmit({
             name,
             amount: parseFloat(amount),
+            type,
             category,
             frequency,
             startDate,
