@@ -140,6 +140,25 @@ export const updateGoal: RequestHandler = async (req, res) => {
                     details: JSON.stringify({ previousStatus })
                 });
             }
+        } else if (!status || status === previousStatus) {
+            // Regular update (not a status change)
+            const changes: string[] = [];
+            if (name !== undefined) changes.push(`name`);
+            if (targetAmount !== undefined) changes.push(`target`);
+            if (category !== undefined) changes.push(`category`);
+            if (description !== undefined) changes.push(`description`);
+            if (targetDate !== undefined) changes.push(`target date`);
+
+            if (changes.length > 0) {
+                await AuditLogModel.create({
+                    userId,
+                    entityType: 'goal',
+                    entityId: id,
+                    entityName: goal.name,
+                    changeType: 'goal_updated',
+                    details: `Updated: ${changes.join(', ')}`
+                });
+            }
         }
 
         console.log(`[UpdateGoal] Updated goal ${id} status to ${goal.status}`);

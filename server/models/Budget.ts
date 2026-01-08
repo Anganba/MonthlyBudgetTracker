@@ -24,6 +24,7 @@ const TransactionSchema = new Schema<Transaction>({
         required: true,
     },
     date: { type: String, required: true },
+    timestamp: { type: String, required: false }, // HH:MM:SS format
     goalId: { type: String, required: false },
     walletId: { type: String, required: false }, // Link to Wallet (Source)
     toWalletId: { type: String, required: false }, // Link to Target Wallet (Transfer)

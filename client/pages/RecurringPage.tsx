@@ -8,6 +8,16 @@ import { useAuth } from "@/lib/auth";
 import { useWallets } from "@/hooks/use-wallets";
 import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -20,6 +30,7 @@ export default function RecurringPage() {
     const queryClient = useQueryClient();
     const [isAddOpen, setIsAddOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<RecurringTransaction | null>(null);
+    const [deleteConfirm, setDeleteConfirm] = useState<RecurringTransaction | null>(null);
     const [date] = useState(new Date());
     const monthNames = ["January", "February", "March", "April", "May", "June",
         "July", "August", "September", "October", "November", "December"
@@ -82,9 +93,9 @@ export default function RecurringPage() {
         setEditingItem(item);
     };
 
-    // Stats
-    const totalMonthlyExpenses = recurringList?.filter(r => r.frequency === 'monthly' && r.type === 'expense').reduce((sum, r) => sum + r.amount, 0) || 0;
-    const totalMonthlyIncome = recurringList?.filter(r => r.frequency === 'monthly' && r.type === 'income').reduce((sum, r) => sum + r.amount, 0) || 0;
+    // Stats - Gross totals for all frequencies
+    const totalGrossExpenses = recurringList?.filter(r => r.type === 'expense').reduce((sum, r) => sum + r.amount, 0) || 0;
+    const totalGrossIncome = recurringList?.filter(r => r.type === 'income').reduce((sum, r) => sum + r.amount, 0) || 0;
     const totalRules = recurringList?.length || 0;
 
     // Format next run date nicely
@@ -144,8 +155,8 @@ export default function RecurringPage() {
                                 <ArrowUpCircle className="h-4 w-4 md:h-6 md:w-6 text-emerald-400" />
                             </div>
                             <div>
-                                <p className="text-[10px] md:text-sm text-emerald-300/70">Monthly Income</p>
-                                <p className="text-lg md:text-2xl font-bold text-emerald-400">${totalMonthlyIncome.toLocaleString()}</p>
+                                <p className="text-[10px] md:text-sm text-emerald-300/70">Gross Income</p>
+                                <p className="text-lg md:text-2xl font-bold text-emerald-400">${totalGrossIncome.toLocaleString()}</p>
                             </div>
                         </div>
                     </div>
@@ -155,8 +166,8 @@ export default function RecurringPage() {
                                 <ArrowDownCircle className="h-4 w-4 md:h-6 md:w-6 text-rose-400" />
                             </div>
                             <div>
-                                <p className="text-[10px] md:text-sm text-rose-300/70">Monthly Expenses</p>
-                                <p className="text-lg md:text-2xl font-bold text-rose-400">${totalMonthlyExpenses.toLocaleString()}</p>
+                                <p className="text-[10px] md:text-sm text-rose-300/70">Gross Expense</p>
+                                <p className="text-lg md:text-2xl font-bold text-rose-400">${totalGrossExpenses.toLocaleString()}</p>
                             </div>
                         </div>
                     </div>
@@ -246,7 +257,7 @@ export default function RecurringPage() {
                                                     variant="ghost"
                                                     size="icon"
                                                     className="h-8 w-8 text-gray-500 hover:text-red-400 hover:bg-red-500/20 rounded-lg md:rounded-xl"
-                                                    onClick={() => deleteMutation.mutate(item.id)}
+                                                    onClick={() => setDeleteConfirm(item)}
                                                 >
                                                     <Trash2 className="h-3.5 w-3.5 md:h-4 md:w-4" />
                                                 </Button>
@@ -279,6 +290,45 @@ export default function RecurringPage() {
                 initialData={editingItem}
                 mode="edit"
             />
+
+            {/* Delete Confirmation Dialog */}
+            <AlertDialog open={!!deleteConfirm} onOpenChange={(open) => !open && setDeleteConfirm(null)}>
+                <AlertDialogContent className="bg-zinc-900 border-red-500/30">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-white flex items-center gap-2">
+                            <div className="p-2 rounded-xl bg-red-500/20">
+                                <Trash2 className="h-5 w-5 text-red-400" />
+                            </div>
+                            Delete Recurring Rule
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-gray-400">
+                            Are you sure you want to delete the recurring rule{' '}
+                            <span className="font-semibold text-white">"{deleteConfirm?.name}"</span>?
+                            <br /><br />
+                            This will stop all future automatic {deleteConfirm?.type === 'income' ? 'income' : 'expense'} transactions
+                            ({deleteConfirm?.frequency}) of <span className="text-white font-medium">${deleteConfirm?.amount.toLocaleString()}</span>.
+                            <br /><br />
+                            <span className="text-amber-400">⚠️ Past transactions created by this rule will not be affected.</span>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel className="bg-zinc-800 border-zinc-700 text-gray-300 hover:bg-zinc-700 hover:text-white">
+                            Cancel
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            className="bg-red-500 hover:bg-red-600 text-white"
+                            onClick={() => {
+                                if (deleteConfirm) {
+                                    deleteMutation.mutate(deleteConfirm.id);
+                                    setDeleteConfirm(null);
+                                }
+                            }}
+                        >
+                            Delete Rule
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }
@@ -323,14 +373,20 @@ function RecurringDialog({ open, onOpenChange, onSubmit, initialData, mode }: Re
         }
     }, [open, initialData, mode]);
 
-    // Update category when type changes
+    // Update category when type changes (only if current category doesn't match new type)
     useEffect(() => {
-        if (type === 'income') {
-            setCategory(INCOME_CATEGORIES[0]?.id || 'Paycheck');
-        } else {
-            setCategory(EXPENSE_CATEGORIES[0]?.id || 'Rent');
+        const categories = type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+        const currentCategoryExists = categories.some(c => c.id === category);
+
+        // Only reset category if it doesn't exist in the new type's categories
+        if (!currentCategoryExists) {
+            if (type === 'income') {
+                setCategory(INCOME_CATEGORIES[0]?.id || 'Paycheck');
+            } else {
+                setCategory(EXPENSE_CATEGORIES[0]?.id || 'Rent');
+            }
         }
-    }, [type]);
+    }, [type, category]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();

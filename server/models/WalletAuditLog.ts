@@ -12,11 +12,15 @@ export interface IAuditLog extends Document {
     | 'wallet_updated'
     | 'wallet_deleted'
     | 'goal_created'
+    | 'goal_updated'
     | 'goal_fulfilled'
     | 'goal_reactivated'
     | 'goal_deleted'
     | 'recurring_created'
+    | 'recurring_updated'
     | 'recurring_deleted'
+    | 'transaction_created'
+    | 'transaction_updated'
     | 'transaction_deleted';
     previousBalance?: number;
     newBalance?: number;
@@ -44,11 +48,15 @@ const AuditLogSchema = new Schema<IAuditLog>(
                 'wallet_updated',
                 'wallet_deleted',
                 'goal_created',
+                'goal_updated',
                 'goal_fulfilled',
                 'goal_reactivated',
                 'goal_deleted',
                 'recurring_created',
+                'recurring_updated',
                 'recurring_deleted',
+                'transaction_created',
+                'transaction_updated',
                 'transaction_deleted'
             ],
             required: true

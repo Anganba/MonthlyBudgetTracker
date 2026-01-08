@@ -3,6 +3,11 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Transaction } from "@shared/api";
 import { useToast } from "@/hooks/use-toast";
 
+interface GoalDeduction {
+    goalId: string;
+    amount: number;
+}
+
 interface CreateTransactionData {
     name: string;
     amount?: number; // legacy support if needed
@@ -11,9 +16,11 @@ interface CreateTransactionData {
     category: string;
     type: 'income' | 'expense' | 'transfer' | 'savings';
     date: string;
+    timestamp?: string; // HH:MM:SS format
     walletId?: string;
     toWalletId?: string;
     goalId?: string;
+    goalDeductions?: GoalDeduction[]; // For deducting from goals when withdrawing from savings wallet
 }
 
 export function useTransactions() {

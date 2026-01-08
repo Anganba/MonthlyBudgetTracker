@@ -41,6 +41,14 @@ export function TransactionsList({ transactions, wallets, currency, showMoreItem
             if (sortConfig.key === 'date') {
                 const dateA = new Date(a.date).getTime();
                 const dateB = new Date(b.date).getTime();
+                // If dates are equal, use timestamp for secondary sort
+                if (dateA === dateB && a.timestamp && b.timestamp) {
+                    const timeA = a.timestamp.split(':').map(Number);
+                    const timeB = b.timestamp.split(':').map(Number);
+                    const secondsA = timeA[0] * 3600 + timeA[1] * 60 + timeA[2];
+                    const secondsB = timeB[0] * 3600 + timeB[1] * 60 + timeB[2];
+                    return sortConfig.direction === 'asc' ? secondsA - secondsB : secondsB - secondsA;
+                }
                 return sortConfig.direction === 'asc' ? dateA - dateB : dateB - dateA;
             }
             const aValue = a[sortConfig.key as keyof Transaction];
@@ -62,8 +70,7 @@ export function TransactionsList({ transactions, wallets, currency, showMoreItem
     const MobileTransactionCard = ({ item }: { item: Transaction }) => {
         const Icon = getCategoryIcon(item.category);
         const isIncome = incomeCategories.includes(item.category);
-        const isTransfer = item.type === 'transfer' || item.category === 'Transfer';
-        const isSavings = item.type === 'savings' || item.category === 'Savings';
+        const isTransfer = item.type === 'transfer' || item.category === 'Transfer' || item.type === 'savings' || item.category === 'Savings';
 
         return (
             <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-white/5 to-transparent rounded-xl border border-white/5 hover:border-amber-500/30 hover:bg-amber-500/5 transition-all">
@@ -73,13 +80,13 @@ export function TransactionsList({ transactions, wallets, currency, showMoreItem
                 <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-white truncate">{item.name}</p>
                     <div className="flex items-center gap-2 text-[11px] text-gray-500">
-                        <span>{format(new Date(item.date), 'MMM d')}</span>
+                        <span>{format(new Date(item.date), 'MMM d')} {item.timestamp || ''}</span>
                         <span>•</span>
                         <span className="truncate">{item.category}</span>
                     </div>
                 </div>
-                <div className={`text-sm font-semibold ${isIncome ? 'text-green-400' : isSavings ? 'text-blue-400' : 'text-white'}`}>
-                    {isIncome ? '+' : (isTransfer || isSavings ? '' : '-')}{currency}{Math.abs(item.actual).toFixed(0)}
+                <div className={`text-sm font-semibold ${isIncome ? 'text-green-400' : isTransfer ? 'text-blue-400' : 'text-white'}`}>
+                    {isIncome ? '+' : isTransfer ? '' : '-'}{currency}{Math.abs(item.actual).toFixed(0)}
                 </div>
             </div>
         );
@@ -89,8 +96,7 @@ export function TransactionsList({ transactions, wallets, currency, showMoreItem
     const TransactionItem = ({ item }: { item: Transaction }) => {
         const Icon = getCategoryIcon(item.category);
         const isIncome = incomeCategories.includes(item.category);
-        const isTransfer = item.type === 'transfer' || item.category === 'Transfer';
-        const isSavings = item.type === 'savings' || item.category === 'Savings';
+        const isTransfer = item.type === 'transfer' || item.category === 'Transfer' || item.type === 'savings' || item.category === 'Savings';
 
         return (
             <div className="grid grid-cols-[2.5fr_1.2fr_1fr_1fr_1fr] gap-3 items-center py-3 border-b border-white/5 last:border-0 hover:bg-amber-500/5 hover:border-amber-500/20 px-3 rounded-lg transition-all">
@@ -111,6 +117,7 @@ export function TransactionsList({ transactions, wallets, currency, showMoreItem
                             return "Invalid Date";
                         }
                     })()}
+                    {item.timestamp && ` ${item.timestamp}`}
                 </div>
 
                 <div className="text-sm text-gray-500 truncate">
@@ -137,8 +144,8 @@ export function TransactionsList({ transactions, wallets, currency, showMoreItem
                     )}
                 </div>
 
-                <div className={`text-sm font-semibold text-right ${isIncome ? 'text-green-400' : isSavings ? 'text-blue-400' : 'text-white'}`}>
-                    {isIncome ? '+' : (isTransfer || isSavings ? '' : '-')}{currency}{Math.abs(item.actual).toFixed(2)}
+                <div className={`text-sm font-semibold text-right ${isIncome ? 'text-green-400' : isTransfer ? 'text-blue-400' : 'text-white'}`}>
+                    {isIncome ? '+' : isTransfer ? '' : '-'}{currency}{Math.abs(item.actual).toFixed(2)}
                 </div>
             </div>
         );
@@ -178,7 +185,6 @@ export function TransactionsList({ transactions, wallets, currency, showMoreItem
                         <TabsTrigger value="all" className="rounded-lg md:rounded-xl bg-zinc-800 text-white px-3 md:px-4 py-1 md:py-1.5 text-xs md:text-sm data-[state=active]:bg-primary data-[state=active]:text-black border border-white/10 data-[state=active]:border-primary">All</TabsTrigger>
                         <TabsTrigger value="expenses" className="rounded-lg md:rounded-xl bg-transparent text-gray-500 px-3 md:px-4 py-1 md:py-1.5 text-xs md:text-sm data-[state=active]:bg-orange-500/20 data-[state=active]:text-orange-400 hover:text-white transition border border-transparent data-[state=active]:border-orange-500/30">Expense</TabsTrigger>
                         <TabsTrigger value="income" className="rounded-lg md:rounded-xl bg-transparent text-gray-500 px-3 md:px-4 py-1 md:py-1.5 text-xs md:text-sm data-[state=active]:bg-green-500/20 data-[state=active]:text-green-400 hover:text-white transition border border-transparent data-[state=active]:border-green-500/30">Income</TabsTrigger>
-                        <TabsTrigger value="savings" className="rounded-lg md:rounded-xl bg-transparent text-gray-500 px-3 md:px-4 py-1 md:py-1.5 text-xs md:text-sm data-[state=active]:bg-blue-500/20 data-[state=active]:text-blue-400 hover:text-white transition border border-transparent data-[state=active]:border-blue-500/30 hidden sm:flex">Saving</TabsTrigger>
                         <TabsTrigger value="transfers" className="rounded-lg md:rounded-xl bg-transparent text-gray-500 px-3 md:px-4 py-1 md:py-1.5 text-xs md:text-sm data-[state=active]:bg-purple-500/20 data-[state=active]:text-purple-400 hover:text-white transition border border-transparent data-[state=active]:border-purple-500/30 hidden sm:flex">Transfer</TabsTrigger>
                     </TabsList>
 
@@ -193,11 +199,8 @@ export function TransactionsList({ transactions, wallets, currency, showMoreItem
                         <TabsContent value="income" className="space-y-2 mt-0">
                             {renderMobileList(transactions.filter(t => incomeCategories.includes(t.category)))}
                         </TabsContent>
-                        <TabsContent value="savings" className="space-y-2 mt-0">
-                            {renderMobileList(transactions.filter(t => t.category === 'Savings'))}
-                        </TabsContent>
                         <TabsContent value="transfers" className="space-y-2 mt-0">
-                            {renderMobileList(transactions.filter(t => t.type === 'transfer' || t.category === 'Transfer'))}
+                            {renderMobileList(transactions.filter(t => t.type === 'transfer' || t.category === 'Transfer' || t.type === 'savings' || t.category === 'Savings'))}
                         </TabsContent>
                     </div>
 
@@ -246,11 +249,8 @@ export function TransactionsList({ transactions, wallets, currency, showMoreItem
                             <TabsContent value="income" className="space-y-0 mt-0">
                                 {renderList(transactions.filter(t => incomeCategories.includes(t.category)))}
                             </TabsContent>
-                            <TabsContent value="savings" className="space-y-0 mt-0">
-                                {renderList(transactions.filter(t => t.category === 'Savings'))}
-                            </TabsContent>
                             <TabsContent value="transfers" className="space-y-0 mt-0">
-                                {renderList(transactions.filter(t => t.type === 'transfer' || t.category === 'Transfer'))}
+                                {renderList(transactions.filter(t => t.type === 'transfer' || t.category === 'Transfer' || t.type === 'savings' || t.category === 'Savings'))}
                             </TabsContent>
                         </div>
                     </div>

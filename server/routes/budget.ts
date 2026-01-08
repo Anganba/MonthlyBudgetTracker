@@ -110,28 +110,7 @@ const getOrCreateBudget = async (month: string, year: number, userId: string): P
       const today = new Date(); // Current date for processing
 
       for (const rule of recurring) {
-        // Create transaction
-        const newTransaction: Transaction = {
-          id: generateId(),
-          name: rule.name,
-          planned: rule.amount, // recurring amount is usually planned ? or actual? User usually sets the bill amount. Let's assume actual=amount, planned=amount
-          actual: rule.amount,
-          category: rule.category,
-          date: rule.nextRunDate, // Use the date it was supposed to run
-          goalId: undefined,
-          walletId: rule.walletId || undefined
-        };
-
-        // Find the correct budget month for this transaction date
-        // Note: The `budget` object we have is for the requested month/year.
-        // But the recurring transaction might be for a PAST or FUTURE month relative to the requested one?
-        // Actually, if we are just fetching the dashboard, we should probably process ALL due transactions 
-        // and put them in their respective budget months.
-        // However, simplify: We heavily rely on the user opening the app.
-        // If we put it in the WRONG budget month (e.g. requested Jan, but trans is for Feb), it won't return in THIS request.
-        // Use robust approach: Find/Create the specific budget for the transaction date.
-        // 
-
+        // Check if transaction already exists for this rule and date (prevent duplicates from race conditions)
         const transDate = new Date(rule.nextRunDate);
         const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
         const tMonth = months[transDate.getMonth()];
@@ -150,6 +129,43 @@ const getOrCreateBudget = async (month: string, year: number, userId: string): P
           }
         }
 
+        // DUPLICATE CHECK: Skip if a transaction with same name, date, category already exists
+        const existingTransaction = targetBudget.transactions.find(
+          (t: Transaction) =>
+            t.name === rule.name &&
+            t.date === rule.nextRunDate &&
+            t.category === rule.category &&
+            t.walletId === (rule.walletId || undefined)
+        );
+
+        if (existingTransaction) {
+          console.log(`[Recurring] Skipping duplicate for rule "${rule.name}" on ${rule.nextRunDate}`);
+          // Still update nextRunDate to prevent repeated attempts
+          let nextDate = new Date(rule.nextRunDate);
+          switch (rule.frequency) {
+            case 'daily': nextDate = addDays(nextDate, 1); break;
+            case 'weekly': nextDate = addWeeks(nextDate, 1); break;
+            case 'monthly': nextDate = addMonths(nextDate, 1); break;
+            case 'yearly': nextDate = addYears(nextDate, 1); break;
+          }
+          rule.lastRunDate = rule.nextRunDate;
+          rule.nextRunDate = format(nextDate, 'yyyy-MM-dd');
+          await rule.save();
+          continue; // Skip creating this transaction
+        }
+
+        // Create transaction
+        const newTransaction: Transaction = {
+          id: generateId(),
+          name: rule.name,
+          planned: rule.amount,
+          actual: rule.amount,
+          category: rule.category,
+          date: rule.nextRunDate, // Use the date it was supposed to run
+          goalId: undefined,
+          walletId: rule.walletId || undefined
+        };
+
         targetBudget.transactions.push(newTransaction);
         await targetBudget.save();
 
@@ -159,7 +175,7 @@ const getOrCreateBudget = async (month: string, year: number, userId: string): P
           if (wallet) {
             const isIncome = ['income', 'Paycheck', 'Bonus', 'Debt Added'].includes(rule.category);
             if (isIncome) wallet.balance += rule.amount;
-            else wallet.balance -= rule.amount; // Use rule.amount (newTransaction.actual)
+            else wallet.balance -= rule.amount;
             await wallet.save();
             console.log(`[Recurring] Updated wallet ${rule.walletId} balance for rule ${rule.name}`);
           }
@@ -421,6 +437,7 @@ export const addTransaction: RequestHandler = async (req, res) => {
       actual,
       category: category as TransactionCategory,
       date,
+      timestamp: req.body.timestamp, // HH:MM:SS format
       goalId,
       walletId,
       type: type || 'expense',
@@ -479,6 +496,34 @@ export const addTransaction: RequestHandler = async (req, res) => {
 
     // Propagate Rollover Changes
     await recalculateRollovers(targetMonth, targetYear, userId);
+
+    // Handle goal deductions (when withdrawing from savings wallet)
+    const goalDeductions = req.body.goalDeductions as { goalId: string; amount: number }[] | undefined;
+    if (goalDeductions && goalDeductions.length > 0) {
+      const { Goal } = await import("../models/Goal");
+
+      for (const deduction of goalDeductions) {
+        const goal = await Goal.findOne({ _id: deduction.goalId, userId });
+        if (goal) {
+          // Reduce currentAmount, clamped at 0
+          goal.currentAmount = Math.max(0, goal.currentAmount - deduction.amount);
+          await goal.save();
+          console.log(`[Goal Deduction] Deducted ${deduction.amount} from goal "${goal.name}". New amount: ${goal.currentAmount}`);
+        }
+      }
+    }
+
+    // Log to audit trail
+    const { AuditLogModel } = await import("../models/WalletAuditLog");
+    await AuditLogModel.create({
+      userId,
+      entityType: 'transaction',
+      entityId: transaction.id,
+      entityName: transaction.name,
+      changeType: 'transaction_created',
+      changeAmount: transaction.actual,
+      details: `Created ${transaction.type} transaction: ${transaction.category} - $${transaction.actual}`
+    });
 
     res.json({ success: true, data: transaction });
   } catch (error) {
@@ -562,8 +607,8 @@ export const updateTransaction: RequestHandler = async (req, res) => {
       if (planned !== undefined) updatedTransaction.planned = planned;
       if (actual !== undefined) updatedTransaction.actual = actual;
       if (req.body.category !== undefined) updatedTransaction.category = req.body.category;
-      if (req.body.category !== undefined) updatedTransaction.category = req.body.category;
       if (req.body.date !== undefined) updatedTransaction.date = req.body.date;
+      if (req.body.timestamp !== undefined) updatedTransaction.timestamp = req.body.timestamp;
       if (req.body.goalId !== undefined) updatedTransaction.goalId = req.body.goalId;
       if (req.body.walletId !== undefined) updatedTransaction.walletId = req.body.walletId;
       if (req.body.type !== undefined) updatedTransaction.type = req.body.type;
@@ -582,6 +627,7 @@ export const updateTransaction: RequestHandler = async (req, res) => {
       if (actual !== undefined) transaction.actual = actual;
       if (req.body.category !== undefined) transaction.category = req.body.category;
       if (req.body.date !== undefined) transaction.date = req.body.date;
+      if (req.body.timestamp !== undefined) transaction.timestamp = req.body.timestamp;
       if (req.body.goalId !== undefined) transaction.goalId = req.body.goalId;
       if (req.body.walletId !== undefined) transaction.walletId = req.body.walletId;
       if (req.body.type !== undefined) transaction.type = req.body.type;
@@ -686,6 +732,19 @@ export const updateTransaction: RequestHandler = async (req, res) => {
 
 
     await recalculateRollovers(startM, startY, userId);
+
+    // Log to audit trail
+    const { AuditLogModel } = await import("../models/WalletAuditLog");
+    await AuditLogModel.create({
+      userId,
+      entityType: 'transaction',
+      entityId: transaction.id,
+      entityName: transaction.name,
+      changeType: 'transaction_updated',
+      previousBalance: oldAmount,
+      newBalance: newAmount,
+      details: `Updated transaction: ${transaction.name} ($${oldAmount} → $${newAmount})`
+    });
 
     res.json({ success: true, data: transaction });
   } catch (error) {

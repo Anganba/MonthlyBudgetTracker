@@ -404,6 +404,7 @@ export default function ProfilePage() {
                                             <SelectItem value="wallet">Wallets</SelectItem>
                                             <SelectItem value="goal">Goals</SelectItem>
                                             <SelectItem value="recurring">Recurring Rules</SelectItem>
+                                            <SelectItem value="transaction">Transactions</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>

@@ -12,7 +12,8 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/components/ui/use-toast';
 import { useWallets } from '@/hooks/use-wallets';
-import { Download, FileSpreadsheet, FileText, FileJson, Calendar, Loader2, CheckCircle2, Package } from 'lucide-react';
+import { useGoals } from '@/hooks/use-goals';
+import { Download, FileSpreadsheet, FileText, FileJson, Calendar, Loader2, CheckCircle2, Package, Target, Repeat } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 interface ExportDialogProps {
@@ -40,21 +41,26 @@ const formatOptions: { value: ExportFormat; label: string; description: string; 
 export function ExportDialog({ open, onOpenChange }: ExportDialogProps) {
     const { toast } = useToast();
     const { wallets } = useWallets();
+    const { goals } = useGoals();
 
     const [format, setFormat] = useState<ExportFormat>('excel');
     const [dateRange, setDateRange] = useState<DateRange>('all');
     const [includeTransactions, setIncludeTransactions] = useState(true);
     const [includeWallets, setIncludeWallets] = useState(false);
+    const [includeGoals, setIncludeGoals] = useState(false);
+    const [includeRecurring, setIncludeRecurring] = useState(false);
     const [includeSummary, setIncludeSummary] = useState(false);
 
     const [isExporting, setIsExporting] = useState(false);
     const [transactionCount, setTransactionCount] = useState<number | null>(null);
     const [allTransactions, setAllTransactions] = useState<any[]>([]);
+    const [recurringRules, setRecurringRules] = useState<any[]>([]);
 
-    // Fetch transactions when dialog opens
+    // Fetch transactions and recurring rules when dialog opens
     useEffect(() => {
         if (open) {
             fetchTransactionPreview();
+            fetchRecurringRules();
         }
     }, [open, dateRange]);
 
@@ -99,6 +105,18 @@ export function ExportDialog({ open, onOpenChange }: ExportDialogProps) {
         }
     };
 
+    const fetchRecurringRules = async () => {
+        try {
+            const response = await fetch('/api/recurring');
+            const result = await response.json();
+            if (result.success && result.data) {
+                setRecurringRules(result.data);
+            }
+        } catch (error) {
+            console.error('Failed to fetch recurring rules:', error);
+        }
+    };
+
     const categorizeTransaction = (t: any) => {
         const isIncome = ['Paycheck', 'Bonus', 'Debt Added', 'income'].includes(t.category) || t.type === 'income';
         const isSavings = t.category === 'Savings';
@@ -129,17 +147,84 @@ export function ExportDialog({ open, onOpenChange }: ExportDialogProps) {
     };
 
     const generateCsv = (transactions: any[]) => {
-        const headers = ['Date', 'Name', 'Category', 'Amount', 'Type', 'Wallet'];
-        const rows = transactions.map(t => [
-            t.date,
-            t.name,
-            t.category,
-            Math.abs(t.actual).toString(),
-            categorizeTransaction(t),
-            getWalletName(t.walletId)
-        ]);
+        const sections: string[] = [];
 
-        return headers.join(',') + '\n' + rows.map(row => row.map(escapeCsvField).join(',')).join('\n');
+        // Transactions CSV
+        if (includeTransactions && transactions.length > 0) {
+            const headers = ['Date', 'Time', 'Name', 'Category', 'Amount', 'Type', 'Wallet'];
+            const rows = transactions.map(t => {
+                const date = new Date(t.date);
+                // Try to extract time if available, otherwise default
+                let timeStr = '';
+                // Since our new logic adds timestamp separately or merges, let's assume `t.date` might handle it or we look at `t.timestamp` if it exists (but API merges them often)
+                // Actually `t.date` is likely just the date string YYYY-MM-DD from the `budget.ts` route if it comes from `budget.transactions` array which stores strings?
+                // Wait, recent changes added `timestamp` field.
+                // Let's check if we can parse time from `t`.
+                // If the new schema has `createdAt` or specific `timestamp`, we use that.
+                // Based on recent changes, we added `timestamp` to transaction object? No, we added it to the Mongo schema.
+                // Let's assume `t` has it if fetched via `/api/budget/all`.
+
+                // If t.timestamp is available (it should be since we updated schema + route)
+                const timestamp = t.timestamp ? new Date(t.timestamp).toLocaleTimeString() : '';
+
+                return [
+                    t.date,
+                    timestamp,
+                    t.name,
+                    t.category,
+                    Math.abs(t.actual).toString(),
+                    categorizeTransaction(t),
+                    getWalletName(t.walletId)
+                ];
+            });
+            sections.push('TRANSACTIONS\n' + headers.join(',') + '\n' + rows.map(row => row.map(escapeCsvField).join(',')).join('\n'));
+        }
+
+        // Wallets CSV
+        if (includeWallets && wallets.length > 0) {
+            const headers = ['Name', 'Type', 'Balance', 'Description', 'Is Default', 'Is Savings'];
+            const rows = wallets.map(w => [
+                w.name,
+                w.type,
+                w.balance.toString(),
+                w.description || '',
+                w.isDefault ? 'Yes' : 'No',
+                w.isSavingsWallet ? 'Yes' : 'No'
+            ]);
+            sections.push('WALLETS\n' + headers.join(',') + '\n' + rows.map(row => row.map(escapeCsvField).join(',')).join('\n'));
+        }
+
+        // Goals CSV
+        if (includeGoals && goals && goals.length > 0) {
+            const headers = ['Name', 'Status', 'Current Amount', 'Target Amount', 'Category', 'Target Date'];
+            const rows = goals.map(g => [
+                g.name,
+                g.status || 'active',
+                g.currentAmount.toString(),
+                g.targetAmount.toString(),
+                g.category,
+                g.targetDate ? new Date(g.targetDate).toLocaleDateString() : ''
+            ]);
+            sections.push('GOALS\n' + headers.join(',') + '\n' + rows.map(row => row.map(escapeCsvField).join(',')).join('\n'));
+        }
+
+        // Recurring Rules CSV
+        if (includeRecurring && recurringRules && recurringRules.length > 0) {
+            const headers = ['Name', 'Amount', 'Frequency', 'Type', 'Category', 'Next Run', 'Active', 'Wallet'];
+            const rows = recurringRules.map(r => [
+                r.name,
+                r.amount.toString(),
+                r.frequency,
+                r.type,
+                r.category,
+                r.nextRunDate ? new Date(r.nextRunDate).toLocaleDateString() : '',
+                r.active ? 'Yes' : 'No',
+                getWalletName(r.walletId)
+            ]);
+            sections.push('RECURRING RULES\n' + headers.join(',') + '\n' + rows.map(row => row.map(escapeCsvField).join(',')).join('\n'));
+        }
+
+        return sections.join('\n\n');
     };
 
     const generateExcel = (transactions: any[]) => {
@@ -149,6 +234,7 @@ export function ExportDialog({ open, onOpenChange }: ExportDialogProps) {
         if (includeTransactions && transactions.length > 0) {
             const transactionData = transactions.map(t => ({
                 Date: t.date,
+                Time: t.timestamp ? new Date(t.timestamp).toLocaleTimeString() : '',
                 Name: t.name,
                 Category: t.category,
                 Amount: Math.abs(t.actual),
@@ -156,17 +242,9 @@ export function ExportDialog({ open, onOpenChange }: ExportDialogProps) {
                 Wallet: getWalletName(t.walletId)
             }));
             const wsTransactions = XLSX.utils.json_to_sheet(transactionData);
-
-            // Set column widths
             wsTransactions['!cols'] = [
-                { wch: 12 }, // Date
-                { wch: 30 }, // Name
-                { wch: 15 }, // Category
-                { wch: 12 }, // Amount
-                { wch: 12 }, // Type
-                { wch: 15 }, // Wallet
+                { wch: 12 }, { wch: 10 }, { wch: 30 }, { wch: 15 }, { wch: 12 }, { wch: 12 }, { wch: 15 }
             ];
-
             XLSX.utils.book_append_sheet(workbook, wsTransactions, 'Transactions');
         }
 
@@ -176,32 +254,64 @@ export function ExportDialog({ open, onOpenChange }: ExportDialogProps) {
                 Name: w.name,
                 Type: w.type.charAt(0).toUpperCase() + w.type.slice(1).replace('_', ' '),
                 Balance: w.balance,
-                Description: w.description || ''
+                Description: w.description || '',
+                Default: w.isDefault ? 'Yes' : 'No',
+                Savings: w.isSavingsWallet ? 'Yes' : 'No'
             }));
             const wsWallets = XLSX.utils.json_to_sheet(walletData);
             wsWallets['!cols'] = [
-                { wch: 20 }, // Name
-                { wch: 15 }, // Type
-                { wch: 12 }, // Balance
-                { wch: 30 }, // Description
+                { wch: 20 }, { wch: 15 }, { wch: 12 }, { wch: 30 }, { wch: 8 }, { wch: 8 }
             ];
             XLSX.utils.book_append_sheet(workbook, wsWallets, 'Wallets');
         }
 
+        // Goals Sheet
+        if (includeGoals && goals && goals.length > 0) {
+            const goalData = goals.map(g => ({
+                Name: g.name,
+                Status: (g.status || 'active').toUpperCase(),
+                Current: g.currentAmount,
+                Target: g.targetAmount,
+                Progress: Math.round((g.currentAmount / g.targetAmount) * 100) + '%',
+                Category: g.category,
+                Deadline: g.targetDate ? new Date(g.targetDate).toLocaleDateString() : 'None'
+            }));
+            const wsGoals = XLSX.utils.json_to_sheet(goalData);
+            wsGoals['!cols'] = [
+                { wch: 20 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 15 }, { wch: 15 }
+            ];
+            XLSX.utils.book_append_sheet(workbook, wsGoals, 'Goals');
+        }
+
+        // Recurring Rules Sheet
+        if (includeRecurring && recurringRules && recurringRules.length > 0) {
+            const recurringData = recurringRules.map(r => ({
+                Name: r.name,
+                Amount: r.amount,
+                Frequency: r.frequency.charAt(0).toUpperCase() + r.frequency.slice(1),
+                Type: r.type,
+                Category: r.category,
+                NextRun: r.nextRunDate ? new Date(r.nextRunDate).toLocaleDateString() : '',
+                Active: r.active ? 'Yes' : 'No',
+                Wallet: getWalletName(r.walletId)
+            }));
+            const wsRecurring = XLSX.utils.json_to_sheet(recurringData);
+            wsRecurring['!cols'] = [
+                { wch: 20 }, { wch: 12 }, { wch: 10 }, { wch: 10 }, { wch: 15 }, { wch: 15 }, { wch: 8 }, { wch: 15 }
+            ];
+            XLSX.utils.book_append_sheet(workbook, wsRecurring, 'Recurring Rules');
+        }
+
         // Summary Sheet
         if (includeSummary) {
-            // Group transactions by month
             const monthlyData: Record<string, { income: number; expenses: number; savings: number }> = {};
-
             transactions.forEach(t => {
-                const monthKey = t.date?.substring(0, 7) || 'Unknown'; // YYYY-MM format
+                const monthKey = t.date?.substring(0, 7) || 'Unknown';
                 if (!monthlyData[monthKey]) {
                     monthlyData[monthKey] = { income: 0, expenses: 0, savings: 0 };
                 }
-
                 const type = categorizeTransaction(t);
                 const amount = Math.abs(t.actual);
-
                 if (type === 'Income') monthlyData[monthKey].income += amount;
                 else if (type === 'Savings') monthlyData[monthKey].savings += amount;
                 else if (type === 'Expense') monthlyData[monthKey].expenses += amount;
@@ -219,13 +329,7 @@ export function ExportDialog({ open, onOpenChange }: ExportDialogProps) {
 
             if (summaryData.length > 0) {
                 const wsSummary = XLSX.utils.json_to_sheet(summaryData);
-                wsSummary['!cols'] = [
-                    { wch: 12 }, // Month
-                    { wch: 12 }, // Income
-                    { wch: 12 }, // Expenses
-                    { wch: 12 }, // Savings
-                    { wch: 12 }, // Balance
-                ];
+                wsSummary['!cols'] = [{ wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }];
                 XLSX.utils.book_append_sheet(workbook, wsSummary, 'Monthly Summary');
             }
         }
@@ -239,6 +343,7 @@ export function ExportDialog({ open, onOpenChange }: ExportDialogProps) {
         if (includeTransactions) {
             data.transactions = transactions.map(t => ({
                 date: t.date,
+                timestamp: t.timestamp,
                 name: t.name,
                 category: t.category,
                 amount: Math.abs(t.actual),
@@ -252,7 +357,33 @@ export function ExportDialog({ open, onOpenChange }: ExportDialogProps) {
                 name: w.name,
                 type: w.type,
                 balance: w.balance,
-                description: w.description || null
+                description: w.description || null,
+                isDefault: w.isDefault,
+                isSavings: w.isSavingsWallet
+            }));
+        }
+
+        if (includeGoals) {
+            data.goals = goals?.map(g => ({
+                name: g.name,
+                status: g.status,
+                currentAmount: g.currentAmount,
+                targetAmount: g.targetAmount,
+                category: g.category,
+                targetDate: g.targetDate
+            })) || [];
+        }
+
+        if (includeRecurring) {
+            data.recurringRules = recurringRules.map(r => ({
+                name: r.name,
+                amount: r.amount,
+                frequency: r.frequency,
+                type: r.type,
+                category: r.category,
+                nextRunDate: r.nextRunDate,
+                active: r.active,
+                walletId: r.walletId
             }));
         }
 
@@ -260,7 +391,6 @@ export function ExportDialog({ open, onOpenChange }: ExportDialogProps) {
             const totalIncome = transactions.filter(t => categorizeTransaction(t) === 'Income').reduce((sum, t) => sum + Math.abs(t.actual), 0);
             const totalExpenses = transactions.filter(t => categorizeTransaction(t) === 'Expense').reduce((sum, t) => sum + Math.abs(t.actual), 0);
             const totalSavings = transactions.filter(t => categorizeTransaction(t) === 'Savings').reduce((sum, t) => sum + Math.abs(t.actual), 0);
-
             data.summary = {
                 totalIncome,
                 totalExpenses,
@@ -275,7 +405,7 @@ export function ExportDialog({ open, onOpenChange }: ExportDialogProps) {
     };
 
     const handleExport = async () => {
-        if (!includeTransactions && !includeWallets && !includeSummary) {
+        if (!includeTransactions && !includeWallets && !includeSummary && !includeGoals && !includeRecurring) {
             toast({
                 title: "Nothing to Export",
                 description: "Please select at least one data type to export.",
@@ -288,11 +418,9 @@ export function ExportDialog({ open, onOpenChange }: ExportDialogProps) {
 
         try {
             const filteredTransactions = filterTransactions(allTransactions, dateRange);
-
             let content: string | ArrayBuffer;
             let filename: string;
             let mimeType: string;
-
             const dateStr = new Date().toISOString().split('T')[0];
 
             switch (format) {
@@ -316,7 +444,6 @@ export function ExportDialog({ open, onOpenChange }: ExportDialogProps) {
                     throw new Error('Unknown format');
             }
 
-            // Create and trigger download
             const blob = new Blob([content], { type: mimeType });
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
@@ -331,9 +458,7 @@ export function ExportDialog({ open, onOpenChange }: ExportDialogProps) {
                 title: "Export Successful",
                 description: `Your data has been exported as ${filename}`,
             });
-
             onOpenChange(false);
-
         } catch (error) {
             console.error('Export error:', error);
             toast({
@@ -348,7 +473,7 @@ export function ExportDialog({ open, onOpenChange }: ExportDialogProps) {
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-lg bg-zinc-900 border-white/10">
+            <DialogContent className="sm:max-w-lg bg-zinc-900 border-white/10 max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="font-serif text-2xl text-white flex items-center gap-3">
                         <div className="p-2 rounded-xl bg-primary/20">
@@ -450,6 +575,42 @@ export function ExportDialog({ open, onOpenChange }: ExportDialogProps) {
                                 </div>
                                 <span className="text-xs text-primary bg-primary/10 px-2 py-1 rounded-full">
                                     {wallets.length} wallets
+                                </span>
+                            </label>
+
+                            <label className="flex items-center gap-3 p-3 rounded-xl bg-zinc-800/50 border border-zinc-700 cursor-pointer hover:bg-zinc-800 transition-colors">
+                                <Checkbox
+                                    checked={includeGoals}
+                                    onCheckedChange={(checked) => setIncludeGoals(checked as boolean)}
+                                    className="border-zinc-600 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                                />
+                                <div className="flex-1 flex items-center gap-2">
+                                    <div className="flex-1">
+                                        <p className="text-white font-medium">Goals</p>
+                                        <p className="text-xs text-gray-500">Your savings goals and progress</p>
+                                    </div>
+                                    <Target className="h-4 w-4 text-gray-400" />
+                                </div>
+                                <span className="text-xs text-primary bg-primary/10 px-2 py-1 rounded-full">
+                                    {goals?.length || 0} goals
+                                </span>
+                            </label>
+
+                            <label className="flex items-center gap-3 p-3 rounded-xl bg-zinc-800/50 border border-zinc-700 cursor-pointer hover:bg-zinc-800 transition-colors">
+                                <Checkbox
+                                    checked={includeRecurring}
+                                    onCheckedChange={(checked) => setIncludeRecurring(checked as boolean)}
+                                    className="border-zinc-600 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                                />
+                                <div className="flex-1 flex items-center gap-2">
+                                    <div className="flex-1">
+                                        <p className="text-white font-medium">Recurring Rules</p>
+                                        <p className="text-xs text-gray-500">Your active recurring transactions</p>
+                                    </div>
+                                    <Repeat className="h-4 w-4 text-gray-400" />
+                                </div>
+                                <span className="text-xs text-primary bg-primary/10 px-2 py-1 rounded-full">
+                                    {recurringRules.length} rules
                                 </span>
                             </label>
 

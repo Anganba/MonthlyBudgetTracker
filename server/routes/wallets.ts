@@ -138,6 +138,28 @@ export const updateWallet: RequestHandler = async (req, res) => {
             });
         }
 
+        // Create audit log for other wallet updates
+        const changes: string[] = [];
+        if (name) changes.push('name');
+        if (type) changes.push('type');
+        if (description !== undefined) changes.push('description');
+        if (color) changes.push('color');
+        if (icon) changes.push('icon');
+        if (isDefault) changes.push('default status');
+        if (isSavingsWallet !== undefined) changes.push('savings wallet status');
+
+        if (changes.length > 0 && !(balance !== undefined && previousBalance !== balance)) {
+            // Only log wallet_updated if there wasn't already a balance_change log
+            await AuditLogModel.create({
+                userId,
+                entityType: 'wallet',
+                entityId: id,
+                entityName: wallet.name,
+                changeType: 'wallet_updated',
+                details: `Updated: ${changes.join(', ')}`
+            });
+        }
+
         res.json({ success: true, data: mapToWallet(wallet) });
     } catch (error) {
         res.status(500).json({ success: false, message: "Server error" });

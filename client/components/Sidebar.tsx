@@ -133,10 +133,15 @@ export function Sidebar({ collapsed, setCollapsed, mobile = false }: SidebarProp
 
                         {/* Center Content - positioned above clipped container */}
                         <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="text-center">
+                            <div className="text-center w-full px-4" title={`Exact: $${displayAmount.toLocaleString()}`}>
                                 <p className="text-[11px] text-emerald-400 uppercase tracking-[0.15em] font-bold mb-1.5 drop-shadow-[0_0_10px_rgba(16,185,129,0.5)]">{displayLabel}</p>
                                 <p
-                                    className="text-3xl font-black tracking-tight"
+                                    className={cn(
+                                        "font-black tracking-tight transition-all duration-300",
+                                        displayAmount >= 1_000_000 || displayAmount <= -1_000_000 ? "text-3xl" : // Compact notation usually short
+                                            displayAmount >= 100_000 || displayAmount <= -100_000 ? "text-2xl" : // 6 digits + decimals
+                                                "text-3xl" // Standard
+                                    )}
                                     style={{
                                         background: 'linear-gradient(135deg, #a3e635 0%, #22d3ee 50%, #a3e635 100%)',
                                         WebkitBackgroundClip: 'text',
@@ -144,7 +149,12 @@ export function Sidebar({ collapsed, setCollapsed, mobile = false }: SidebarProp
                                         filter: 'drop-shadow(0 0 10px rgba(163,230,53,0.4))'
                                     }}
                                 >
-                                    ${displayAmount.toLocaleString()}
+                                    {new Intl.NumberFormat('en-US', {
+                                        style: 'currency',
+                                        currency: 'USD',
+                                        notation: Math.abs(displayAmount) >= 1_000_000 ? "compact" : "standard",
+                                        maximumFractionDigits: 2
+                                    }).format(displayAmount)}
                                 </p>
                                 {budgetLimit > 0 && (
                                     <p className="text-[10px] text-cyan-400/70 mt-1.5 font-medium">
@@ -158,7 +168,14 @@ export function Sidebar({ collapsed, setCollapsed, mobile = false }: SidebarProp
                     // Collapsed Balance View (Mini) - Enhanced
                     <div className="text-center mb-6 py-4 border-y border-emerald-500/20 bg-gradient-to-b from-emerald-500/5 to-transparent">
                         <p className="text-[10px] text-emerald-400/70 uppercase mb-1">{hasWallets ? "NET" : "TOT"}</p>
-                        <p className="text-xs font-bold text-emerald-400">${(displayAmount / 1000).toFixed(1)}k</p>
+                        <p className="text-xs font-bold text-emerald-400" title={`$${displayAmount.toLocaleString()}`}>
+                            {new Intl.NumberFormat('en-US', {
+                                style: 'currency',
+                                currency: 'USD',
+                                notation: "compact",
+                                maximumFractionDigits: 1
+                            }).format(displayAmount)}
+                        </p>
                     </div>
                 )}
             </div>

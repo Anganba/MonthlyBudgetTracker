@@ -100,6 +100,28 @@ export const updateRecurringTransaction: RequestHandler = async (req, res) => {
         }
 
         await item.save();
+
+        // Create audit log for recurring rule update
+        const changes: string[] = [];
+        if (req.body.name !== undefined) changes.push('name');
+        if (req.body.amount !== undefined) changes.push('amount');
+        if (req.body.category !== undefined) changes.push('category');
+        if (req.body.frequency !== undefined) changes.push('frequency');
+        if (req.body.startDate !== undefined) changes.push('start date');
+        if (req.body.walletId !== undefined) changes.push('wallet');
+
+        if (changes.length > 0) {
+            await AuditLogModel.create({
+                userId,
+                entityType: 'recurring',
+                entityId: id,
+                entityName: item.name,
+                changeType: 'recurring_updated',
+                changeAmount: item.amount,
+                details: `Updated: ${changes.join(', ')}`
+            });
+        }
+
         res.json({ success: true, data: { ...item.toObject(), id: item._id.toString() } });
     } catch (error) {
         console.error("Error updating recurring transaction:", error);

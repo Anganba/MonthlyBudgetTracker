@@ -13,7 +13,8 @@ import {
     TabsList,
     TabsTrigger,
 } from "@/components/ui/tabs";
-import { ArrowLeftRight, ArrowDown, Receipt, TrendingUp, ArrowRightLeft, PiggyBank } from "lucide-react";
+import { ArrowLeftRight, ArrowDown, Receipt, TrendingUp, ArrowRightLeft } from "lucide-react";
+import { GoalDeductionSelector, GoalDeduction } from './GoalDeductionSelector';
 
 import {
     Select,
@@ -39,9 +40,11 @@ export interface TransactionData {
     planned: number;
     actual: number;
     date: string;
+    timestamp?: string; // HH:MM:SS format
     goalId?: string;
     walletId?: string;
     toWalletId?: string;
+    goalDeductions?: GoalDeduction[]; // For deducting from goals when withdrawing from savings wallet
 }
 
 interface TransactionDialogProps {
@@ -68,7 +71,7 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
     const { wallets } = useWallets();
     const { toast } = useToast();
 
-    const [type, setType] = useState<'expense' | 'income' | 'transfer' | 'savings'>('expense');
+    const [type, setType] = useState<'expense' | 'income' | 'transfer'>('expense');
     const [category, setCategory] = useState<string>('Food');
     const [name, setName] = useState('');
     const [actual, setActual] = useState('');
@@ -76,10 +79,13 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
     const [goalId, setGoalId] = useState<string>('');
     const [walletId, setWalletId] = useState<string>('');
     const [toWalletId, setToWalletId] = useState<string>('');
+    const [goalDeductions, setGoalDeductions] = useState<GoalDeduction[]>([]);
 
     useEffect(() => {
         if (open && initialData) {
-            setType(initialData.type || 'expense');
+            // Map old 'savings' type to 'transfer' for backwards compatibility
+            const mappedType = initialData.type === 'savings' ? 'transfer' : (initialData.type || 'expense');
+            setType(mappedType as 'expense' | 'income' | 'transfer');
             setCategory(initialData.category || 'Food');
             setName(initialData.name || '');
             setActual(initialData.actual?.toString() || '');
@@ -112,17 +118,16 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
     const filteredCategories = TRANSACTION_CATEGORIES.filter(cat => {
         if (type === 'income') return cat.type === 'income';
         if (type === 'expense') return cat.type === 'expense';
-        if (type === 'savings') return cat.type === 'savings';
         return true;
     });
 
-    // Validate when user tries to select Savings type with only one wallet
-    const handleTypeChange = (newType: 'expense' | 'income' | 'transfer' | 'savings') => {
-        // Check if user is trying to select Savings but only has one wallet
-        if (newType === 'savings' && wallets.length <= 1) {
+    // Validate when user tries to select Transfer with only one wallet
+    const handleTypeChange = (newType: 'expense' | 'income' | 'transfer') => {
+        // Check if user is trying to select Transfer but only has one wallet
+        if (newType === 'transfer' && wallets.length <= 1) {
             toast({
-                title: "Add a Savings Wallet First",
-                description: "To track savings, please add a dedicated savings wallet (e.g., a savings account or goal-based wallet) from the Wallets page. Then you can transfer money between your wallets.",
+                title: "Add Another Wallet First",
+                description: "To make transfers, please add at least two wallets from the Wallets page.",
                 variant: "destructive",
             });
             return; // Don't change the type
@@ -157,19 +162,19 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
             return;
         }
 
-        // Validation for transfers and savings - both require two different wallets
-        if (type === 'transfer' || type === 'savings') {
+        // Validation for transfers - require two different wallets
+        if (type === 'transfer') {
             if (!walletId || !toWalletId) {
                 toast({
                     title: "Wallets Required",
-                    description: `Both source and destination wallets are required for ${type === 'transfer' ? 'transfers' : 'savings'}.`,
+                    description: "Both source and destination wallets are required for transfers.",
                     variant: "destructive",
                 });
                 return;
             }
             if (walletId === toWalletId) {
                 toast({
-                    title: type === 'transfer' ? "Invalid Transfer" : "Invalid Savings",
+                    title: "Invalid Transfer",
                     description: "Source and destination wallets must be different.",
                     variant: "destructive",
                 });
@@ -180,17 +185,24 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
         const finalGoalId = goalId; // Allow goal linking for all transaction types
         const amount = parseFloat(actual) || 0;
 
+        // Generate current timestamp (HH:MM:SS) for new transactions, preserve existing for edits
+        const now = new Date();
+        const currentTimestamp = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+        const timestamp = mode === 'edit' && initialData?.timestamp ? initialData.timestamp : currentTimestamp;
+
         onSubmit({
             id: initialData?.id,
-            category: type === 'transfer' ? 'Transfer' : type === 'savings' ? 'Savings' : category,
+            category: type === 'transfer' ? 'Transfer' : category,
             name,
             type,
             planned: amount,
             actual: amount,
             date,
+            timestamp,
             goalId: finalGoalId === 'unassigned' || !finalGoalId ? undefined : finalGoalId,
             walletId: walletId === 'unassigned' || !walletId ? undefined : walletId,
-            toWalletId: toWalletId === 'unassigned' || !toWalletId ? undefined : toWalletId
+            toWalletId: toWalletId === 'unassigned' || !toWalletId ? undefined : toWalletId,
+            goalDeductions: goalDeductions.length > 0 ? goalDeductions : undefined
         });
         onOpenChange(false);
     };
@@ -200,7 +212,6 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
         switch (type) {
             case 'income': return TrendingUp;
             case 'transfer': return ArrowRightLeft;
-            case 'savings': return PiggyBank;
             default: return Receipt;
         }
     };
@@ -215,15 +226,13 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
                             "p-2 rounded-xl",
                             type === 'expense' ? 'bg-red-500/20' :
                                 type === 'income' ? 'bg-green-500/20' :
-                                    type === 'savings' ? 'bg-purple-500/20' :
-                                        'bg-blue-500/20'
+                                    'bg-blue-500/20'
                         )}>
                             <TypeIcon className={cn(
                                 "h-5 w-5",
                                 type === 'expense' ? 'text-red-400' :
                                     type === 'income' ? 'text-green-400' :
-                                        type === 'savings' ? 'text-purple-400' :
-                                            'text-blue-400'
+                                        'text-blue-400'
                             )} />
                         </div>
                         {title}
@@ -234,7 +243,7 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
                 </DialogHeader>
 
                 <Tabs value={type} onValueChange={(v) => handleTypeChange(v as any)} className="w-full">
-                    <TabsList className="grid w-full grid-cols-4 mb-4 bg-zinc-800 p-1 rounded-xl">
+                    <TabsList className="grid w-full grid-cols-3 mb-4 bg-zinc-800 p-1 rounded-xl">
                         <TabsTrigger
                             value="expense"
                             className="rounded-lg data-[state=active]:bg-red-500 data-[state=active]:text-white text-gray-400"
@@ -246,12 +255,6 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
                             className="rounded-lg data-[state=active]:bg-green-500 data-[state=active]:text-white text-gray-400"
                         >
                             Income
-                        </TabsTrigger>
-                        <TabsTrigger
-                            value="savings"
-                            className="rounded-lg data-[state=active]:bg-purple-500 data-[state=active]:text-white text-gray-400"
-                        >
-                            Savings
                         </TabsTrigger>
                         <TabsTrigger
                             value="transfer"
@@ -294,7 +297,7 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
                             </div>
                         </div>
 
-                        {type !== 'transfer' && type !== 'savings' && (
+                        {type !== 'transfer' && (
                             <div className="space-y-2">
                                 <Label htmlFor="category" className="text-gray-400">Category</Label>
                                 <Select value={category} onValueChange={setCategory}>
@@ -316,13 +319,13 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
                                 id="name"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
-                                placeholder={type === 'transfer' ? "e.g. Savings Deposit" : type === 'savings' ? "e.g. Monthly Savings" : "e.g. Grocery"}
+                                placeholder={type === 'transfer' ? "e.g. Savings Deposit" : "e.g. Grocery"}
                                 autoFocus
                                 className="bg-zinc-800 border-zinc-700 rounded-xl h-11 focus:border-primary"
                             />
                         </div>
 
-                        {(type === 'transfer' || type === 'savings') ? (
+                        {type === 'transfer' ? (
                             <div className="bg-white/5 p-3 rounded-xl border border-white/10">
                                 <div className="space-y-1">
                                     <Label className="text-gray-500 text-[10px] uppercase tracking-wider font-semibold">From Account</Label>
@@ -395,21 +398,68 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
                             </div>
                         )}
 
-                        {/* Link to Goal - Available for all transaction types */}
-                        <div className="space-y-2">
-                            <Label className="text-gray-400">Link to Goal (Optional)</Label>
-                            <Select value={goalId} onValueChange={setGoalId}>
-                                <SelectTrigger className="bg-zinc-800 border-zinc-700 rounded-xl h-11">
-                                    <SelectValue placeholder="None" />
-                                </SelectTrigger>
-                                <SelectContent className="bg-zinc-800 border-zinc-700">
-                                    <SelectItem value="unassigned">None</SelectItem>
-                                    {goals.map(g => (
-                                        <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
+                        {/* Link to Goal - Only show when depositing to the savings wallet */}
+                        {(() => {
+                            // Check if the target wallet (destination for transfers, wallet for income) is the savings wallet
+                            const targetWalletId = type === 'transfer' ? toWalletId : walletId;
+                            const targetWallet = wallets.find(w => w.id === targetWalletId);
+                            const isSavingsWallet = targetWallet?.isSavingsWallet === true;
+
+                            // Only show goal linking for income/transfer when depositing to savings wallet
+                            // Never show for expense (goals auto-create expenses when fulfilled via Hall of Fame)
+                            if (type === 'expense' || !isSavingsWallet) {
+                                return null;
+                            }
+
+                            return (
+                                <div className="space-y-2">
+                                    <Label className="text-gray-400">Link to Goal (Optional)</Label>
+                                    <Select value={goalId} onValueChange={setGoalId}>
+                                        <SelectTrigger className="bg-zinc-800 border-zinc-700 rounded-xl h-11">
+                                            <SelectValue placeholder="None" />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-zinc-800 border-zinc-700">
+                                            <SelectItem value="unassigned">None</SelectItem>
+                                            {goals.map(g => (
+                                                <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            );
+                        })()}
+
+                        {/* Goal Deduction Selector - Show when withdrawing FROM savings wallet */}
+                        {(() => {
+                            // Check if source wallet is the savings wallet
+                            const sourceWallet = wallets.find(w => w.id === walletId);
+                            const isWithdrawingFromSavings = sourceWallet?.isSavingsWallet === true;
+
+                            // For transfers, only show if destination is NOT the savings wallet (i.e., money is leaving savings)
+                            // For expenses, always show if source is savings wallet
+                            const isTransferOut = type === 'transfer' && !wallets.find(w => w.id === toWalletId)?.isSavingsWallet;
+                            const shouldShowDeduction = isWithdrawingFromSavings && (type === 'expense' || isTransferOut);
+
+                            if (!shouldShowDeduction) {
+                                return null;
+                            }
+
+                            const amount = parseFloat(actual) || 0;
+                            const activeGoals = goals.filter(g => g.status === 'active');
+
+                            if (amount <= 0 || activeGoals.length === 0) {
+                                return null;
+                            }
+
+                            return (
+                                <GoalDeductionSelector
+                                    goals={activeGoals}
+                                    totalAmount={amount}
+                                    onDeductionsChange={setGoalDeductions}
+                                    currency="$"
+                                />
+                            );
+                        })()}
 
                         <DialogFooter className="mt-6 gap-2 sm:gap-0 pt-4">
                             <Button

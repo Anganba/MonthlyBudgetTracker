@@ -26,6 +26,7 @@ export interface Transaction {
   actual: number;
   category: TransactionCategory;
   date: string;
+  timestamp?: string; // HH:MM:SS format for sorting and history tracking
   goalId?: string;
   walletId?: string;
   toWalletId?: string;
@@ -117,13 +118,17 @@ export type AuditChangeType =
   | 'wallet_deleted'
   // Goal changes
   | 'goal_created'
+  | 'goal_updated'
   | 'goal_fulfilled'
   | 'goal_reactivated'
   | 'goal_deleted'
   // Recurring changes
   | 'recurring_created'
+  | 'recurring_updated'
   | 'recurring_deleted'
   // Transaction changes
+  | 'transaction_created'
+  | 'transaction_updated'
   | 'transaction_deleted';
 
 export interface AuditLog {
