@@ -23,7 +23,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ChevronLeft, ChevronRight, Calendar, TrendingDown, TrendingUp, PieChart as PieChartIcon, Target, Wallet } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar, TrendingDown, TrendingUp, PieChart as PieChartIcon, Target, Wallet, Tags } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 
 import { useWallets } from "@/hooks/use-wallets";
@@ -49,26 +49,97 @@ export default function StatisticsPage() {
     const [showIncome, setShowIncome] = useState(false);
     const [showExpense, setShowExpense] = useState(true);
     const [showSavings, setShowSavings] = useState(false);
+    const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
 
     const handlePrevMonth = () => setDate(subMonths(date, 1));
     const handleNextMonth = () => setDate(addMonths(date, 1));
 
-    // 1. Prepare Daily Trend Data (Use Optimized Server Data if available)
-    const chartData = useMemo(() => {
-        if (!monthlyStats?.dailyData) return [];
+    // Get available expense categories from transactions (only those with actual expenses)
+    const availableExpenseCategories = useMemo(() => {
+        if (!budget?.transactions) return [];
+        const incomeCategories = ['income', 'Paycheck', 'Bonus', 'Debt Added'];
+        const excludedCategories = ['Savings', 'Transfer'];
 
-        let data = monthlyStats.dailyData.map((d: any) => {
-            const dateObj = new Date(currentYear, date.getMonth(), d.day);
-            return {
-                day: d.day,
+        const categories = new Set<string>();
+        budget.transactions.forEach((t: any) => {
+            // Only include expense categories (not income, savings, or transfers)
+            if (!incomeCategories.includes(t.category) &&
+                !excludedCategories.includes(t.category) &&
+                t.type !== 'transfer' &&
+                t.type !== 'income' &&
+                t.actual > 0) {
+                categories.add(t.category);
+            }
+        });
+        return Array.from(categories).sort();
+    }, [budget?.transactions]);
+
+    // Toggle category selection
+    const toggleCategory = (category: string) => {
+        setSelectedCategories(prev =>
+            prev.includes(category)
+                ? prev.filter(c => c !== category)
+                : [...prev, category]
+        );
+    };
+
+    // 1. Prepare Daily Trend Data - With category filtering for expenses
+    const chartData = useMemo(() => {
+        const transactions = budget?.transactions || [];
+        const incomeCategories = ['income', 'Paycheck', 'Bonus', 'Debt Added'];
+
+        // Get days in current month
+        const daysInMonth = new Date(currentYear, date.getMonth() + 1, 0).getDate();
+
+        // Build daily data from transactions (allows category filtering)
+        let data = [];
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dateObj = new Date(currentYear, date.getMonth(), day);
+            const dayStr = format(dateObj, 'yyyy-MM-dd');
+
+            // Filter transactions for this day
+            const dayTransactions = transactions.filter((t: any) => {
+                const tDate = new Date(t.date);
+                return tDate.getDate() === day &&
+                    tDate.getMonth() === date.getMonth() &&
+                    tDate.getFullYear() === currentYear;
+            });
+
+            // Calculate income (always unfiltered)
+            const income = dayTransactions
+                .filter((t: any) => t.type === 'income' || incomeCategories.includes(t.category))
+                .reduce((sum: number, t: any) => sum + t.actual, 0);
+
+            // Calculate expense - with category filtering if categories are selected
+            const expenseTransactions = dayTransactions.filter((t: any) => {
+                // Exclude income, savings, and transfers
+                if (t.type === 'income' || incomeCategories.includes(t.category)) return false;
+                if (t.category === 'Savings' || t.type === 'savings') return false;
+                if (t.category === 'Transfer' || t.type === 'transfer') return false;
+
+                // Apply category filter if any categories are selected
+                if (selectedCategories.length > 0) {
+                    return selectedCategories.includes(t.category);
+                }
+                return true;
+            });
+            const expense = expenseTransactions.reduce((sum: number, t: any) => sum + t.actual, 0);
+
+            // Calculate savings (always unfiltered)
+            const savings = dayTransactions
+                .filter((t: any) => t.category === 'Savings' || t.type === 'savings')
+                .reduce((sum: number, t: any) => sum + t.actual, 0);
+
+            data.push({
+                day,
                 date: format(dateObj, 'dd'),
                 fullDate: format(dateObj, 'MMM dd'),
-                week: Math.ceil(d.day / 7),
-                income: d.income,
-                expense: d.expense,
-                savings: d.savings,
-            };
-        });
+                week: Math.ceil(day / 7),
+                income,
+                expense,
+                savings,
+            });
+        }
 
         // X-Axis Aggregation: Weekly
         if (xAxisMode === 'weekly') {
@@ -112,7 +183,7 @@ export default function StatisticsPage() {
         }
 
         return data;
-    }, [monthlyStats, currentYear, date, xAxisMode, yAxisMode]);
+    }, [budget?.transactions, currentYear, date, xAxisMode, yAxisMode, selectedCategories]);
 
     // 2. Prepare Pie Data (Expenses) - Use Optimized Server Data
     const pieData = useMemo(() => {
@@ -252,17 +323,18 @@ export default function StatisticsPage() {
         return yearlyStats.reduce((acc: number, curr: any) => acc + (curr.expense || 0), 0);
     }, [yearlyStats]);
 
-    // Calculate daily averages based on actual spending days
+    // Calculate daily averages based on actual spending days - uses filtered chartData for expenses
     const dailyAverages = useMemo(() => {
-        if (!monthlyStats?.dailyData) return { avgExpense: 0, avgIncome: 0, avgSavings: 0, daysWithExpense: 0, daysWithIncome: 0 };
+        if (chartData.length === 0) return { avgExpense: 0, avgIncome: 0, avgSavings: 0, daysWithExpense: 0, daysWithIncome: 0, daysWithSavings: 0, totalExpense: 0, totalIncome: 0, totalSavings: 0 };
 
-        const daysWithExpense = monthlyStats.dailyData.filter((d: any) => d.expense > 0).length;
-        const daysWithIncome = monthlyStats.dailyData.filter((d: any) => d.income > 0).length;
-        const daysWithSavings = monthlyStats.dailyData.filter((d: any) => d.savings > 0).length;
+        // Use chartData which respects category filtering for expenses
+        const daysWithExpense = chartData.filter((d: any) => d.expense > 0).length;
+        const daysWithIncome = chartData.filter((d: any) => d.income > 0).length;
+        const daysWithSavings = chartData.filter((d: any) => d.savings > 0).length;
 
-        const totalExpense = monthlyStats.dailyData.reduce((sum: number, d: any) => sum + d.expense, 0);
-        const totalIncome = monthlyStats.dailyData.reduce((sum: number, d: any) => sum + d.income, 0);
-        const totalSavings = monthlyStats.dailyData.reduce((sum: number, d: any) => sum + d.savings, 0);
+        const totalExpense = chartData.reduce((sum: number, d: any) => sum + d.expense, 0);
+        const totalIncome = chartData.reduce((sum: number, d: any) => sum + d.income, 0);
+        const totalSavings = chartData.reduce((sum: number, d: any) => sum + d.savings, 0);
 
         return {
             avgExpense: daysWithExpense > 0 ? totalExpense / daysWithExpense : 0,
@@ -275,7 +347,7 @@ export default function StatisticsPage() {
             daysWithIncome,
             daysWithSavings,
         };
-    }, [monthlyStats]);
+    }, [chartData]);
 
     if ((isLoadingBudget || isLoadingMonthlyStats) && !monthlyStats) {
         return (
@@ -416,6 +488,44 @@ export default function StatisticsPage() {
                                 </div>
                             </div>
                         </div>
+
+                        {/* Category Filter - Only show when expenses are visible and categories exist */}
+                        {showExpense && availableExpenseCategories.length > 0 && (
+                            <div className="px-4 md:px-6 py-3 border-b border-emerald-500/10 bg-zinc-900/50">
+                                <div className="flex items-center gap-3 flex-wrap">
+                                    <div className="flex items-center gap-2 text-sm text-gray-400">
+                                        <Tags className="h-4 w-4" />
+                                        <span>Filter by category:</span>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                        {availableExpenseCategories.map(category => {
+                                            const isSelected = selectedCategories.includes(category);
+                                            return (
+                                                <button
+                                                    key={category}
+                                                    onClick={() => toggleCategory(category)}
+                                                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${isSelected
+                                                        ? 'bg-red-500 text-white shadow-lg shadow-red-500/30'
+                                                        : 'bg-zinc-800 text-gray-400 hover:bg-zinc-700 hover:text-white border border-zinc-700'
+                                                        }`}
+                                                >
+                                                    {category}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                    {selectedCategories.length > 0 && (
+                                        <button
+                                            onClick={() => setSelectedCategories([])}
+                                            className="px-3 py-1.5 rounded-full text-xs font-medium bg-zinc-700 text-gray-300 hover:bg-zinc-600 transition-all"
+                                        >
+                                            Clear all
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
                         <div className="p-6">
                             <div className="h-[300px] w-full">
                                 <ResponsiveContainer width="100%" height="100%">

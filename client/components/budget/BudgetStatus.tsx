@@ -37,6 +37,7 @@ export function BudgetStatus({ currency = '$', budget, refreshBudget, showAllCat
             .filter(t => t.category === catName)
             .reduce((sum, t) => sum + t.planned, 0);
 
+        // Use explicit limit if set, otherwise fall back to planned amounts
         const total = (limit !== undefined && limit > 0) ? limit : plannedSum;
 
         return { name: catName, spent, total };

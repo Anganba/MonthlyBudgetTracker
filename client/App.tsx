@@ -19,6 +19,7 @@ const TransactionsPage = lazy(() => import("./pages/TransactionsPage").then(modu
 const RecurringPage = lazy(() => import("./pages/RecurringPage"));
 const GoalsPage = lazy(() => import("./pages/GoalsPage"));
 const StatisticsPage = lazy(() => import("./pages/StatisticsPage"));
+const AuditTrailPage = lazy(() => import("./pages/AuditTrailPage"));
 const ProfilePage = lazy(() => import("./pages/ProfilePage"));
 const WalletsPage = lazy(() => import("./pages/WalletsPage"));
 
@@ -90,6 +91,14 @@ const App = () => (
                   element={
                     <ProtectedRoute>
                       <StatisticsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/audit-trail"
+                  element={
+                    <ProtectedRoute>
+                      <AuditTrailPage />
                     </ProtectedRoute>
                   }
                 />

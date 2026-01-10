@@ -162,6 +162,7 @@ const getOrCreateBudget = async (month: string, year: number, userId: string): P
           actual: rule.amount,
           category: rule.category,
           date: rule.nextRunDate, // Use the date it was supposed to run
+          timestamp: format(new Date(), 'HH:mm:ss'),
           goalId: undefined,
           walletId: rule.walletId || undefined
         };
@@ -454,6 +455,7 @@ export const addTransaction: RequestHandler = async (req, res) => {
 
     if (walletId) {
       const { WalletModel } = await import("../models/Wallet");
+      const { AuditLogModel } = await import("../models/WalletAuditLog");
       const wallet = await WalletModel.findOne({ _id: walletId, userId });
 
       const transactionType = req.body.type || 'expense';
@@ -462,27 +464,73 @@ export const addTransaction: RequestHandler = async (req, res) => {
       // Transfer or Savings with destination wallet (wallet-to-wallet transfer)
       if (transactionType === 'transfer' || transactionType === 'savings' || (category === 'Savings' && toWalletId)) {
         if (wallet && toWalletId) {
+          const previousSourceBalance = wallet.balance;
           // Deduct from Source
           wallet.balance -= actual;
           await wallet.save();
 
+          // Log source wallet deduction
+          await AuditLogModel.create({
+            userId,
+            entityType: 'wallet',
+            entityId: walletId,
+            entityName: wallet.name,
+            changeType: 'balance_change',
+            previousBalance: previousSourceBalance,
+            newBalance: wallet.balance,
+            changeAmount: -actual,
+            reason: `Transfer to another wallet: ${transaction.name}`,
+            details: JSON.stringify({ transactionId: transaction.id, type: 'transfer_out' })
+          });
+
           // Add to Target
           const toWallet = await WalletModel.findOne({ _id: toWalletId, userId });
           if (toWallet) {
+            const previousTargetBalance = toWallet.balance;
             toWallet.balance += actual;
             await toWallet.save();
+
+            // Log destination wallet addition
+            await AuditLogModel.create({
+              userId,
+              entityType: 'wallet',
+              entityId: toWalletId,
+              entityName: toWallet.name,
+              changeType: 'balance_change',
+              previousBalance: previousTargetBalance,
+              newBalance: toWallet.balance,
+              changeAmount: actual,
+              reason: `Transfer from ${wallet.name}: ${transaction.name}`,
+              details: JSON.stringify({ transactionId: transaction.id, type: 'transfer_in' })
+            });
           }
         }
       } else if (category === 'Savings' && goalId && !toWalletId) {
         // Goal savings without destination wallet - just deduct from source wallet
         // The money is being saved towards a goal (not transferred to another wallet)
         if (wallet) {
+          const previousBalance = wallet.balance;
           wallet.balance -= actual;
           await wallet.save();
+
+          // Log wallet deduction for goal savings
+          await AuditLogModel.create({
+            userId,
+            entityType: 'wallet',
+            entityId: walletId,
+            entityName: wallet.name,
+            changeType: 'balance_change',
+            previousBalance,
+            newBalance: wallet.balance,
+            changeAmount: -actual,
+            reason: `Goal savings: ${transaction.name}`,
+            details: JSON.stringify({ transactionId: transaction.id, goalId, type: 'goal_savings' })
+          });
         }
       } else {
         // Standard Expense/Income
         if (wallet) {
+          const previousBalance = wallet.balance;
           const isIncome = ['income', 'Paycheck', 'Bonus', 'Debt Added'].includes(category) || transactionType === 'income';
           if (isIncome) {
             wallet.balance += actual;
@@ -490,6 +538,20 @@ export const addTransaction: RequestHandler = async (req, res) => {
             wallet.balance -= actual;
           }
           await wallet.save();
+
+          // Log wallet balance change for expense/income
+          await AuditLogModel.create({
+            userId,
+            entityType: 'wallet',
+            entityId: walletId,
+            entityName: wallet.name,
+            changeType: 'balance_change',
+            previousBalance,
+            newBalance: wallet.balance,
+            changeAmount: isIncome ? actual : -actual,
+            reason: `${isIncome ? 'Income' : 'Expense'}: ${transaction.name}`,
+            details: JSON.stringify({ transactionId: transaction.id, category, type: isIncome ? 'income' : 'expense' })
+          });
         }
       }
     }
@@ -801,18 +863,49 @@ export const deleteTransaction: RequestHandler = async (req, res) => {
         // Revert Transfer/Savings: Add back to Source, Subtract from Target
         const w = await WalletModel.findOne({ _id: deletedWalletId, userId });
         if (w) {
+          const previousBalance = w.balance;
           w.balance += deletedAmount;
           await w.save();
+
+          // Log source wallet revert
+          await AuditLogModel.create({
+            userId,
+            entityType: 'wallet',
+            entityId: deletedWalletId,
+            entityName: w.name,
+            changeType: 'balance_change',
+            previousBalance,
+            newBalance: w.balance,
+            changeAmount: deletedAmount,
+            reason: `Transfer reversed (deleted): ${transaction.name}`,
+            details: JSON.stringify({ transactionId: transaction.id, type: 'transfer_deleted' })
+          });
         }
         const targetW = await WalletModel.findOne({ _id: deletedToWalletId, userId });
         if (targetW) {
+          const previousBalance = targetW.balance;
           targetW.balance -= deletedAmount;
           await targetW.save();
+
+          // Log target wallet revert
+          await AuditLogModel.create({
+            userId,
+            entityType: 'wallet',
+            entityId: deletedToWalletId,
+            entityName: targetW.name,
+            changeType: 'balance_change',
+            previousBalance,
+            newBalance: targetW.balance,
+            changeAmount: -deletedAmount,
+            reason: `Transfer reversed (deleted): ${transaction.name}`,
+            details: JSON.stringify({ transactionId: transaction.id, type: 'transfer_deleted' })
+          });
         }
       } else {
         // Standard Revert
         const wallet = await WalletModel.findOne({ _id: deletedWalletId, userId });
         if (wallet) {
+          const previousBalance = wallet.balance;
           const isIncome = ['income', 'Paycheck', 'Bonus', 'Debt Added'].includes(deletedCategory) || deletedType === 'income';
           if (isIncome) {
             wallet.balance -= deletedAmount;
@@ -820,6 +913,20 @@ export const deleteTransaction: RequestHandler = async (req, res) => {
             wallet.balance += deletedAmount;
           }
           await wallet.save();
+
+          // Log wallet balance revert
+          await AuditLogModel.create({
+            userId,
+            entityType: 'wallet',
+            entityId: deletedWalletId,
+            entityName: wallet.name,
+            changeType: 'balance_change',
+            previousBalance,
+            newBalance: wallet.balance,
+            changeAmount: isIncome ? -deletedAmount : deletedAmount,
+            reason: `${isIncome ? 'Income' : 'Expense'} deleted: ${transaction.name}`,
+            details: JSON.stringify({ transactionId: transaction.id, category: deletedCategory, type: 'transaction_deleted' })
+          });
         }
       }
     }

@@ -2,6 +2,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { BudgetMonth, Transaction } from "@shared/api";
 import { useAuth } from "@/lib/auth";
+import { useWallets } from "./use-wallets";
 
 export function useBudget(selectedMonth?: string, selectedYear?: number) {
     const queryClient = useQueryClient();
@@ -12,6 +13,7 @@ export function useBudget(selectedMonth?: string, selectedYear?: number) {
 
     const month = selectedMonth || monthNames[currentDate.getMonth()];
     const year = selectedYear || currentDate.getFullYear();
+    const { wallets } = useWallets();
 
     const fetchBudget = async (m: string, y: number) => {
         const response = await fetch(`/api/budget?month=${m}&year=${y}&t=${new Date().getTime()}`);
@@ -72,8 +74,16 @@ export function useBudget(selectedMonth?: string, selectedYear?: number) {
             .reduce((sum, t) => sum + t.actual, 0);
 
         // Savings: type='savings' OR category='Savings'
+        // Savings: type='savings' OR category='Savings' OR (type='transfer' AND toWallet is Savings)
         const savings = transactions
-            .filter(t => t.type === 'savings' || t.category === 'Savings')
+            .filter(t => {
+                if (t.type === 'savings' || t.category === 'Savings') return true;
+                if ((t.type === 'transfer' || t.category === 'Transfer') && t.toWalletId) {
+                    const targetWallet = wallets.find(w => w.id === t.toWalletId);
+                    return targetWallet?.isSavingsWallet === true;
+                }
+                return false;
+            })
             .reduce((sum, t) => sum + t.actual, 0);
 
         // Monthly Leftover = just this month's: Income - Expenses - Savings
@@ -135,8 +145,16 @@ export function useBudget(selectedMonth?: string, selectedYear?: number) {
                     .reduce((sum, t) => sum + t.actual, 0);
 
                 // Savings: type='savings' OR category='Savings'
+                // Savings: type='savings' OR category='Savings' OR (type='transfer' AND toWallet is Savings)
                 const daySavings = dailyTransactions
-                    .filter(t => t.type === 'savings' || t.category === 'Savings')
+                    .filter(t => {
+                        if (t.type === 'savings' || t.category === 'Savings') return true;
+                        if ((t.type === 'transfer' || t.category === 'Transfer') && t.toWalletId) {
+                            const targetWallet = wallets.find(w => w.id === t.toWalletId);
+                            return targetWallet?.isSavingsWallet === true;
+                        }
+                        return false;
+                    })
                     .reduce((sum, t) => sum + t.actual, 0);
 
                 runningBalance = runningBalance + dayIncome - dayExpenses - daySavings;
@@ -161,8 +179,16 @@ export function useBudget(selectedMonth?: string, selectedYear?: number) {
                         .reduce((sum, t) => sum + t.actual, 0);
                 } else if (type === 'savings') {
                     // Savings: type='savings' OR category='Savings'
+                    // Savings: type='savings' OR category='Savings' OR (type='transfer' AND toWallet is Savings)
                     value = dailyTransactions
-                        .filter(t => t.type === 'savings' || t.category === 'Savings')
+                        .filter(t => {
+                            if (t.type === 'savings' || t.category === 'Savings') return true;
+                            if ((t.type === 'transfer' || t.category === 'Transfer') && t.toWalletId) {
+                                const targetWallet = wallets.find(w => w.id === t.toWalletId);
+                                return targetWallet?.isSavingsWallet === true;
+                            }
+                            return false;
+                        })
                         .reduce((sum, t) => sum + t.actual, 0);
                 }
                 // For non-balance, maybe we want cumulative? Or daily peaks? 

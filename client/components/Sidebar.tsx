@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, Wallet, PiggyBank, BarChart3, User, ArrowRightLeft, ChevronRight, ChevronLeft, Repeat } from "lucide-react";
+import { LayoutDashboard, Wallet, PiggyBank, BarChart3, User, ArrowRightLeft, ChevronRight, ChevronLeft, Repeat, History } from "lucide-react";
 
 import { useBudget } from "@/hooks/use-budget";
 import { useWallets } from "@/hooks/use-wallets";
@@ -24,6 +24,7 @@ export function Sidebar({ collapsed, setCollapsed, mobile = false }: SidebarProp
         { href: "/goals", label: "Goals", icon: PiggyBank },
         { href: "/recurring", label: "Recurring", icon: Repeat },
         { href: "/statistics", label: "Statistics", icon: BarChart3 },
+        { href: "/audit-trail", label: "Audit Trail", icon: History },
         { href: "/profile", label: "Profile", icon: User },
     ];
 

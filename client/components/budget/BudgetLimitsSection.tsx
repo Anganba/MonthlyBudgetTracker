@@ -27,11 +27,14 @@ export function BudgetLimitsSection({ month, year }: BudgetLimitsSectionProps) {
     const [addCategoryOpen, setAddCategoryOpen] = useState(false);
 
     useEffect(() => {
-        if (budget?.categoryLimits) {
-            const budgetLimits = budget.categoryLimits as Record<string, number>;
+        if (budget) {
+            const budgetLimits = (budget.categoryLimits as Record<string, number>) || {};
             setLimits(budgetLimits);
 
             const initialVisible = new Set<string>();
+            const incomeCategories = ['Paycheck', 'Bonus', 'Savings', 'Debt Added', 'income', 'Transfer'];
+
+            // First, add categories from EXPENSE_CATEGORIES that have limits or spending
             EXPENSE_CATEGORIES.forEach(cat => {
                 const limit = budgetLimits[cat.id] || 0;
                 const spent = budget?.transactions
@@ -43,9 +46,18 @@ export function BudgetLimitsSection({ month, year }: BudgetLimitsSectionProps) {
                 }
             });
 
+            // Add categories that have explicit limits set
             Object.keys(budgetLimits).forEach(catId => {
                 if (budgetLimits[catId] > 0) {
                     initialVisible.add(catId);
+                }
+            });
+
+            // Auto-add ALL transaction categories that have spending (even if not in EXPENSE_CATEGORIES)
+            // This ensures new transaction categories automatically appear with "unlimited" limit
+            budget?.transactions?.forEach(t => {
+                if (!incomeCategories.includes(t.category) && t.actual > 0) {
+                    initialVisible.add(t.category);
                 }
             });
 
@@ -115,19 +127,24 @@ export function BudgetLimitsSection({ month, year }: BudgetLimitsSectionProps) {
 
     const hiddenCategories = EXPENSE_CATEGORIES.filter(cat => !visibleCategories.has(cat.id));
 
-    const categoryData = EXPENSE_CATEGORIES
-        .filter(cat => visibleCategories.has(cat.id))
-        .map(cat => {
-            const limit = limits[cat.id] || 0;
-            const spent = budget?.transactions
-                ?.filter(t => t.category === cat.id)
-                .reduce((sum, t) => sum + t.actual, 0) || 0;
+    // Build category data from ALL visible categories (including those not in EXPENSE_CATEGORIES)
+    const categoryData = Array.from(visibleCategories).map(catId => {
+        const expenseCat = EXPENSE_CATEGORIES.find(c => c.id === catId);
+        const label = expenseCat?.label || catId; // Use category ID as label if not in predefined list
 
-            const percent = limit > 0 ? Math.round((spent / limit) * 100) : 0;
-            const isOverBudget = percent > 100;
+        const limit = limits[catId] || 0;
+        const spent = budget?.transactions
+            ?.filter(t => t.category === catId)
+            .reduce((sum, t) => sum + t.actual, 0) || 0;
 
-            return { ...cat, limit, spent, percent, isOverBudget };
-        }).sort((a, b) => a.label.localeCompare(b.label));
+        // For categories with no limit (0), show as "Unlimited"
+        const isUnlimited = limit === 0;
+        const percent = limit > 0 ? Math.round((spent / limit) * 100) : (spent > 0 ? 100 : 0);
+        const isOverBudget = !isUnlimited && percent > 100;
+        const isFull = !isUnlimited && percent === 100; // Exactly at 100%
+
+        return { id: catId, label, limit, spent, percent, isOverBudget, isFull, isUnlimited };
+    }).sort((a, b) => a.label.localeCompare(b.label));
 
     return (
         <div className="rounded-2xl bg-gradient-to-br from-violet-500/10 via-zinc-900/80 to-zinc-900/50 border border-violet-500/30 overflow-hidden shadow-lg shadow-violet-500/5">
@@ -246,8 +263,12 @@ export function BudgetLimitsSection({ month, year }: BudgetLimitsSectionProps) {
                             <div
                                 key={cat.id}
                                 className={`p-4 rounded-xl border relative group transition-all hover:scale-[1.02] ${cat.isOverBudget
-                                    ? 'bg-gradient-to-br from-red-500/15 via-red-500/10 to-transparent border-red-500/40 shadow-lg shadow-red-500/10'
-                                    : 'bg-gradient-to-br from-white/5 via-white/[0.02] to-transparent border-white/10 hover:border-violet-500/30 hover:shadow-lg hover:shadow-violet-500/5'
+                                        ? 'bg-gradient-to-br from-red-500/15 via-red-500/10 to-transparent border-red-500/40 shadow-lg shadow-red-500/10'
+                                        : cat.isFull
+                                            ? 'bg-gradient-to-br from-yellow-500/15 via-yellow-500/10 to-transparent border-yellow-500/40 shadow-lg shadow-yellow-500/10'
+                                            : cat.isUnlimited
+                                                ? 'bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent border-amber-500/30 hover:border-amber-500/50 hover:shadow-lg hover:shadow-amber-500/5'
+                                                : 'bg-gradient-to-br from-white/5 via-white/[0.02] to-transparent border-white/10 hover:border-violet-500/30 hover:shadow-lg hover:shadow-violet-500/5'
                                     }`}
                             >
                                 {isEditing && (
@@ -261,15 +282,38 @@ export function BudgetLimitsSection({ month, year }: BudgetLimitsSectionProps) {
                                 )}
                                 <div className="flex justify-between items-start mb-4">
                                     <div className="flex items-center gap-3">
-                                        <div className={`p-2 rounded-xl ${cat.isOverBudget ? 'bg-gradient-to-br from-red-500/30 to-red-500/20' : 'bg-gradient-to-br from-violet-500/20 to-purple-500/10'}`}>
-                                            <Icon className={`w-5 h-5 ${cat.isOverBudget ? 'text-red-400' : 'text-violet-400'}`} />
+                                        <div className={`p-2 rounded-xl ${cat.isOverBudget
+                                                ? 'bg-gradient-to-br from-red-500/30 to-red-500/20'
+                                                : cat.isFull
+                                                    ? 'bg-gradient-to-br from-yellow-500/30 to-yellow-500/20'
+                                                    : cat.isUnlimited
+                                                        ? 'bg-gradient-to-br from-amber-500/20 to-yellow-500/10'
+                                                        : 'bg-gradient-to-br from-violet-500/20 to-purple-500/10'
+                                            }`}>
+                                            <Icon className={`w-5 h-5 ${cat.isOverBudget
+                                                    ? 'text-red-400'
+                                                    : cat.isFull
+                                                        ? 'text-yellow-400'
+                                                        : cat.isUnlimited
+                                                            ? 'text-amber-400'
+                                                            : 'text-violet-400'
+                                                }`} />
                                         </div>
                                         <div>
-                                            <Label className={`text-base font-semibold ${cat.isOverBudget ? 'text-red-400' : 'text-white'}`}>
+                                            <Label className={`text-base font-semibold ${cat.isOverBudget
+                                                    ? 'text-red-400'
+                                                    : cat.isFull
+                                                        ? 'text-yellow-400'
+                                                        : 'text-white'
+                                                }`}>
                                                 {cat.label}
                                             </Label>
-                                            <div className="text-xs text-gray-500 mt-0.5">
-                                                Spent: ${cat.spent.toFixed(0)} / Limit: ${cat.limit.toFixed(0)}
+                                            <div className="text-xs mt-0.5 flex items-center gap-1.5">
+                                                <span className="text-cyan-400">Spent: ${cat.spent.toFixed(0)}</span>
+                                                <span className="text-gray-600">/</span>
+                                                <span className={cat.isUnlimited ? 'text-amber-400' : 'text-emerald-400'}>
+                                                    Limit: {cat.isUnlimited ? 'Unlimited' : `$${cat.limit.toFixed(0)}`}
+                                                </span>
                                             </div>
                                         </div>
                                     </div>
@@ -288,17 +332,31 @@ export function BudgetLimitsSection({ month, year }: BudgetLimitsSectionProps) {
                                             }}
                                         />
                                     ) : (
-                                        <div className={`text-sm font-bold px-2 py-1 rounded-lg ${cat.isOverBudget ? 'text-red-400 bg-red-500/20' : 'text-violet-400 bg-violet-500/20'
+                                        <div className={`text-sm font-bold px-2 py-1 rounded-lg ${cat.isOverBudget
+                                                ? 'text-red-400 bg-red-500/20'
+                                                : cat.isFull
+                                                    ? 'text-yellow-400 bg-yellow-500/20'
+                                                    : cat.isUnlimited
+                                                        ? 'text-amber-400 bg-amber-500/20'
+                                                        : 'text-violet-400 bg-violet-500/20'
                                             }`}>
-                                            {cat.percent}%
+                                            {cat.isUnlimited ? '∞' : `${cat.percent}%`}
                                         </div>
                                     )}
                                 </div>
 
                                 <Progress
-                                    value={Math.min(cat.percent, 100)}
+                                    value={cat.isUnlimited ? 0 : Math.min(cat.percent, 100)}
                                     className="h-2 bg-white/10"
-                                    indicatorClassName={cat.isOverBudget ? "bg-gradient-to-r from-red-500 to-orange-500" : "bg-gradient-to-r from-violet-500 to-cyan-500"}
+                                    indicatorClassName={
+                                        cat.isOverBudget
+                                            ? "bg-gradient-to-r from-red-500 to-orange-500"
+                                            : cat.isFull
+                                                ? "bg-gradient-to-r from-yellow-500 to-amber-500"
+                                                : cat.isUnlimited
+                                                    ? "bg-gradient-to-r from-amber-500/50 to-yellow-500/50"
+                                                    : "bg-gradient-to-r from-violet-500 to-cyan-500"
+                                    }
                                 />
                             </div>
                         );

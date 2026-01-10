@@ -5,8 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
     User, LogOut, Shield, Mail, Loader2, Edit,
     ChevronRight, Linkedin, Github, Briefcase, Sparkles, Crown, Key, UserCircle,
-    Zap, Heart, Download, BarChart3, Target, TrendingUp, Clock, CheckCircle,
-    History, ChevronLeft, Search, Filter, FileText, Trophy, RefreshCw, Plus, Trash2, Wallet, Repeat
+    Zap, Heart, Download, BarChart3, Target, TrendingUp, Clock, CheckCircle
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -14,17 +13,8 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { useBudget } from "@/hooks/use-budget";
 import { useWallets } from "@/hooks/use-wallets";
-import { useAudit } from "@/hooks/use-wallet-audit";
-import { AuditEntityType } from "@shared/api";
 import { useGoals } from "@/hooks/use-goals";
 import { ExportDialog } from "@/components/budget/ExportDialog";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
 
 export default function ProfilePage() {
     const { user, logout, updateProfile, updatePassword } = useAuth();
@@ -41,26 +31,6 @@ export default function ProfilePage() {
     // Form States
     const [profileForm, setProfileForm] = useState({ username: "", email: "" });
     const [passwordForm, setPasswordForm] = useState({ current: "", new: "", confirm: "" });
-    // Audit Trail States
-    const [isAuditExpanded, setIsAuditExpanded] = useState(false);
-    const [auditEntityFilter, setAuditEntityFilter] = useState<string>("all");
-    const [auditSearchTerm, setAuditSearchTerm] = useState("");
-    const [auditPage, setAuditPage] = useState(0);
-    const auditPageSize = 20;
-
-    // Fetch audit logs
-    const { auditLogs, isLoading: isAuditLoading } = useAudit({
-        entityType: auditEntityFilter === "all" ? undefined : auditEntityFilter as AuditEntityType,
-        limit: auditPageSize,
-        offset: auditPage * auditPageSize
-    });
-
-    // Filter audit logs by search term
-    const filteredAuditLogs = auditLogs.filter(log =>
-        log.entityName.toLowerCase().includes(auditSearchTerm.toLowerCase())
-    );
-
-    const totalAuditPages = Math.ceil((auditLogs.length < auditPageSize ? auditLogs.length : auditPageSize * (auditPage + 2)) / auditPageSize);
 
     const [isLoading, setIsLoading] = useState(false);
 
@@ -186,9 +156,9 @@ export default function ProfilePage() {
                             </div>
 
                             <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3">
-                                <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-violet-500/20 to-purple-500/20 border border-violet-500/30 px-4 py-1.5 text-sm font-semibold text-violet-300">
+                                <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 border border-emerald-500/30 px-4 py-1.5 text-sm font-semibold text-emerald-300">
                                     <Sparkles className="h-4 w-4" />
-                                    Free Plan
+                                    Community Edition
                                 </span>
                                 <span className="text-sm text-gray-500 flex items-center gap-1">
                                     <Clock className="h-3 w-3" />
@@ -372,280 +342,53 @@ export default function ProfilePage() {
                     </div>
                 </div>
 
-                {/* Audit Trail Section */}
-                <div className="rounded-2xl bg-gradient-to-br from-blue-500/10 via-zinc-900/80 to-zinc-900/50 border border-blue-500/30 p-6 space-y-4 shadow-lg shadow-blue-500/5">
-                    <button
-                        onClick={() => setIsAuditExpanded(!isAuditExpanded)}
-                        className="w-full flex items-center justify-between hover:bg-white/5 -m-2 p-2 rounded-xl transition-colors"
-                    >
-                        <div className="flex items-center gap-3">
-                            <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500/30 to-cyan-500/20 shadow-inner">
-                                <History className="h-6 w-6 text-blue-400" />
-                            </div>
-                            <div className="text-left">
-                                <h3 className="text-lg font-semibold text-white">Audit Trail</h3>
-                                <p className="text-sm text-blue-300/60">Track all activities and changes in your account</p>
-                            </div>
-                        </div>
-                        <ChevronRight className={`h-5 w-5 text-blue-400 transition-transform ${isAuditExpanded ? 'rotate-90' : ''}`} />
-                    </button>
-
-                    {isAuditExpanded && (
-                        <>
-                            {/* Filters */}
-                            <div className="flex flex-col sm:flex-row gap-3">
-                                <div className="flex-1">
-                                    <Select value={auditEntityFilter} onValueChange={setAuditEntityFilter}>
-                                        <SelectTrigger className="h-10 bg-zinc-800 border-zinc-700 focus:border-blue-400">
-                                            <SelectValue placeholder="All Activities" />
-                                        </SelectTrigger>
-                                        <SelectContent className="bg-zinc-800 border-zinc-700">
-                                            <SelectItem value="all">All Activities</SelectItem>
-                                            <SelectItem value="wallet">Wallets</SelectItem>
-                                            <SelectItem value="goal">Goals</SelectItem>
-                                            <SelectItem value="recurring">Recurring Rules</SelectItem>
-                                            <SelectItem value="transaction">Transactions</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="flex-1 relative">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
-                                    <Input
-                                        placeholder="Search by name..."
-                                        value={auditSearchTerm}
-                                        onChange={(e) => setAuditSearchTerm(e.target.value)}
-                                        className="h-10 pl-10 bg-zinc-800 border-zinc-700 focus:border-blue-400"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Audit Logs List */}
-                            {isAuditLoading ? (
-                                <div className="text-center py-8">
-                                    <Loader2 className="h-6 w-6 text-blue-400 mx-auto animate-spin" />
-                                </div>
-                            ) : filteredAuditLogs.length === 0 ? (
-                                <div className="text-center py-12">
-                                    <div className="p-4 rounded-full bg-blue-500/10 w-fit mx-auto mb-4">
-                                        <FileText className="h-8 w-8 text-blue-400" />
-                                    </div>
-                                    <p className="text-gray-400">No audit logs found</p>
-                                    <p className="text-sm text-gray-500 mt-1">Activity changes will appear here</p>
-                                </div>
-                            ) : (
-                                <>
-                                    <div className="overflow-x-auto">
-                                        <div className="space-y-2">
-                                            {filteredAuditLogs.map((log) => {
-                                                const timestamp = new Date(log.timestamp);
-
-                                                // Determine display based on change type
-                                                const getChangeTypeDisplay = () => {
-                                                    switch (log.changeType) {
-                                                        case 'balance_change':
-                                                            return { icon: Wallet, label: 'Balance Change', color: 'blue', bgColor: 'bg-blue-500/20', textColor: 'text-blue-400', borderColor: 'border-blue-500/30' };
-                                                        case 'wallet_created':
-                                                            return { icon: Plus, label: 'Wallet Created', color: 'green', bgColor: 'bg-green-500/20', textColor: 'text-green-400', borderColor: 'border-green-500/30' };
-                                                        case 'wallet_deleted':
-                                                            return { icon: Trash2, label: 'Wallet Deleted', color: 'red', bgColor: 'bg-red-500/20', textColor: 'text-red-400', borderColor: 'border-red-500/30' };
-                                                        case 'goal_created':
-                                                            return { icon: Plus, label: 'Goal Created', color: 'emerald', bgColor: 'bg-emerald-500/20', textColor: 'text-emerald-400', borderColor: 'border-emerald-500/30' };
-                                                        case 'goal_fulfilled':
-                                                            return { icon: Trophy, label: 'Goal Fulfilled', color: 'amber', bgColor: 'bg-amber-500/20', textColor: 'text-amber-400', borderColor: 'border-amber-500/30' };
-                                                        case 'goal_reactivated':
-                                                            return { icon: RefreshCw, label: 'Goal Reactivated', color: 'yellow', bgColor: 'bg-yellow-500/20', textColor: 'text-yellow-400', borderColor: 'border-yellow-500/30' };
-                                                        case 'goal_deleted':
-                                                            return { icon: Trash2, label: 'Goal Deleted', color: 'red', bgColor: 'bg-red-500/20', textColor: 'text-red-400', borderColor: 'border-red-500/30' };
-                                                        case 'recurring_created':
-                                                            return { icon: Plus, label: 'Recurring Added', color: 'violet', bgColor: 'bg-violet-500/20', textColor: 'text-violet-400', borderColor: 'border-violet-500/30' };
-                                                        case 'recurring_deleted':
-                                                            return { icon: Trash2, label: 'Recurring Removed', color: 'rose', bgColor: 'bg-rose-500/20', textColor: 'text-rose-400', borderColor: 'border-rose-500/30' };
-                                                        case 'transaction_deleted':
-                                                            return { icon: Trash2, label: 'Transaction Deleted', color: 'orange', bgColor: 'bg-orange-500/20', textColor: 'text-orange-400', borderColor: 'border-orange-500/30' };
-                                                        default:
-                                                            return { icon: History, label: log.changeType, color: 'gray', bgColor: 'bg-gray-500/20', textColor: 'text-gray-400', borderColor: 'border-gray-500/30' };
-                                                    }
-                                                };
-
-                                                const typeDisplay = getChangeTypeDisplay();
-                                                const TypeIcon = typeDisplay.icon;
-                                                const hasAmountChange = log.changeType === 'balance_change' && log.changeAmount !== undefined;
-                                                const isIncrease = (log.changeAmount || 0) > 0;
-
-                                                // Parse details JSON for extra info
-                                                let parsedDetails: any = null;
-                                                try {
-                                                    if (log.details) {
-                                                        parsedDetails = JSON.parse(log.details);
-                                                    }
-                                                } catch (e) {
-                                                    // Invalid JSON, ignore
-                                                }
-
-                                                // Check if this is a transaction deletion with amount
-                                                const isTransactionDeletion = log.changeType === 'transaction_deleted';
-                                                const isGoalEvent = ['goal_created', 'goal_deleted', 'goal_fulfilled'].includes(log.changeType);
-
-                                                return (
-                                                    <div key={log.id} className="p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
-                                                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-                                                            <div className="flex-1 space-y-1">
-                                                                <div className="flex items-center gap-2 flex-wrap">
-                                                                    <span className="font-medium text-white">{log.entityName}</span>
-                                                                    <span className={`px-2 py-0.5 rounded text-xs ${typeDisplay.bgColor} ${typeDisplay.textColor} border ${typeDisplay.borderColor} flex items-center gap-1`}>
-                                                                        <TypeIcon className="h-3 w-3" />
-                                                                        {typeDisplay.label}
-                                                                    </span>
-                                                                </div>
-                                                                <p className="text-xs text-gray-500">
-                                                                    {timestamp.toLocaleDateString()} at {timestamp.toLocaleTimeString()}
-                                                                </p>
-                                                                {/* Transaction details */}
-                                                                {isTransactionDeletion && parsedDetails && (
-                                                                    <div className="flex flex-wrap gap-2 mt-2">
-                                                                        {parsedDetails.category && (
-                                                                            <span className="px-2 py-0.5 rounded text-xs bg-zinc-700/50 text-gray-300">
-                                                                                {parsedDetails.category}
-                                                                            </span>
-                                                                        )}
-                                                                        {parsedDetails.type && (
-                                                                            <span className="px-2 py-0.5 rounded text-xs bg-zinc-700/50 text-gray-300 capitalize">
-                                                                                {parsedDetails.type}
-                                                                            </span>
-                                                                        )}
-                                                                        {parsedDetails.date && (
-                                                                            <span className="px-2 py-0.5 rounded text-xs bg-zinc-700/50 text-gray-300">
-                                                                                {new Date(parsedDetails.date).toLocaleDateString()}
-                                                                            </span>
-                                                                        )}
-                                                                    </div>
-                                                                )}
-                                                                {/* Goal details */}
-                                                                {isGoalEvent && parsedDetails && (
-                                                                    <div className="flex flex-wrap gap-2 mt-2">
-                                                                        {parsedDetails.targetAmount && (
-                                                                            <span className="px-2 py-0.5 rounded text-xs bg-zinc-700/50 text-gray-300">
-                                                                                Target: ${parsedDetails.targetAmount.toLocaleString()}
-                                                                            </span>
-                                                                        )}
-                                                                        {parsedDetails.category && (
-                                                                            <span className="px-2 py-0.5 rounded text-xs bg-zinc-700/50 text-gray-300 capitalize">
-                                                                                {parsedDetails.category}
-                                                                            </span>
-                                                                        )}
-                                                                    </div>
-                                                                )}
-                                                                {log.reason && (
-                                                                    <p className="text-xs text-gray-400 italic">Note: {log.reason}</p>
-                                                                )}
-                                                            </div>
-                                                            {/* Balance change amount */}
-                                                            {hasAmountChange && (
-                                                                <div className="flex items-center gap-4">
-                                                                    <div className="text-sm text-gray-400">
-                                                                        ${log.previousBalance?.toLocaleString() || 0} → ${log.newBalance?.toLocaleString() || 0}
-                                                                    </div>
-                                                                    <div className={`px-3 py-1 rounded-lg ${isIncrease ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'} font-semibold text-sm min-w-[80px] text-center`}>
-                                                                        {isIncrease ? '+' : ''}${Math.abs(log.changeAmount || 0).toLocaleString()}
-                                                                    </div>
-                                                                </div>
-                                                            )}
-                                                            {/* Transaction deletion amount */}
-                                                            {isTransactionDeletion && log.changeAmount && (
-                                                                <div className="flex items-center">
-                                                                    <div className="px-3 py-1 rounded-lg bg-red-500/10 text-red-400 font-semibold text-sm min-w-[80px] text-center">
-                                                                        -${Math.abs(log.changeAmount).toLocaleString()}
-                                                                    </div>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-
-                                    {/* Pagination */}
-                                    {totalAuditPages > 1 && (
-                                        <div className="flex items-center justify-between pt-4 border-t border-white/10">
-                                            <p className="text-sm text-gray-500">
-                                                Page {auditPage + 1} of {totalAuditPages}
-                                            </p>
-                                            <div className="flex gap-2">
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={() => setAuditPage(p => Math.max(0, p - 1))}
-                                                    disabled={auditPage === 0}
-                                                    className="border-zinc-700 hover:bg-white/10"
-                                                >
-                                                    <ChevronLeft className="h-4 w-4" />
-                                                </Button>
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={() => setAuditPage(p => p + 1)}
-                                                    disabled={auditLogs.length < auditPageSize}
-                                                    className="border-zinc-700 hover:bg-white/10"
-                                                >
-                                                    <ChevronRight className="h-4 w-4" />
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    )}
-                                </>
-                            )}
-                        </>
-                    )}
-                </div>
-
-                {/* Subscription Card - Revamped */}
+                {/* Community Edition Card */}
                 <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-zinc-900 via-zinc-900/95 to-zinc-800 border border-white/10 shadow-2xl">
                     {/* Animated gradient border effect */}
-                    <div className="absolute inset-0 bg-gradient-to-r from-violet-500/20 via-amber-500/20 to-emerald-500/20 opacity-50 blur-xl" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-violet-500/20 via-emerald-500/20 to-cyan-500/20 opacity-50 blur-xl" />
                     <div className="absolute inset-[1px] bg-zinc-900 rounded-3xl" />
 
                     {/* Floating orbs */}
-                    <div className="absolute -top-20 -right-20 w-64 h-64 bg-gradient-to-br from-amber-500/30 to-yellow-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '4s' }} />
+                    <div className="absolute -top-20 -right-20 w-64 h-64 bg-gradient-to-br from-emerald-500/30 to-cyan-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '4s' }} />
                     <div className="absolute -bottom-20 -left-20 w-48 h-48 bg-gradient-to-br from-violet-500/20 to-purple-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '5s' }} />
 
                     <div className="relative z-10 p-8">
                         {/* Header */}
                         <div className="flex items-center gap-4 mb-8">
                             <div className="relative">
-                                <div className="absolute inset-0 bg-gradient-to-r from-amber-400 to-yellow-500 rounded-2xl blur-lg opacity-50" />
-                                <div className="relative p-4 rounded-2xl bg-gradient-to-br from-amber-500/30 to-yellow-500/20 border border-amber-500/30">
-                                    <Crown className="h-8 w-8 text-amber-400" />
+                                <div className="absolute inset-0 bg-gradient-to-r from-emerald-400 to-cyan-500 rounded-2xl blur-lg opacity-50" />
+                                <div className="relative p-4 rounded-2xl bg-gradient-to-br from-emerald-500/30 to-cyan-500/20 border border-emerald-500/30">
+                                    <Heart className="h-8 w-8 text-emerald-400" />
                                 </div>
                             </div>
                             <div>
-                                <h3 className="text-2xl font-bold font-serif text-white">Subscription Plans</h3>
-                                <p className="text-gray-400">Choose the plan that works for you</p>
+                                <h3 className="text-2xl font-bold font-serif text-white">Community Edition</h3>
+                                <p className="text-gray-400">Free forever. Made with love.</p>
                             </div>
                         </div>
 
-                        {/* Plans Grid */}
+                        {/* Features + Donate Grid */}
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            {/* Free Plan */}
+                            {/* All Features Free */}
                             <div className="relative group">
                                 <div className="relative p-6 rounded-2xl bg-gradient-to-br from-white/5 to-white/[0.02] border-2 border-emerald-500/50 shadow-lg shadow-emerald-500/10">
-                                    {/* Current Plan Badge */}
+                                    {/* Open Source Badge */}
                                     <div className="absolute -top-3 left-6">
                                         <span className="px-3 py-1 rounded-full bg-emerald-500 text-black text-xs font-bold flex items-center gap-1.5">
                                             <CheckCircle className="h-3 w-3" />
-                                            Current Plan
+                                            100% Free
                                         </span>
                                     </div>
 
                                     <div className="pt-2">
                                         <div className="flex items-end justify-between mb-6">
                                             <div>
-                                                <h4 className="text-xl font-bold text-white mb-1">Free</h4>
-                                                <p className="text-sm text-gray-400">Perfect for getting started</p>
+                                                <h4 className="text-xl font-bold text-white mb-1">All Features</h4>
+                                                <p className="text-sm text-gray-400">No limits, no paywalls</p>
                                             </div>
                                             <div className="text-right">
-                                                <span className="text-4xl font-bold text-white">$0</span>
-                                                <span className="text-gray-500">/month</span>
+                                                <span className="text-4xl font-bold text-emerald-400">$0</span>
+                                                <span className="text-gray-500">/forever</span>
                                             </div>
                                         </div>
 
@@ -654,25 +397,25 @@ export default function ProfilePage() {
                                                 <div className="p-1 rounded-full bg-emerald-500/20">
                                                     <CheckCircle className="h-4 w-4 text-emerald-400" />
                                                 </div>
-                                                Up to 5 wallets
+                                                Unlimited wallets & transactions
                                             </li>
                                             <li className="flex items-center gap-3 text-gray-300">
                                                 <div className="p-1 rounded-full bg-emerald-500/20">
                                                     <CheckCircle className="h-4 w-4 text-emerald-400" />
                                                 </div>
-                                                Basic transaction tracking
+                                                Full analytics & statistics
                                             </li>
                                             <li className="flex items-center gap-3 text-gray-300">
                                                 <div className="p-1 rounded-full bg-emerald-500/20">
                                                     <CheckCircle className="h-4 w-4 text-emerald-400" />
                                                 </div>
-                                                Monthly statistics
+                                                Goal tracking & audit trail
                                             </li>
                                             <li className="flex items-center gap-3 text-gray-300">
                                                 <div className="p-1 rounded-full bg-emerald-500/20">
                                                     <CheckCircle className="h-4 w-4 text-emerald-400" />
                                                 </div>
-                                                Goal tracking
+                                                Data export (JSON, CSV)
                                             </li>
                                         </ul>
 
@@ -688,17 +431,17 @@ export default function ProfilePage() {
                                 </div>
                             </div>
 
-                            {/* Pro Plan */}
+                            {/* Support the Developer */}
                             <div className="relative group">
                                 {/* Glow effect */}
                                 <div className="absolute -inset-[1px] bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 rounded-2xl opacity-75 blur-sm group-hover:opacity-100 transition-opacity" />
 
                                 <div className="relative p-6 rounded-2xl bg-gradient-to-br from-amber-500/10 via-zinc-900 to-amber-500/5 border border-amber-500/30">
-                                    {/* Recommended Badge */}
+                                    {/* Support Badge */}
                                     <div className="absolute -top-3 left-6">
                                         <span className="px-3 py-1 rounded-full bg-gradient-to-r from-amber-500 to-yellow-400 text-black text-xs font-bold flex items-center gap-1.5">
-                                            <Sparkles className="h-3 w-3" />
-                                            Recommended
+                                            <Heart className="h-3 w-3" />
+                                            Support
                                         </span>
                                     </div>
 
@@ -706,34 +449,46 @@ export default function ProfilePage() {
                                         <div className="flex items-end justify-between mb-6">
                                             <div>
                                                 <h4 className="text-xl font-bold text-white mb-1 flex items-center gap-2">
-                                                    Pro
-                                                    <Crown className="h-5 w-5 text-amber-400" />
+                                                    Buy Me a Coffee
+                                                    <span className="text-2xl">☕</span>
                                                 </h4>
-                                                <p className="text-sm text-amber-300/70">For power users</p>
-                                            </div>
-                                            <div className="text-right">
-                                                <span className="text-4xl font-bold bg-gradient-to-r from-amber-400 to-yellow-300 bg-clip-text text-transparent">$9</span>
-                                                <span className="text-gray-500">/month</span>
+                                                <p className="text-sm text-amber-300/70">Support the development</p>
                                             </div>
                                         </div>
 
+                                        <p className="text-gray-400 mb-6 text-sm leading-relaxed">
+                                            This project is built with passion and maintained in my free time.
+                                            If you find it useful, consider buying me a coffee to keep the development going!
+                                            Your support means the world. 💛
+                                        </p>
+
                                         <ul className="space-y-3 mb-6">
-                                            {proFeatures.map((feature, i) => (
-                                                <li key={i} className="flex items-center gap-3 text-gray-200">
-                                                    <div className="p-1 rounded-full bg-amber-500/20">
-                                                        <Zap className="h-4 w-4 text-amber-400" />
-                                                    </div>
-                                                    {feature}
-                                                </li>
-                                            ))}
+                                            <li className="flex items-center gap-3 text-gray-200">
+                                                <div className="p-1 rounded-full bg-amber-500/20">
+                                                    <Zap className="h-4 w-4 text-amber-400" />
+                                                </div>
+                                                Motivates new features
+                                            </li>
+                                            <li className="flex items-center gap-3 text-gray-200">
+                                                <div className="p-1 rounded-full bg-amber-500/20">
+                                                    <Zap className="h-4 w-4 text-amber-400" />
+                                                </div>
+                                                Helps cover server costs
+                                            </li>
+                                            <li className="flex items-center gap-3 text-gray-200">
+                                                <div className="p-1 rounded-full bg-amber-500/20">
+                                                    <Zap className="h-4 w-4 text-amber-400" />
+                                                </div>
+                                                Shows your appreciation
+                                            </li>
                                         </ul>
 
                                         <Button
                                             className="w-full h-12 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-black font-bold shadow-lg shadow-amber-500/30 hover:shadow-amber-500/50 hover:scale-[1.02] transition-all"
-                                            onClick={() => toast({ title: "Coming Soon", description: "Pro plan will be available soon!" })}
+                                            onClick={() => window.open('https://buymeacoffee.com/anganba', '_blank')}
                                         >
-                                            <Crown className="mr-2 h-5 w-5" />
-                                            Upgrade to Pro
+                                            <span className="mr-2 text-lg">☕</span>
+                                            Buy Me a Coffee
                                         </Button>
                                     </div>
                                 </div>
@@ -743,7 +498,7 @@ export default function ProfilePage() {
                         {/* Footer Note */}
                         <p className="text-center text-sm text-gray-500 mt-6">
                             <Heart className="inline h-4 w-4 text-rose-400 mr-1" />
-                            Cancel anytime. No hidden fees.
+                            Built with love for the community. Open source & free forever.
                         </p>
                     </div>
                 </div>
