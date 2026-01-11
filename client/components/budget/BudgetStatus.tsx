@@ -161,11 +161,32 @@ export function BudgetStatus({ currency = '$', budget, refreshBudget, showAllCat
                                         {isWarning && !isOverBudget && <span className="text-[10px] md:text-xs font-bold text-yellow-400">⚠️ ALMOST AT LIMIT</span>}
                                     </div>
                                     <div className="flex justify-between items-end mb-2 md:mb-3">
-                                        <span className={`text-2xl md:text-3xl font-bold ${isOverBudget ? 'text-red-400' : isWarning ? 'text-yellow-400' : 'text-white'}`}>{percent}%</span>
-                                        <p className="text-[10px] md:text-xs text-gray-500">
-                                            <span className={isOverBudget ? 'text-red-400' : 'text-white'}>{currency}{totalSpent.toLocaleString()}</span>
-                                            {' / '}
-                                            <span className="text-white">{currency}{totalBudget.toLocaleString()}</span>
+                                        <span
+                                            className={`text-2xl md:text-3xl font-bold ${isOverBudget ? 'text-red-400' : isWarning ? 'text-yellow-400' : 'text-primary'}`}
+                                            style={{
+                                                textShadow: isOverBudget
+                                                    ? '0 0 10px rgba(248, 113, 113, 0.6), 0 0 20px rgba(248, 113, 113, 0.4), 0 0 30px rgba(248, 113, 113, 0.2)'
+                                                    : isWarning
+                                                        ? '0 0 10px rgba(250, 204, 21, 0.6), 0 0 20px rgba(250, 204, 21, 0.4), 0 0 30px rgba(250, 204, 21, 0.2)'
+                                                        : '0 0 10px rgba(163, 230, 53, 0.6), 0 0 20px rgba(163, 230, 53, 0.4), 0 0 30px rgba(163, 230, 53, 0.2)'
+                                            }}
+                                        >
+                                            {percent}%
+                                        </span>
+                                        <p className="text-sm md:text-base font-semibold">
+                                            <span
+                                                className={`${isOverBudget ? 'text-red-400' : 'text-cyan-400'}`}
+                                                style={{ textShadow: isOverBudget ? '0 0 8px rgba(248, 113, 113, 0.5)' : '0 0 8px rgba(34, 211, 238, 0.5)' }}
+                                            >
+                                                {currency}{totalSpent.toLocaleString()}
+                                            </span>
+                                            <span className="text-gray-500"> / </span>
+                                            <span
+                                                className="text-primary"
+                                                style={{ textShadow: '0 0 8px rgba(163, 230, 53, 0.5)' }}
+                                            >
+                                                {currency}{totalBudget.toLocaleString()}
+                                            </span>
                                         </p>
                                     </div>
                                     <Progress
@@ -174,8 +195,11 @@ export function BudgetStatus({ currency = '$', budget, refreshBudget, showAllCat
                                         className="h-2 md:h-3 bg-white/10"
                                     />
                                     {remaining > 0 && (
-                                        <p className="text-[10px] md:text-xs text-gray-500 mt-2">
-                                            {currency}{remaining.toLocaleString()} remaining • {daysRemaining} days left
+                                        <p
+                                            className="text-xs md:text-sm text-emerald-400 mt-2 font-medium"
+                                            style={{ textShadow: '0 0 8px rgba(52, 211, 153, 0.4)' }}
+                                        >
+                                            <span className="font-bold">{currency}{remaining.toLocaleString()}</span> remaining • <span className="font-bold">{daysRemaining}</span> days left
                                         </p>
                                     )}
                                 </div>

@@ -23,7 +23,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ChevronLeft, ChevronRight, Calendar, TrendingDown, TrendingUp, PieChart as PieChartIcon, Target, Wallet, Tags } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar, TrendingDown, TrendingUp, PieChart as PieChartIcon, Target, Wallet, Tags, ArrowRightLeft } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 
 import { useWallets } from "@/hooks/use-wallets";
@@ -48,7 +48,7 @@ export default function StatisticsPage() {
 
     const [showIncome, setShowIncome] = useState(false);
     const [showExpense, setShowExpense] = useState(true);
-    const [showSavings, setShowSavings] = useState(false);
+    const [showTransfers, setShowTransfers] = useState(false);
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
 
     const handlePrevMonth = () => setDate(subMonths(date, 1));
@@ -125,9 +125,9 @@ export default function StatisticsPage() {
             });
             const expense = expenseTransactions.reduce((sum: number, t: any) => sum + t.actual, 0);
 
-            // Calculate savings (always unfiltered)
-            const savings = dayTransactions
-                .filter((t: any) => t.category === 'Savings' || t.type === 'savings')
+            // Calculate transfers (transfers between wallets + goal contributions)
+            const transfers = dayTransactions
+                .filter((t: any) => t.type === 'transfer' || t.category === 'Transfer')
                 .reduce((sum: number, t: any) => sum + t.actual, 0);
 
             data.push({
@@ -137,7 +137,7 @@ export default function StatisticsPage() {
                 week: Math.ceil(day / 7),
                 income,
                 expense,
-                savings,
+                transfers,
             });
         }
 
@@ -152,13 +152,13 @@ export default function StatisticsPage() {
                         fullDate: key,
                         income: 0,
                         expense: 0,
-                        savings: 0
+                        transfers: 0
                     });
                 }
                 const weekData = weeklyMap.get(key);
                 weekData.income += d.income;
                 weekData.expense += d.expense;
-                weekData.savings += d.savings;
+                weekData.transfers += d.transfers;
             });
             data = Array.from(weeklyMap.values());
         }
@@ -167,17 +167,17 @@ export default function StatisticsPage() {
         if (yAxisMode === 'cumulative') {
             let runningIncome = 0;
             let runningExpense = 0;
-            let runningSavings = 0;
+            let runningTransfers = 0;
 
             data = data.map((d: any) => {
                 runningIncome += d.income;
                 runningExpense += d.expense;
-                runningSavings += d.savings;
+                runningTransfers += d.transfers;
                 return {
                     ...d,
                     income: runningIncome,
                     expense: runningExpense,
-                    savings: runningSavings
+                    transfers: runningTransfers
                 };
             });
         }
@@ -325,27 +325,27 @@ export default function StatisticsPage() {
 
     // Calculate daily averages based on actual spending days - uses filtered chartData for expenses
     const dailyAverages = useMemo(() => {
-        if (chartData.length === 0) return { avgExpense: 0, avgIncome: 0, avgSavings: 0, daysWithExpense: 0, daysWithIncome: 0, daysWithSavings: 0, totalExpense: 0, totalIncome: 0, totalSavings: 0 };
+        if (chartData.length === 0) return { avgExpense: 0, avgIncome: 0, avgTransfers: 0, daysWithExpense: 0, daysWithIncome: 0, daysWithTransfers: 0, totalExpense: 0, totalIncome: 0, totalTransfers: 0 };
 
         // Use chartData which respects category filtering for expenses
         const daysWithExpense = chartData.filter((d: any) => d.expense > 0).length;
         const daysWithIncome = chartData.filter((d: any) => d.income > 0).length;
-        const daysWithSavings = chartData.filter((d: any) => d.savings > 0).length;
+        const daysWithTransfers = chartData.filter((d: any) => d.transfers > 0).length;
 
         const totalExpense = chartData.reduce((sum: number, d: any) => sum + d.expense, 0);
         const totalIncome = chartData.reduce((sum: number, d: any) => sum + d.income, 0);
-        const totalSavings = chartData.reduce((sum: number, d: any) => sum + d.savings, 0);
+        const totalTransfers = chartData.reduce((sum: number, d: any) => sum + d.transfers, 0);
 
         return {
             avgExpense: daysWithExpense > 0 ? totalExpense / daysWithExpense : 0,
             avgIncome: daysWithIncome > 0 ? totalIncome / daysWithIncome : 0,
-            avgSavings: daysWithSavings > 0 ? totalSavings / daysWithSavings : 0,
+            avgTransfers: daysWithTransfers > 0 ? totalTransfers / daysWithTransfers : 0,
             totalExpense,
             totalIncome,
-            totalSavings,
+            totalTransfers,
             daysWithExpense,
             daysWithIncome,
-            daysWithSavings,
+            daysWithTransfers,
         };
     }, [chartData]);
 
@@ -403,11 +403,11 @@ export default function StatisticsPage() {
                                 <TrendingDown className="h-4 w-4 mr-1" /> Expenses
                             </Button>
                             <Button
-                                variant={showSavings ? "default" : "outline"}
-                                onClick={() => setShowSavings(!showSavings)}
-                                className={`h-10 rounded-xl ${showSavings ? 'bg-blue-500 hover:bg-blue-600 text-white' : 'border-zinc-700 text-gray-400 hover:text-white hover:border-blue-500/50'}`}
+                                variant={showTransfers ? "default" : "outline"}
+                                onClick={() => setShowTransfers(!showTransfers)}
+                                className={`h-10 rounded-xl ${showTransfers ? 'bg-blue-500 hover:bg-blue-600 text-white' : 'border-zinc-700 text-gray-400 hover:text-white hover:border-blue-500/50'}`}
                             >
-                                <Target className="h-4 w-4 mr-1" /> Savings
+                                <ArrowRightLeft className="h-4 w-4 mr-1" /> Transfers
                             </Button>
                         </div>
                     </div>
@@ -446,13 +446,13 @@ export default function StatisticsPage() {
                                         </div>
                                     </div>
                                 )}
-                                {showSavings && (
+                                {showTransfers && (
                                     <div className="flex items-center gap-2.5 px-4 py-2 rounded-xl bg-blue-500/10 border border-blue-500/20">
-                                        <Target className="h-4 w-4 text-blue-400" />
+                                        <ArrowRightLeft className="h-4 w-4 text-blue-400" />
                                         <div className="text-sm">
                                             <span className="text-gray-400">Avg/day: </span>
-                                            <span className="font-bold text-blue-400 text-base">{currency}{dailyAverages.avgSavings.toFixed(0)}</span>
-                                            <span className="text-gray-500 ml-1.5">({dailyAverages.daysWithSavings}d)</span>
+                                            <span className="font-bold text-blue-400 text-base">{currency}{dailyAverages.avgTransfers.toFixed(0)}</span>
+                                            <span className="text-gray-500 ml-1.5">({dailyAverages.daysWithTransfers}d)</span>
                                         </div>
                                     </div>
                                 )}
@@ -589,11 +589,11 @@ export default function StatisticsPage() {
                                                 strokeWidth={2}
                                             />
                                         )}
-                                        {showSavings && (
+                                        {showTransfers && (
                                             <Area
                                                 type="monotone"
-                                                dataKey="savings"
-                                                name="Savings"
+                                                dataKey="transfers"
+                                                name="Transfers"
                                                 stroke="hsl(var(--chart-2))"
                                                 fillOpacity={1}
                                                 fill="url(#colorSavings)"

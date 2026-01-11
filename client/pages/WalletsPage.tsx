@@ -307,16 +307,16 @@ export default function WalletsPage() {
                     {/* Distribution Card */}
                     <div className="rounded-2xl md:rounded-3xl bg-zinc-900/50 border border-white/10 p-4 md:p-5">
                         <p className="text-xs text-gray-400 uppercase tracking-wider mb-3">Distribution</p>
-                        <div className="space-y-2">
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                             {wallets
                                 .sort((a, b) => b.balance - a.balance)
-                                .slice(0, showAllDistribution ? wallets.length : 4)
+                                .slice(0, showAllDistribution ? wallets.length : 6)
                                 .map(wallet => {
                                     const percent = totalBalance > 0 ? (wallet.balance / totalBalance) * 100 : 0;
                                     const barColor = getWalletBarColor(wallet.type);
                                     return (
                                         <div key={wallet.id} className="flex items-center gap-2">
-                                            <span className="text-xs text-gray-400 w-24 truncate" title={wallet.name}>{wallet.name}</span>
+                                            <span className="text-xs text-gray-400 w-20 truncate" title={wallet.name}>{wallet.name}</span>
                                             <div className="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
                                                 <div className={`h-full ${barColor} rounded-full transition-all duration-500`} style={{ width: `${percent}%` }} />
                                             </div>
@@ -324,15 +324,15 @@ export default function WalletsPage() {
                                         </div>
                                     );
                                 })}
-                            {wallets.length > 4 && (
-                                <button
-                                    onClick={() => setShowAllDistribution(!showAllDistribution)}
-                                    className="w-full text-[10px] text-primary hover:text-primary/80 text-center py-1 transition-colors cursor-pointer"
-                                >
-                                    {showAllDistribution ? 'Show less' : `+${wallets.length - 4} more`}
-                                </button>
-                            )}
                         </div>
+                        {wallets.length > 6 && (
+                            <button
+                                onClick={() => setShowAllDistribution(!showAllDistribution)}
+                                className="w-full text-[10px] text-primary hover:text-primary/80 text-center py-1 mt-2 transition-colors cursor-pointer"
+                            >
+                                {showAllDistribution ? 'Show less' : `+${wallets.length - 6} more`}
+                            </button>
+                        )}
                     </div>
                 </div>
 

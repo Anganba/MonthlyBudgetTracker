@@ -4,11 +4,20 @@ import { AuditLog } from '@shared/api';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, ArrowUpDown, History, Wallet, Target, Repeat, Receipt, Clock } from "lucide-react";
-import { format } from 'date-fns';
+import { Search, ArrowUpDown, History, Wallet, Target, Repeat, Receipt, Clock, ChevronLeft, ChevronRight } from "lucide-react";
+import { format, addMonths, subMonths } from 'date-fns';
 import { cn } from "@/lib/utils";
 
+const MONTHS = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+];
+
 export function AuditTrailPage() {
+    const [month, setMonth] = useState(MONTHS[new Date().getMonth()]);
+    const [year, setYear] = useState(new Date().getFullYear());
+    const [currency, setCurrency] = useState('USD');
+
     const [searchTerm, setSearchTerm] = useState('');
     const [entityFilter, setEntityFilter] = useState('all');
     const [changeTypeFilter, setChangeTypeFilter] = useState('all');
@@ -16,6 +25,25 @@ export function AuditTrailPage() {
 
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(10);
+
+    const handleMonthChange = (newMonth: string, newYear: number) => {
+        setMonth(newMonth);
+        setYear(newYear);
+    };
+
+    const handlePrevMonth = () => {
+        const currentDate = new Date(year, MONTHS.indexOf(month), 1);
+        const prevDate = subMonths(currentDate, 1);
+        setMonth(MONTHS[prevDate.getMonth()]);
+        setYear(prevDate.getFullYear());
+    };
+
+    const handleNextMonth = () => {
+        const currentDate = new Date(year, MONTHS.indexOf(month), 1);
+        const nextDate = addMonths(currentDate, 1);
+        setMonth(MONTHS[nextDate.getMonth()]);
+        setYear(nextDate.getFullYear());
+    };
 
     // Fetch audit logs
     const { data: auditLogs = [], isLoading } = useQuery<AuditLog[]>({
@@ -60,17 +88,23 @@ export function AuditTrailPage() {
         return 'text-gray-400 bg-gray-500/20';
     };
 
-    // Filter logs
+    // Filter logs by month and other filters
     const filteredLogs = React.useMemo(() => {
+        const monthIndex = MONTHS.indexOf(month);
+
         return auditLogs.filter(log => {
+            // Filter by month/year
+            const logDate = new Date(log.timestamp);
+            const matchesMonth = logDate.getMonth() === monthIndex && logDate.getFullYear() === year;
+
             const matchesSearch = log.entityName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 log.details?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 log.changeType.toLowerCase().includes(searchTerm.toLowerCase());
             const matchesEntity = entityFilter === 'all' || log.entityType === entityFilter;
             const matchesChangeType = changeTypeFilter === 'all' || log.changeType === changeTypeFilter;
-            return matchesSearch && matchesEntity && matchesChangeType;
+            return matchesMonth && matchesSearch && matchesEntity && matchesChangeType;
         });
-    }, [auditLogs, searchTerm, entityFilter, changeTypeFilter]);
+    }, [auditLogs, month, year, searchTerm, entityFilter, changeTypeFilter]);
 
     // Sort logs
     const sortedLogs = [...filteredLogs].sort((a, b) => {
@@ -99,7 +133,7 @@ export function AuditTrailPage() {
 
     useEffect(() => {
         setCurrentPage(1);
-    }, [searchTerm, entityFilter, changeTypeFilter]);
+    }, [searchTerm, entityFilter, changeTypeFilter, month, year]);
 
     const requestSort = (key: keyof AuditLog) => {
         let direction: 'asc' | 'desc' = 'asc';
@@ -109,8 +143,16 @@ export function AuditTrailPage() {
         setSortConfig({ key, direction });
     };
 
-    // Get unique change types for filter
-    const changeTypes = Array.from(new Set(auditLogs.map(log => log.changeType))).sort();
+    // Get unique change types for filter (from current month's logs)
+    const changeTypes = Array.from(new Set(filteredLogs.map(log => log.changeType))).sort();
+
+    // Stats for current month
+    const monthStats = {
+        total: filteredLogs.length,
+        transactions: filteredLogs.filter(l => l.entityType === 'transaction').length,
+        wallets: filteredLogs.filter(l => l.entityType === 'wallet').length,
+        goals: filteredLogs.filter(l => l.entityType === 'goal').length
+    };
 
     return (
         <div className="min-h-screen bg-black text-white relative overflow-hidden">
@@ -120,12 +162,40 @@ export function AuditTrailPage() {
             <div className="hidden md:block absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-gradient-to-tl from-amber-500/10 via-orange-500/5 to-transparent rounded-full blur-3xl pointer-events-none animate-pulse" style={{ animationDuration: '6s' }} />
             <div className="hidden md:block absolute top-1/4 left-1/3 w-[350px] h-[350px] bg-gradient-to-br from-emerald-500/10 to-transparent rounded-full blur-3xl pointer-events-none animate-pulse" style={{ animationDuration: '7s' }} />
 
-            <div className="p-6 md:p-8 relative z-10">
-                {/* Header */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
-                    <div>
-                        <h1 className="font-serif text-3xl md:text-4xl font-bold text-white">Audit Trail</h1>
-                        <p className="text-gray-500 mt-1">Track all activities and changes in your account</p>
+            <div className="p-4 md:p-6 lg:p-8 relative z-10">
+                {/* Header - Dashboard Style */}
+                <div className="flex flex-col gap-4 mb-6 md:mb-8">
+                    <div className="flex items-center justify-between gap-4">
+                        {/* Left: Title */}
+                        <div className="flex-shrink-0">
+                            <h1 className="text-xl md:text-2xl lg:text-3xl font-bold font-serif text-white">Audit Trail</h1>
+                            <p className="text-gray-500 text-[10px] md:text-xs mt-0.5 hidden sm:block">Track all activities and changes in your account</p>
+                        </div>
+
+                        {/* Right: Date Navigator */}
+                        <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
+                            <div className="flex items-center bg-zinc-900/80 backdrop-blur-sm rounded-xl border border-white/10 p-0.5 md:p-1 shadow-lg">
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={handlePrevMonth}
+                                    className="h-7 w-7 md:h-8 md:w-8 hover:bg-primary hover:text-black transition-all rounded-lg"
+                                >
+                                    <ChevronLeft className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                                </Button>
+                                <span className="min-w-[80px] md:min-w-[110px] text-center font-semibold text-[10px] md:text-xs lg:text-sm px-1">
+                                    {month.slice(0, 3)} {year}
+                                </span>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={handleNextMonth}
+                                    className="h-7 w-7 md:h-8 md:w-8 hover:bg-primary hover:text-black transition-all rounded-lg"
+                                >
+                                    <ChevronRight className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                                </Button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -138,7 +208,7 @@ export function AuditTrailPage() {
                             </div>
                             <div>
                                 <p className="text-sm text-cyan-300/70">Total Activities</p>
-                                <p className="text-2xl font-bold text-white">{auditLogs.length}</p>
+                                <p className="text-2xl font-bold text-white">{monthStats.total}</p>
                             </div>
                         </div>
                     </div>
@@ -149,7 +219,7 @@ export function AuditTrailPage() {
                             </div>
                             <div>
                                 <p className="text-sm text-green-300/70">Transaction Events</p>
-                                <p className="text-2xl font-bold text-green-400">{auditLogs.filter(l => l.entityType === 'transaction').length}</p>
+                                <p className="text-2xl font-bold text-green-400">{monthStats.transactions}</p>
                             </div>
                         </div>
                     </div>
@@ -160,7 +230,7 @@ export function AuditTrailPage() {
                             </div>
                             <div>
                                 <p className="text-sm text-blue-300/70">Wallet Events</p>
-                                <p className="text-2xl font-bold text-blue-400">{auditLogs.filter(l => l.entityType === 'wallet').length}</p>
+                                <p className="text-2xl font-bold text-blue-400">{monthStats.wallets}</p>
                             </div>
                         </div>
                     </div>
@@ -171,7 +241,7 @@ export function AuditTrailPage() {
                             </div>
                             <div>
                                 <p className="text-sm text-purple-300/70">Goal Events</p>
-                                <p className="text-2xl font-bold text-purple-400">{auditLogs.filter(l => l.entityType === 'goal').length}</p>
+                                <p className="text-2xl font-bold text-purple-400">{monthStats.goals}</p>
                             </div>
                         </div>
                     </div>
@@ -267,8 +337,8 @@ export function AuditTrailPage() {
                                                         {getChangeTypeLabel(log.changeType)}
                                                     </span>
                                                 </td>
-                                                <td className="py-4 px-4 text-gray-400 text-xs truncate max-w-[250px]" title={log.details || ''}>
-                                                    {log.details || '-'}
+                                                <td className="py-4 px-4 text-gray-400 text-xs truncate max-w-[250px]" title={(log.changeType === 'balance_change' && log.reason) ? log.reason : (log.details || '')}>
+                                                    {(log.changeType === 'balance_change' && log.reason) ? log.reason : (log.details || '-')}
                                                 </td>
                                                 <td className="py-4 px-4 text-right font-semibold text-white">
                                                     {log.changeAmount !== undefined ? `$${log.changeAmount.toFixed(2)}` : '-'}

@@ -129,8 +129,9 @@ const getOrCreateBudget = async (month: string, year: number, userId: string): P
           }
         }
 
-        // DUPLICATE CHECK: Skip if a transaction with same name, date, category already exists
-        const existingTransaction = targetBudget.transactions.find(
+        // DUPLICATE CHECK: Query fresh data from DB to prevent race conditions
+        const freshBudget = await Budget.findOne({ month: tMonth, year: tYear, userId });
+        const existingTransaction = freshBudget?.transactions.find(
           (t: Transaction) =>
             t.name === rule.name &&
             t.date === rule.nextRunDate &&
@@ -164,7 +165,8 @@ const getOrCreateBudget = async (month: string, year: number, userId: string): P
           date: rule.nextRunDate, // Use the date it was supposed to run
           timestamp: format(new Date(), 'HH:mm:ss'),
           goalId: undefined,
-          walletId: rule.walletId || undefined
+          walletId: rule.walletId || undefined,
+          type: rule.type || 'expense' // Preserve income/expense type from rule
         };
 
         targetBudget.transactions.push(newTransaction);
@@ -805,6 +807,7 @@ export const updateTransaction: RequestHandler = async (req, res) => {
       changeType: 'transaction_updated',
       previousBalance: oldAmount,
       newBalance: newAmount,
+      changeAmount: newAmount,
       details: `Updated transaction: ${transaction.name} ($${oldAmount} → $${newAmount})`
     });
 

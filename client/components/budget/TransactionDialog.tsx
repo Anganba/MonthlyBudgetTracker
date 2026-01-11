@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
     Dialog,
     DialogContent,
@@ -13,7 +13,7 @@ import {
     TabsList,
     TabsTrigger,
 } from "@/components/ui/tabs";
-import { ArrowLeftRight, ArrowDown, Receipt, TrendingUp, ArrowRightLeft } from "lucide-react";
+import { ArrowLeftRight, ArrowDown, Receipt, TrendingUp, ArrowRightLeft, Clock } from "lucide-react";
 import { GoalDeductionSelector, GoalDeduction } from './GoalDeductionSelector';
 
 import {
@@ -22,6 +22,9 @@ import {
     SelectItem,
     SelectTrigger,
     SelectValue,
+    SelectSeparator,
+    SelectLabel,
+    SelectGroup,
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -31,6 +34,33 @@ import { useWallets } from '@/hooks/use-wallets';
 import { cn } from "@/lib/utils";
 import { TRANSACTION_CATEGORIES } from "@/lib/categories";
 import { useToast } from "@/components/ui/use-toast";
+
+// Frequent categories tracking
+const FREQUENT_CATEGORIES_KEY = 'budget-frequent-categories';
+const MAX_FREQUENT_CATEGORIES = 5;
+
+interface CategoryUsage {
+    [categoryId: string]: number;
+}
+
+const getFrequentCategories = (): CategoryUsage => {
+    try {
+        const stored = localStorage.getItem(FREQUENT_CATEGORIES_KEY);
+        return stored ? JSON.parse(stored) : {};
+    } catch {
+        return {};
+    }
+};
+
+const trackCategoryUsage = (categoryId: string) => {
+    try {
+        const usage = getFrequentCategories();
+        usage[categoryId] = (usage[categoryId] || 0) + 1;
+        localStorage.setItem(FREQUENT_CATEGORIES_KEY, JSON.stringify(usage));
+    } catch {
+        // Silently fail if localStorage is unavailable
+    }
+};
 
 export interface TransactionData {
     id?: string;
@@ -121,6 +151,22 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
         return true;
     });
 
+    // Get frequent categories sorted by usage count
+    const { frequentCats, remainingCats } = useMemo(() => {
+        const usage = getFrequentCategories();
+        const sortedByUsage = filteredCategories
+            .filter(cat => usage[cat.id] && usage[cat.id] > 0)
+            .sort((a, b) => (usage[b.id] || 0) - (usage[a.id] || 0))
+            .slice(0, MAX_FREQUENT_CATEGORIES);
+
+        const frequentIds = new Set(sortedByUsage.map(c => c.id));
+        const remaining = filteredCategories
+            .filter(cat => !frequentIds.has(cat.id))
+            .sort((a, b) => a.label.localeCompare(b.label));
+
+        return { frequentCats: sortedByUsage, remainingCats: remaining };
+    }, [filteredCategories]);
+
     // Validate when user tries to select Transfer with only one wallet
     const handleTypeChange = (newType: 'expense' | 'income' | 'transfer') => {
         // Check if user is trying to select Transfer but only has one wallet
@@ -189,6 +235,11 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
         const now = new Date();
         const currentTimestamp = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
         const timestamp = mode === 'edit' && initialData?.timestamp ? initialData.timestamp : currentTimestamp;
+
+        // Track category usage for frequent categories feature
+        if (type !== 'transfer') {
+            trackCategoryUsage(category);
+        }
 
         onSubmit({
             id: initialData?.id,
@@ -304,10 +355,34 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
                                     <SelectTrigger className="bg-zinc-800 border-zinc-700 rounded-xl h-11">
                                         <SelectValue placeholder="Category" />
                                     </SelectTrigger>
-                                    <SelectContent className="bg-zinc-800 border-zinc-700">
-                                        {filteredCategories.sort((a, b) => a.label.localeCompare(b.label)).map((cat) => (
-                                            <SelectItem key={cat.id} value={cat.id}>{cat.label}</SelectItem>
-                                        ))}
+                                    <SelectContent className="bg-zinc-800 border-zinc-700 max-h-[300px]">
+                                        {frequentCats.length > 0 && (
+                                            <>
+                                                <SelectGroup>
+                                                    <SelectLabel className="text-xs text-gray-500 flex items-center gap-1.5">
+                                                        <Clock className="h-3 w-3" />
+                                                        Frequently Used
+                                                    </SelectLabel>
+                                                    {frequentCats.map((cat) => (
+                                                        <SelectItem key={`freq-${cat.id}`} value={cat.id}>
+                                                            {cat.label}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectGroup>
+                                                <SelectSeparator className="bg-white/10" />
+                                                <SelectGroup>
+                                                    <SelectLabel className="text-xs text-gray-500">All Categories</SelectLabel>
+                                                    {remainingCats.map((cat) => (
+                                                        <SelectItem key={cat.id} value={cat.id}>{cat.label}</SelectItem>
+                                                    ))}
+                                                </SelectGroup>
+                                            </>
+                                        )}
+                                        {frequentCats.length === 0 && (
+                                            remainingCats.concat(frequentCats).sort((a, b) => a.label.localeCompare(b.label)).map((cat) => (
+                                                <SelectItem key={cat.id} value={cat.id}>{cat.label}</SelectItem>
+                                            ))
+                                        )}
                                     </SelectContent>
                                 </Select>
                             </div>

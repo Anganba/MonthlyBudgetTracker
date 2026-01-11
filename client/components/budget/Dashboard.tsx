@@ -156,58 +156,70 @@ export function Dashboard() {
       <div className="hidden md:block absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-gradient-to-tl from-rose-500/10 via-orange-500/5 to-transparent rounded-full blur-3xl pointer-events-none animate-pulse" style={{ animationDuration: '6s' }} />
       <div className="hidden md:block absolute top-1/4 left-1/3 w-[350px] h-[350px] bg-gradient-to-br from-emerald-500/10 to-transparent rounded-full blur-3xl pointer-events-none animate-pulse" style={{ animationDuration: '7s' }} />
 
-      {/* Top Header Row */}
+      {/* Top Header Row - Consolidated and balanced */}
       <div className="relative z-10 flex flex-col gap-4 mb-6 md:mb-8">
-        {/* Title + Date Nav Row */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold font-serif text-white">Dashboard</h1>
-            <p className="text-gray-500 text-xs md:text-sm mt-0.5 md:mt-1 hidden sm:block">Track your finances at a glance</p>
-          </div>
-          <div className="flex items-center bg-zinc-900/80 backdrop-blur-sm rounded-xl md:rounded-2xl border border-white/10 p-1 md:p-1.5 shadow-lg">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handlePrevMonth}
-              className="h-8 w-8 md:h-9 md:w-9 hover:bg-primary hover:text-black transition-all rounded-lg md:rounded-xl"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <span className="min-w-[100px] md:min-w-[140px] text-center font-semibold text-xs md:text-sm lg:text-base px-1 md:px-2">
-              {month} {year}
-            </span>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleNextMonth}
-              className="h-8 w-8 md:h-9 md:w-9 hover:bg-primary hover:text-black transition-all rounded-lg md:rounded-xl"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-
-        {/* Search + Actions Row */}
-        <div className="flex flex-col sm:flex-row items-stretch gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 md:left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
-            <Input
-              placeholder="Search..."
-              className="pl-9 md:pl-11 bg-zinc-900/80 backdrop-blur-sm border-white/10 rounded-xl md:rounded-2xl h-10 md:h-11 text-sm focus-visible:ring-primary focus-visible:border-primary w-full"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+        {/* Main Header Row */}
+        <div className="flex items-center justify-between gap-4">
+          {/* Left: Title */}
+          <div className="flex-shrink-0">
+            <h1 className="text-xl md:text-2xl lg:text-3xl font-bold font-serif text-white">Dashboard</h1>
+            <p className="text-gray-500 text-[10px] md:text-xs mt-0.5 hidden sm:block">Track your finances at a glance</p>
           </div>
 
-          <div className="flex items-center gap-2 md:gap-3">
+          {/* Center: Search + Quick Greeting */}
+          <div className="flex-1 flex items-center justify-center gap-3 max-w-xl">
+            <div className="relative w-full max-w-[200px] md:max-w-[280px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-500" />
+              <Input
+                placeholder="Search..."
+                className="pl-8 md:pl-9 bg-zinc-900/80 backdrop-blur-sm border-white/10 rounded-xl h-9 md:h-10 text-xs md:text-sm focus-visible:ring-primary focus-visible:border-primary w-full"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <div className="hidden lg:flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-zinc-800/80 to-zinc-900/50 border border-white/5">
+              <span className="text-xs text-gray-400">Welcome back,</span>
+              <span className="text-sm font-semibold text-white">{user?.username || 'User'}</span>
+              <span className="text-lg">👋</span>
+            </div>
+          </div>
+
+          {/* Right: Date Nav + Actions */}
+          <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
+            {/* Date Navigator - Compact */}
+            <div className="flex items-center bg-zinc-900/80 backdrop-blur-sm rounded-xl border border-white/10 p-0.5 md:p-1 shadow-lg">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handlePrevMonth}
+                className="h-7 w-7 md:h-8 md:w-8 hover:bg-primary hover:text-black transition-all rounded-lg"
+              >
+                <ChevronLeft className="h-3.5 w-3.5 md:h-4 md:w-4" />
+              </Button>
+              <span className="min-w-[80px] md:min-w-[110px] text-center font-semibold text-[10px] md:text-xs lg:text-sm px-1">
+                {month.slice(0, 3)} {year}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleNextMonth}
+                className="h-7 w-7 md:h-8 md:w-8 hover:bg-primary hover:text-black transition-all rounded-lg"
+              >
+                <ChevronRight className="h-3.5 w-3.5 md:h-4 md:w-4" />
+              </Button>
+            </div>
+
+            {/* Add Transaction Button */}
             <Button
               onClick={() => setIsDialogOpen(true)}
-              className="bg-primary text-black hover:bg-primary/90 rounded-xl md:rounded-2xl px-4 md:px-6 h-10 md:h-11 font-bold flex-1 sm:flex-none whitespace-nowrap gap-1.5 md:gap-2 shadow-lg shadow-primary/20 text-sm"
+              className="bg-primary text-black hover:bg-primary/90 rounded-xl px-3 md:px-4 h-8 md:h-9 font-bold whitespace-nowrap gap-1.5 shadow-lg shadow-primary/20 text-xs md:text-sm"
             >
-              <Plus className="h-4 w-4" />
+              <Plus className="h-3.5 w-3.5 md:h-4 md:w-4" />
               <span className="hidden sm:inline">Add Transaction</span>
               <span className="sm:hidden">Add</span>
             </Button>
+
+            {/* User Profile */}
             <div className="hidden sm:block">
               <UserProfile />
             </div>
