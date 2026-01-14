@@ -5,6 +5,10 @@ interface User {
     id: string;
     username: string;
     email?: string;
+    displayName?: string;
+    bio?: string;
+    avatarUrl?: string;
+    createdAt?: string;
 }
 
 interface AuthContextType {
@@ -13,7 +17,7 @@ interface AuthContextType {
     login: (username: string, password: string) => Promise<void>;
     logout: () => Promise<void>;
     register: (username: string, password: string, email?: string) => Promise<void>;
-    updateProfile: (data: { username?: string; email?: string }) => Promise<void>;
+    updateProfile: (data: { username?: string; email?: string; displayName?: string; bio?: string; avatarUrl?: string }) => Promise<void>;
     updatePassword: (currentPassword: string, newPassword: string) => Promise<void>;
 }
 
@@ -72,7 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
-    const updateProfile = async (data: { username?: string; email?: string }) => {
+    const updateProfile = async (data: { username?: string; email?: string; displayName?: string; bio?: string; avatarUrl?: string }) => {
         const res = await fetch("/api/profile", {
             method: "PUT",
             headers: { "Content-Type": "application/json" },

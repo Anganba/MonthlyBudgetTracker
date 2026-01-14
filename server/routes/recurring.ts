@@ -83,6 +83,14 @@ export const updateRecurringTransaction: RequestHandler = async (req, res) => {
         const item = await RecurringTransactionModel.findOne({ _id: id, userId });
         if (!item) return res.status(404).json({ success: false, message: "Not found" });
 
+        // Capture old values for change detection
+        const oldName = item.name;
+        const oldAmount = item.amount;
+        const oldCategory = item.category;
+        const oldFrequency = item.frequency;
+        const oldStartDate = item.startDate;
+        const oldWalletId = item.walletId;
+
         const allowedUpdates = ['name', 'amount', 'type', 'category', 'frequency', 'startDate', 'nextRunDate', 'active', 'walletId'];
         allowedUpdates.forEach(key => {
             if (req.body[key] !== undefined) (item as any)[key] = req.body[key];
@@ -101,14 +109,14 @@ export const updateRecurringTransaction: RequestHandler = async (req, res) => {
 
         await item.save();
 
-        // Create audit log for recurring rule update
+        // Create audit log for recurring rule update - only log actual changes
         const changes: string[] = [];
-        if (req.body.name !== undefined) changes.push('name');
-        if (req.body.amount !== undefined) changes.push('amount');
-        if (req.body.category !== undefined) changes.push('category');
-        if (req.body.frequency !== undefined) changes.push('frequency');
-        if (req.body.startDate !== undefined) changes.push('start date');
-        if (req.body.walletId !== undefined) changes.push('wallet');
+        if (req.body.name !== undefined && req.body.name !== oldName) changes.push(`name: "${oldName}" → "${req.body.name}"`);
+        if (req.body.amount !== undefined && req.body.amount !== oldAmount) changes.push(`amount: $${oldAmount} → $${req.body.amount}`);
+        if (req.body.category !== undefined && req.body.category !== oldCategory) changes.push(`category: ${oldCategory} → ${req.body.category}`);
+        if (req.body.frequency !== undefined && req.body.frequency !== oldFrequency) changes.push(`frequency: ${oldFrequency} → ${req.body.frequency}`);
+        if (req.body.startDate !== undefined && req.body.startDate !== oldStartDate) changes.push(`start date`);
+        if (req.body.walletId !== undefined && req.body.walletId !== oldWalletId) changes.push(`wallet`);
 
         if (changes.length > 0) {
             await AuditLogModel.create({

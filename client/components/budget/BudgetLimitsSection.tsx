@@ -32,7 +32,8 @@ export function BudgetLimitsSection({ month, year }: BudgetLimitsSectionProps) {
             setLimits(budgetLimits);
 
             const initialVisible = new Set<string>();
-            const incomeCategories = ['Paycheck', 'Bonus', 'Savings', 'Debt Added', 'income', 'Transfer'];
+            // All income/special categories that should NOT appear in budget limits
+            const incomeCategories = ['Paycheck', 'Bonus', 'Savings', 'Debt Added', 'income', 'Transfer', 'Side Hustle', 'Freelance', 'Gifts Received', 'Refund'];
 
             // First, add categories from EXPENSE_CATEGORIES that have limits or spending
             EXPENSE_CATEGORIES.forEach(cat => {
@@ -263,12 +264,12 @@ export function BudgetLimitsSection({ month, year }: BudgetLimitsSectionProps) {
                             <div
                                 key={cat.id}
                                 className={`p-4 rounded-xl border relative group transition-all hover:scale-[1.02] ${cat.isOverBudget
-                                        ? 'bg-gradient-to-br from-red-500/15 via-red-500/10 to-transparent border-red-500/40 shadow-lg shadow-red-500/10'
-                                        : cat.isFull
-                                            ? 'bg-gradient-to-br from-yellow-500/15 via-yellow-500/10 to-transparent border-yellow-500/40 shadow-lg shadow-yellow-500/10'
-                                            : cat.isUnlimited
-                                                ? 'bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent border-amber-500/30 hover:border-amber-500/50 hover:shadow-lg hover:shadow-amber-500/5'
-                                                : 'bg-gradient-to-br from-white/5 via-white/[0.02] to-transparent border-white/10 hover:border-violet-500/30 hover:shadow-lg hover:shadow-violet-500/5'
+                                    ? 'bg-gradient-to-br from-red-500/15 via-red-500/10 to-transparent border-red-500/40 shadow-lg shadow-red-500/10'
+                                    : cat.isFull
+                                        ? 'bg-gradient-to-br from-yellow-500/15 via-yellow-500/10 to-transparent border-yellow-500/40 shadow-lg shadow-yellow-500/10'
+                                        : cat.isUnlimited
+                                            ? 'bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent border-amber-500/30 hover:border-amber-500/50 hover:shadow-lg hover:shadow-amber-500/5'
+                                            : 'bg-gradient-to-br from-white/5 via-white/[0.02] to-transparent border-white/10 hover:border-violet-500/30 hover:shadow-lg hover:shadow-violet-500/5'
                                     }`}
                             >
                                 {isEditing && (
@@ -283,28 +284,28 @@ export function BudgetLimitsSection({ month, year }: BudgetLimitsSectionProps) {
                                 <div className="flex justify-between items-start mb-4">
                                     <div className="flex items-center gap-3">
                                         <div className={`p-2 rounded-xl ${cat.isOverBudget
-                                                ? 'bg-gradient-to-br from-red-500/30 to-red-500/20'
-                                                : cat.isFull
-                                                    ? 'bg-gradient-to-br from-yellow-500/30 to-yellow-500/20'
-                                                    : cat.isUnlimited
-                                                        ? 'bg-gradient-to-br from-amber-500/20 to-yellow-500/10'
-                                                        : 'bg-gradient-to-br from-violet-500/20 to-purple-500/10'
+                                            ? 'bg-gradient-to-br from-red-500/30 to-red-500/20'
+                                            : cat.isFull
+                                                ? 'bg-gradient-to-br from-yellow-500/30 to-yellow-500/20'
+                                                : cat.isUnlimited
+                                                    ? 'bg-gradient-to-br from-amber-500/20 to-yellow-500/10'
+                                                    : 'bg-gradient-to-br from-violet-500/20 to-purple-500/10'
                                             }`}>
                                             <Icon className={`w-5 h-5 ${cat.isOverBudget
-                                                    ? 'text-red-400'
-                                                    : cat.isFull
-                                                        ? 'text-yellow-400'
-                                                        : cat.isUnlimited
-                                                            ? 'text-amber-400'
-                                                            : 'text-violet-400'
+                                                ? 'text-red-400'
+                                                : cat.isFull
+                                                    ? 'text-yellow-400'
+                                                    : cat.isUnlimited
+                                                        ? 'text-amber-400'
+                                                        : 'text-violet-400'
                                                 }`} />
                                         </div>
                                         <div>
                                             <Label className={`text-base font-semibold ${cat.isOverBudget
-                                                    ? 'text-red-400'
-                                                    : cat.isFull
-                                                        ? 'text-yellow-400'
-                                                        : 'text-white'
+                                                ? 'text-red-400'
+                                                : cat.isFull
+                                                    ? 'text-yellow-400'
+                                                    : 'text-white'
                                                 }`}>
                                                 {cat.label}
                                             </Label>
@@ -333,12 +334,12 @@ export function BudgetLimitsSection({ month, year }: BudgetLimitsSectionProps) {
                                         />
                                     ) : (
                                         <div className={`text-sm font-bold px-2 py-1 rounded-lg ${cat.isOverBudget
-                                                ? 'text-red-400 bg-red-500/20'
-                                                : cat.isFull
-                                                    ? 'text-yellow-400 bg-yellow-500/20'
-                                                    : cat.isUnlimited
-                                                        ? 'text-amber-400 bg-amber-500/20'
-                                                        : 'text-violet-400 bg-violet-500/20'
+                                            ? 'text-red-400 bg-red-500/20'
+                                            : cat.isFull
+                                                ? 'text-yellow-400 bg-yellow-500/20'
+                                                : cat.isUnlimited
+                                                    ? 'text-amber-400 bg-amber-500/20'
+                                                    : 'text-violet-400 bg-violet-500/20'
                                             }`}>
                                             {cat.isUnlimited ? '∞' : `${cat.percent}%`}
                                         </div>

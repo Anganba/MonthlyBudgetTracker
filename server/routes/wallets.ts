@@ -96,8 +96,15 @@ export const updateWallet: RequestHandler = async (req, res) => {
 
         const { name, type, balance, description, color, icon, isDefault, isSavingsWallet, reason } = req.body;
 
-        // Track previous balance for audit
+        // Track previous values for audit comparison
         const previousBalance = wallet.balance;
+        const previousName = wallet.name;
+        const previousType = wallet.type;
+        const previousDescription = wallet.description;
+        const previousColor = wallet.color;
+        const previousIcon = wallet.icon;
+        const previousIsDefault = wallet.isDefault;
+        const previousIsSavingsWallet = wallet.isSavingsWallet;
 
         if (name) wallet.name = name;
         if (type) wallet.type = type;
@@ -111,10 +118,14 @@ export const updateWallet: RequestHandler = async (req, res) => {
             wallet.isDefault = true;
         }
 
-        // If marked as savings wallet, unmark all others
+        // If marked as savings wallet, unmark all others (except this one)
         if (isSavingsWallet !== undefined) {
             if (isSavingsWallet) {
-                await WalletModel.updateMany({ userId }, { isSavingsWallet: false });
+                // Exclude current wallet from bulk update to prevent race condition
+                await WalletModel.updateMany(
+                    { userId, _id: { $ne: wallet._id } },
+                    { isSavingsWallet: false }
+                );
                 wallet.isSavingsWallet = true;
             } else {
                 wallet.isSavingsWallet = false;
@@ -138,15 +149,17 @@ export const updateWallet: RequestHandler = async (req, res) => {
             });
         }
 
-        // Create audit log for other wallet updates
+        // Create audit log for other wallet updates - only log fields that ACTUALLY changed
         const changes: string[] = [];
-        if (name) changes.push('name');
-        if (type) changes.push('type');
-        if (description !== undefined) changes.push('description');
-        if (color) changes.push('color');
-        if (icon) changes.push('icon');
-        if (isDefault) changes.push('default status');
-        if (isSavingsWallet !== undefined) changes.push('savings wallet status');
+        if (name && name !== previousName) changes.push(`name: "${previousName}" → "${name}"`);
+        if (type && type !== previousType) changes.push(`type: ${previousType} → ${type}`);
+        if (description !== undefined && description !== previousDescription) changes.push('description');
+        if (color && color !== previousColor) changes.push('color');
+        if (icon && icon !== previousIcon) changes.push('icon');
+        if (isDefault && !previousIsDefault) changes.push('set as default');
+        if (isSavingsWallet !== undefined && isSavingsWallet !== previousIsSavingsWallet) {
+            changes.push(isSavingsWallet ? 'marked as savings wallet' : 'unmarked as savings wallet');
+        }
 
         if (changes.length > 0 && !(balance !== undefined && previousBalance !== balance)) {
             // Only log wallet_updated if there wasn't already a balance_change log

@@ -106,6 +106,7 @@ export const TRANSACTION_CATEGORIES: CategoryDef[] = [
     { id: "Gifts", label: "Gifts", type: 'expense' },
     { id: "Insurance", label: "Insurance", type: 'expense' },
     { id: "Investments", label: "Investments", type: 'expense' },
+    { id: "Loans Given", label: "Loans Given", type: 'expense' },
     { id: "Remittance", label: "Remittance", type: 'expense' },
     { id: "Taxes", label: "Taxes", type: 'expense' },
     { id: "Tips & Service", label: "Tips & Service", type: 'expense' },

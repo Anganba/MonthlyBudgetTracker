@@ -17,6 +17,7 @@ import {
   getMonthlyStats,
   getAllTransactions,
   revertGoalFulfillment,
+  getFrequentCategories,
 } from "./routes/budget";
 import {
   getGoals,
@@ -102,6 +103,7 @@ export function createServer() {
 
   // Budget API routes - Protected
   app.get("/api/budget/all", requireAuth, getAllTransactions);
+  app.get("/api/budget/frequent-categories", requireAuth, getFrequentCategories);
   app.get("/api/budget", requireAuth, getBudget);
   app.get("/api/budget/year", requireAuth, getYearlyStats);
   app.get("/api/budget/month-stats", requireAuth, getMonthlyStats);

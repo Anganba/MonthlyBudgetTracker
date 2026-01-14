@@ -19,7 +19,7 @@ export function BudgetStatus({ currency = '$', budget, refreshBudget, showAllCat
     const transactions = budget?.transactions || [];
     const limits = (budget?.categoryLimits as Record<string, number>) || {};
 
-    const incomeCategories = ['Paycheck', 'Bonus', 'Savings', 'Debt Added', 'income', 'Transfer'];
+    const incomeCategories = ['Paycheck', 'Bonus', 'Savings', 'Debt Added', 'income', 'Transfer', 'Side Hustle', 'Freelance', 'Gifts Received', 'Refund'];
 
     const transactionCategories = new Set(transactions.map(t => t.category));
     const allCategories = new Set([

@@ -177,10 +177,14 @@ export function Dashboard() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <div className="hidden lg:flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-zinc-800/80 to-zinc-900/50 border border-white/5">
-              <span className="text-xs text-gray-400">Welcome back,</span>
-              <span className="text-sm font-semibold text-white">{user?.username || 'User'}</span>
-              <span className="text-lg">👋</span>
+            <div className="hidden lg:flex items-center gap-3 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-violet-500/10 via-purple-500/10 to-cyan-500/10 border border-violet-500/30 shadow-lg shadow-violet-500/5 backdrop-blur-sm">
+              <div className="flex flex-col">
+                <span className="text-[10px] uppercase tracking-wider text-violet-400/80 font-medium">Welcome back</span>
+                <span className="text-sm font-bold bg-gradient-to-r from-white via-violet-200 to-cyan-200 bg-clip-text text-transparent">{user?.displayName || user?.username || 'User'}</span>
+              </div>
+              <div className="h-8 w-8 rounded-full bg-gradient-to-br from-violet-500/20 to-cyan-500/20 flex items-center justify-center border border-violet-500/30">
+                <span className="text-base animate-pulse">✨</span>
+              </div>
             </div>
           </div>
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useToast } from '@/hooks/use-toast';
 import {
     Dialog,
     DialogContent,
@@ -82,9 +83,30 @@ export function GoalDialog({ open, onOpenChange, onSubmit, initialData, mode = '
         }
     }, [open, initialData, mode]);
 
+    const { toast } = useToast();
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (name.trim() && targetAmount) {
+            // Check for no changes in edit mode
+            if (mode === 'edit' && initialData) {
+                const noChanges =
+                    name === (initialData.name || '') &&
+                    (parseFloat(targetAmount) || 0) === (initialData.targetAmount || 0) &&
+                    targetDate === (initialData.targetDate?.split('T')[0] || '') &&
+                    category === (initialData.category || 'Other') &&
+                    description === (initialData.description || '');
+
+                if (noChanges) {
+                    toast({
+                        title: "No Changes",
+                        description: "No changes were made to this goal.",
+                    });
+                    setTimeout(() => onOpenChange(false), 100);
+                    return;
+                }
+            }
+
             onSubmit({
                 id: initialData?.id,
                 name,

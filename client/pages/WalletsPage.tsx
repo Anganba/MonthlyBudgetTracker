@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 import { useWallets } from "@/hooks/use-wallets";
 import { useBudget } from "@/hooks/use-budget";
 import { Button } from "@/components/ui/button";
@@ -192,6 +193,8 @@ export default function WalletsPage() {
         setIsTransferOpen(true);
     };
 
+    const { toast } = useToast();
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         const data = {
@@ -204,6 +207,23 @@ export default function WalletsPage() {
         };
 
         if (editingWallet) {
+            // Check for no changes
+            const noChanges =
+                formData.name === editingWallet.name &&
+                formData.type === editingWallet.type &&
+                (parseFloat(formData.balance) || 0) === editingWallet.balance &&
+                formData.description === (editingWallet.description || '') &&
+                formData.color === editingWallet.color &&
+                formData.isSavingsWallet === (editingWallet.isSavingsWallet || false);
+
+            if (noChanges) {
+                toast({
+                    title: "No Changes",
+                    description: "No changes were made to this wallet.",
+                });
+                setTimeout(() => setIsDialogOpen(false), 100);
+                return;
+            }
             updateWallet.mutate({ id: editingWallet.id, ...data });
         } else {
             createWallet.mutate(data);
@@ -422,40 +442,49 @@ export default function WalletsPage() {
                                         <p className="text-[10px] md:text-xs text-gray-400 mt-0.5 md:mt-1">Available Balance</p>
                                     </div>
 
-                                    {/* Recent Transactions */}
-                                    {recentTransactions.length > 0 && (
+                                    {/* Recent Transactions & Description Section */}
+                                    {(recentTransactions.length > 0 || wallet.description) && (
                                         <div className="mt-3 md:mt-4 pt-3 md:pt-4 border-t border-white/10">
-                                            <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-2">Recent Activity</p>
-                                            <div className="space-y-1.5">
-                                                {recentTransactions.slice(0, 2).map(t => {
-                                                    // Determine if transaction is incoming or outgoing for THIS wallet
-                                                    const isIncoming =
-                                                        t.type === 'income' || // Income is always incoming
-                                                        t.toWalletId === wallet.id; // Transfers TO this wallet
-                                                    const isOutgoing =
-                                                        t.type === 'expense' || // Expense is always outgoing
-                                                        (t.type === 'transfer' && t.walletId === wallet.id) || // Transfers FROM this wallet
-                                                        (t.type === 'savings' && t.walletId === wallet.id); // Savings FROM this wallet
+                                            <div className={`grid gap-3 ${wallet.description && recentTransactions.length > 0 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                                                {/* Recent Activity - Left Side */}
+                                                {recentTransactions.length > 0 && (
+                                                    <div>
+                                                        <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-2">Recent Activity</p>
+                                                        <div className="space-y-1.5">
+                                                            {recentTransactions.slice(0, 2).map(t => {
+                                                                // Determine if transaction is incoming or outgoing for THIS wallet
+                                                                const isIncoming =
+                                                                    t.type === 'income' || // Income is always incoming
+                                                                    t.toWalletId === wallet.id; // Transfers TO this wallet
+                                                                const isOutgoing =
+                                                                    t.type === 'expense' || // Expense is always outgoing
+                                                                    (t.type === 'transfer' && t.walletId === wallet.id) || // Transfers FROM this wallet
+                                                                    (t.type === 'savings' && t.walletId === wallet.id); // Savings FROM this wallet
 
-                                                    return (
-                                                        <div key={t.id} className="flex items-center justify-between">
-                                                            <span className="text-xs text-gray-400 truncate flex-1 mr-2">{t.name}</span>
-                                                            <span className={`text-xs font-medium ${isOutgoing ? 'text-orange-400' : 'text-green-400'}`}>
-                                                                {isOutgoing ? '-' : '+'}${t.actual.toLocaleString()}
-                                                            </span>
+                                                                return (
+                                                                    <div key={t.id} className="flex items-center justify-between">
+                                                                        <span className="text-xs text-gray-400 truncate flex-1 mr-2">{t.name}</span>
+                                                                        <span className={`text-xs font-medium ${isOutgoing ? 'text-orange-400' : 'text-green-400'}`}>
+                                                                            {isOutgoing ? '-' : '+'}${t.actual.toLocaleString()}
+                                                                        </span>
+                                                                    </div>
+                                                                );
+                                                            })}
                                                         </div>
-                                                    );
-                                                })}
-                                            </div>
-                                            <Link to={`/transactions?wallet=${wallet.id}`} className="flex items-center gap-1 text-[10px] text-gray-500 hover:text-primary mt-2 transition-colors">
-                                                View all <ArrowRight className="h-2.5 w-2.5" />
-                                            </Link>
-                                        </div>
-                                    )}
+                                                        <Link to={`/transactions?wallet=${wallet.id}`} className="flex items-center gap-1 text-[10px] text-gray-500 hover:text-primary mt-2 transition-colors">
+                                                            View all <ArrowRight className="h-2.5 w-2.5" />
+                                                        </Link>
+                                                    </div>
+                                                )}
 
-                                    {wallet.description && !recentTransactions.length && (
-                                        <div className="mt-3 md:mt-4 pt-3 md:pt-4 border-t border-white/10">
-                                            <p className="text-xs md:text-sm text-gray-400 italic line-clamp-2">{wallet.description}</p>
+                                                {/* Description/Notes - Right Side */}
+                                                {wallet.description && (
+                                                    <div className={recentTransactions.length > 0 ? 'border-l border-white/10 pl-3' : ''}>
+                                                        <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-2">Notes</p>
+                                                        <p className="text-xs text-gray-400 italic line-clamp-3">{wallet.description}</p>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                     )}
                                 </div>

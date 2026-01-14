@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { RecurringTransaction } from "@shared/api";
@@ -388,8 +389,32 @@ function RecurringDialog({ open, onOpenChange, onSubmit, initialData, mode }: Re
         }
     }, [type, category]);
 
+    const { toast } = useToast();
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+
+        // Check for no changes in edit mode
+        if (mode === 'edit' && initialData) {
+            const noChanges =
+                name === initialData.name &&
+                (parseFloat(amount) || 0) === initialData.amount &&
+                type === (initialData.type || 'expense') &&
+                category === initialData.category &&
+                frequency === initialData.frequency &&
+                startDate === (initialData.startDate || '') &&
+                (walletId || '') === (initialData.walletId || '');
+
+            if (noChanges) {
+                toast({
+                    title: "No Changes",
+                    description: "No changes were made to this recurring rule.",
+                });
+                setTimeout(() => onOpenChange(false), 100);
+                return;
+            }
+        }
+
         onSubmit({
             name,
             amount: parseFloat(amount),

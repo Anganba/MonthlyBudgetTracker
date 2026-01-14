@@ -91,6 +91,12 @@ export const updateGoal: RequestHandler = async (req, res) => {
         if (!goal) return res.status(404).json({ success: false, message: "Goal not found" });
 
         const previousStatus = goal.status;
+        // Capture old values for change detection
+        const oldName = goal.name;
+        const oldTargetAmount = goal.targetAmount;
+        const oldCategory = goal.category;
+        const oldDescription = goal.description;
+        const oldTargetDate = goal.targetDate?.toISOString();
 
         if (name !== undefined) goal.name = name;
         if (targetAmount !== undefined) goal.targetAmount = targetAmount;
@@ -141,13 +147,16 @@ export const updateGoal: RequestHandler = async (req, res) => {
                 });
             }
         } else if (!status || status === previousStatus) {
-            // Regular update (not a status change)
+            // Regular update (not a status change) - only log actual changes
             const changes: string[] = [];
-            if (name !== undefined) changes.push(`name`);
-            if (targetAmount !== undefined) changes.push(`target`);
-            if (category !== undefined) changes.push(`category`);
-            if (description !== undefined) changes.push(`description`);
-            if (targetDate !== undefined) changes.push(`target date`);
+            if (name !== undefined && name !== oldName) changes.push(`name: "${oldName}" → "${name}"`);
+            if (targetAmount !== undefined && targetAmount !== oldTargetAmount) changes.push(`target: $${oldTargetAmount} → $${targetAmount}`);
+            if (category !== undefined && category !== oldCategory) changes.push(`category: ${oldCategory} → ${category}`);
+            if (description !== undefined && description !== oldDescription) changes.push(`description`);
+            if (targetDate !== undefined) {
+                const newTargetDate = targetDate ? new Date(targetDate).toISOString() : undefined;
+                if (newTargetDate !== oldTargetDate) changes.push(`target date`);
+            }
 
             if (changes.length > 0) {
                 await AuditLogModel.create({

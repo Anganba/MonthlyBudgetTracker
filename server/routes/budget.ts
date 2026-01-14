@@ -628,6 +628,8 @@ export const updateTransaction: RequestHandler = async (req, res) => {
     const oldCategory = transaction.category;
     const oldType = transaction.type || 'expense';
     const oldToWalletId = transaction.toWalletId;
+    const oldName = transaction.name;
+    const oldDate = transaction.date;
 
     // Check if we need to move the transaction (date change check)
     let targetMonth = month as string;
@@ -797,19 +799,33 @@ export const updateTransaction: RequestHandler = async (req, res) => {
 
     await recalculateRollovers(startM, startY, userId);
 
-    // Log to audit trail
+    // Log to audit trail with specific changes
     const { AuditLogModel } = await import("../models/WalletAuditLog");
-    await AuditLogModel.create({
-      userId,
-      entityType: 'transaction',
-      entityId: transaction.id,
-      entityName: transaction.name,
-      changeType: 'transaction_updated',
-      previousBalance: oldAmount,
-      newBalance: newAmount,
-      changeAmount: newAmount,
-      details: `Updated transaction: ${transaction.name} ($${oldAmount} → $${newAmount})`
-    });
+
+    // Build list of actual changes
+    const changesList: string[] = [];
+
+    if (name !== undefined && name !== oldName) changesList.push(`name: "${oldName}" → "${name}"`);
+    if (actual !== undefined && actual !== oldAmount) changesList.push(`amount: $${oldAmount} → $${actual}`);
+    if (req.body.category !== undefined && req.body.category !== oldCategory) changesList.push(`category: ${oldCategory} → ${req.body.category}`);
+    if (req.body.date !== undefined && req.body.date !== oldDate) changesList.push(`date changed`);
+    if (req.body.walletId !== undefined && req.body.walletId !== oldWalletId) changesList.push(`wallet changed`);
+    if (req.body.type !== undefined && req.body.type !== oldType) changesList.push(`type: ${oldType} → ${req.body.type}`);
+
+    // Only create audit log if there were actual changes
+    if (changesList.length > 0) {
+      await AuditLogModel.create({
+        userId,
+        entityType: 'transaction',
+        entityId: transaction.id,
+        entityName: transaction.name,
+        changeType: 'transaction_updated',
+        previousBalance: oldAmount,
+        newBalance: newAmount,
+        changeAmount: newAmount,
+        details: `Updated: ${changesList.join(', ')}`
+      });
+    }
 
     res.json({ success: true, data: transaction });
   } catch (error) {
@@ -1123,8 +1139,8 @@ export const getMonthlyStats: RequestHandler = async (req, res) => {
             { $unwind: "$transactions" },
             {
               $match: {
-                "transactions.category": { $nin: ['income', 'Paycheck', 'Bonus', 'Debt Added', 'Savings'] },
-                "transactions.type": { $ne: 'transfer' },
+                "transactions.category": { $nin: ['income', 'Paycheck', 'Bonus', 'Debt Added', 'Savings', 'Transfer'] },
+                "transactions.type": { $nin: ['transfer', 'income'] },
                 "transactions.actual": { $gt: 0 },
                 "transactions.date": { $regex: datePattern }
               }
@@ -1240,6 +1256,49 @@ export const getAllTransactions: RequestHandler = async (req, res) => {
     res.json({ success: true, data: allTransactions });
   } catch (error) {
     console.error("Error fetching all transactions:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+// Get frequent categories from user's transaction history
+export const getFrequentCategories: RequestHandler = async (req, res) => {
+  const userId = req.session?.user?.id;
+
+  if (!userId) {
+    return res.status(401).json({ success: false, message: "Not authenticated" });
+  }
+
+  try {
+    // Aggregate category usage across all budgets
+    const result = await Budget.aggregate([
+      { $match: { userId } },
+      { $unwind: "$transactions" },
+      {
+        $match: {
+          // Exclude income and transfer categories
+          "transactions.category": { $nin: ['income', 'Paycheck', 'Bonus', 'Debt Added', 'Savings', 'Transfer'] },
+          "transactions.type": { $nin: ['income', 'transfer'] }
+        }
+      },
+      {
+        $group: {
+          _id: "$transactions.category",
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { count: -1 } },
+      { $limit: 5 }
+    ]);
+
+    // Format as { categoryName: count }
+    const frequentCategories: { [key: string]: number } = {};
+    result.forEach((item: any) => {
+      frequentCategories[item._id] = item.count;
+    });
+
+    res.json({ success: true, data: frequentCategories });
+  } catch (error) {
+    console.error("Error fetching frequent categories:", error);
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 };

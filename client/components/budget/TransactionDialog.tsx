@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
     Dialog,
     DialogContent,
@@ -35,32 +36,12 @@ import { cn } from "@/lib/utils";
 import { TRANSACTION_CATEGORIES } from "@/lib/categories";
 import { useToast } from "@/components/ui/use-toast";
 
-// Frequent categories tracking
-const FREQUENT_CATEGORIES_KEY = 'budget-frequent-categories';
+// Frequent categories tracking - now fetched from server
 const MAX_FREQUENT_CATEGORIES = 5;
 
 interface CategoryUsage {
     [categoryId: string]: number;
 }
-
-const getFrequentCategories = (): CategoryUsage => {
-    try {
-        const stored = localStorage.getItem(FREQUENT_CATEGORIES_KEY);
-        return stored ? JSON.parse(stored) : {};
-    } catch {
-        return {};
-    }
-};
-
-const trackCategoryUsage = (categoryId: string) => {
-    try {
-        const usage = getFrequentCategories();
-        usage[categoryId] = (usage[categoryId] || 0) + 1;
-        localStorage.setItem(FREQUENT_CATEGORIES_KEY, JSON.stringify(usage));
-    } catch {
-        // Silently fail if localStorage is unavailable
-    }
-};
 
 export interface TransactionData {
     id?: string;
@@ -100,6 +81,18 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
     const { goals } = useGoals();
     const { wallets } = useWallets();
     const { toast } = useToast();
+
+    // Fetch frequent categories from server (calculated from transaction history)
+    const { data: frequentCategoriesData = {} } = useQuery<CategoryUsage>({
+        queryKey: ['frequent-categories'],
+        queryFn: async () => {
+            const res = await fetch('/api/budget/frequent-categories');
+            if (!res.ok) return {};
+            const json = await res.json();
+            return json.data || {};
+        },
+        staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    });
 
     const [type, setType] = useState<'expense' | 'income' | 'transfer'>('expense');
     const [category, setCategory] = useState<string>('Food');
@@ -151,9 +144,9 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
         return true;
     });
 
-    // Get frequent categories sorted by usage count
+    // Get frequent categories sorted by usage count (from server data)
     const { frequentCats, remainingCats } = useMemo(() => {
-        const usage = getFrequentCategories();
+        const usage = frequentCategoriesData;
         const sortedByUsage = filteredCategories
             .filter(cat => usage[cat.id] && usage[cat.id] > 0)
             .sort((a, b) => (usage[b.id] || 0) - (usage[a.id] || 0))
@@ -165,7 +158,7 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
             .sort((a, b) => a.label.localeCompare(b.label));
 
         return { frequentCats: sortedByUsage, remainingCats: remaining };
-    }, [filteredCategories]);
+    }, [filteredCategories, frequentCategoriesData]);
 
     // Validate when user tries to select Transfer with only one wallet
     const handleTypeChange = (newType: 'expense' | 'income' | 'transfer') => {
@@ -231,15 +224,42 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
         const finalGoalId = goalId; // Allow goal linking for all transaction types
         const amount = parseFloat(actual) || 0;
 
+        // Check for no changes in edit mode
+        if (mode === 'edit' && initialData) {
+            // Compare dates by extracting just the YYYY-MM-DD part
+            const initialDatePart = (initialData.date || '').split('T')[0];
+            // Map types consistently (savings is displayed as transfer)
+            const initialType = initialData.type === 'savings' ? 'transfer' : (initialData.type || 'expense');
+
+            const noChanges =
+                name === initialData.name &&
+                type === initialType &&
+                category === initialData.category &&
+                amount === initialData.actual &&
+                date === initialDatePart &&
+                (walletId || '') === (initialData.walletId || '') &&
+                (toWalletId || '') === (initialData.toWalletId || '') &&
+                // Treat 'unassigned' as equivalent to undefined/empty for goalId
+                ((finalGoalId === 'unassigned' ? '' : finalGoalId) || '') === (initialData.goalId || '');
+
+            if (noChanges) {
+                toast({
+                    title: "No Changes",
+                    description: "No changes were made to this transaction.",
+                });
+                // Small delay to ensure toast renders before dialog closes
+                setTimeout(() => onOpenChange(false), 100);
+                return;
+            }
+        }
+
         // Generate current timestamp (HH:MM:SS) for new transactions, preserve existing for edits
         const now = new Date();
         const currentTimestamp = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
         const timestamp = mode === 'edit' && initialData?.timestamp ? initialData.timestamp : currentTimestamp;
 
-        // Track category usage for frequent categories feature
-        if (type !== 'transfer') {
-            trackCategoryUsage(category);
-        }
+        // No longer need to track locally - frequent categories are calculated from transaction history
+        // The server endpoint /api/budget/frequent-categories handles this
 
         onSubmit({
             id: initialData?.id,

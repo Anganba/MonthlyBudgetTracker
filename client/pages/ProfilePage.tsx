@@ -15,6 +15,7 @@ import { useBudget } from "@/hooks/use-budget";
 import { useWallets } from "@/hooks/use-wallets";
 import { useGoals } from "@/hooks/use-goals";
 import { ExportDialog } from "@/components/budget/ExportDialog";
+import { AvatarUpload } from "@/components/ui/AvatarUpload";
 
 export default function ProfilePage() {
     const { user, logout, updateProfile, updatePassword } = useAuth();
@@ -29,7 +30,13 @@ export default function ProfilePage() {
     const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
 
     // Form States
-    const [profileForm, setProfileForm] = useState({ username: "", email: "" });
+    const [profileForm, setProfileForm] = useState({
+        username: "",
+        email: "",
+        displayName: "",
+        bio: "",
+        avatarUrl: ""
+    });
     const [passwordForm, setPasswordForm] = useState({ current: "", new: "", confirm: "" });
 
     const [isLoading, setIsLoading] = useState(false);
@@ -44,7 +51,13 @@ export default function ProfilePage() {
 
     // Open Helpers
     const openEditProfile = () => {
-        setProfileForm({ username: user?.username || "", email: user?.email || "" });
+        setProfileForm({
+            username: user?.username || "",
+            email: user?.email || "",
+            displayName: user?.displayName || "",
+            bio: user?.bio || "",
+            avatarUrl: user?.avatarUrl || ""
+        });
         setIsEditProfileOpen(true);
     };
 
@@ -58,7 +71,13 @@ export default function ProfilePage() {
         if (!profileForm.username) return;
         setIsLoading(true);
         try {
-            await updateProfile({ username: profileForm.username, email: profileForm.email });
+            await updateProfile({
+                username: profileForm.username,
+                email: profileForm.email,
+                displayName: profileForm.displayName,
+                bio: profileForm.bio,
+                avatarUrl: profileForm.avatarUrl
+            });
             toast({ title: "Profile updated", description: "Your details have been saved." });
             setIsEditProfileOpen(false);
         } catch (error: any) {
@@ -130,9 +149,9 @@ export default function ProfilePage() {
                                 <div className="w-full h-full bg-zinc-900 rounded-full" />
                             </div>
                             <Avatar className="h-32 w-32 border-4 border-transparent relative shadow-2xl" style={{ background: 'linear-gradient(135deg, #3b82f6, #6366f1, #8b5cf6)' }}>
-                                <AvatarImage src="" />
+                                <AvatarImage src={user?.avatarUrl || ""} />
                                 <AvatarFallback className="bg-gradient-to-br from-violet-500/30 to-purple-500/20 text-violet-300 text-4xl font-bold">
-                                    {user?.username ? getInitials(user.username) : "U"}
+                                    {user?.displayName ? getInitials(user.displayName) : user?.username ? getInitials(user.username) : "U"}
                                 </AvatarFallback>
                             </Avatar>
                             <button
@@ -147,12 +166,18 @@ export default function ProfilePage() {
                         <div className="flex-1 text-center lg:text-left space-y-3">
                             <div>
                                 <h2 className="text-3xl font-bold font-serif text-white">
-                                    {user?.username}
+                                    {user?.displayName || user?.username}
                                 </h2>
+                                {user?.displayName && user?.username && (
+                                    <p className="text-gray-500 text-sm">@{user.username}</p>
+                                )}
                                 <p className="text-gray-400 flex items-center justify-center lg:justify-start gap-2 mt-1">
                                     <Mail className="h-4 w-4" />
                                     {user?.email || "No email set"}
                                 </p>
+                                {user?.bio && (
+                                    <p className="text-gray-400 mt-2 text-sm max-w-md">{user.bio}</p>
+                                )}
                             </div>
 
                             <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3">
@@ -162,7 +187,7 @@ export default function ProfilePage() {
                                 </span>
                                 <span className="text-sm text-gray-500 flex items-center gap-1">
                                     <Clock className="h-3 w-3" />
-                                    Member since {new Date().getFullYear()}
+                                    Member since {user?.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : new Date().getFullYear()}
                                 </span>
                             </div>
                         </div>
@@ -505,6 +530,7 @@ export default function ProfilePage() {
 
                 {/* Footer */}
                 <div className="text-center pt-8 border-t border-white/5 space-y-4">
+                    <p className="text-sm text-gray-400 font-medium">Connect with me</p>
                     <div className="flex justify-center gap-4">
                         <a
                             href="https://www.linkedin.com/in/anganbasingha/"
@@ -544,39 +570,118 @@ export default function ProfilePage() {
 
             {/* Edit Profile Dialog */}
             <Dialog open={isEditProfileOpen} onOpenChange={setIsEditProfileOpen}>
-                <DialogContent className="sm:max-w-[425px] bg-zinc-900 border-violet-500/30">
+                <DialogContent className="sm:max-w-[550px] bg-zinc-900 border-violet-500/30 max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
-                        <DialogTitle className="text-xl font-serif">Edit Profile</DialogTitle>
+                        <DialogTitle className="text-2xl font-serif flex items-center gap-3">
+                            <div className="p-2 rounded-xl bg-gradient-to-br from-violet-500/30 to-purple-500/20">
+                                <UserCircle className="h-5 w-5 text-violet-400" />
+                            </div>
+                            Edit Profile
+                        </DialogTitle>
                         <DialogDescription className="text-gray-400">
-                            Update your profile information
+                            Personalize your profile with your details
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-4 py-4">
+
+                    <div className="space-y-6 py-4">
+                        {/* Avatar Section with Upload */}
+                        <div className="p-6 rounded-2xl bg-gradient-to-br from-violet-500/10 to-purple-500/5 border border-violet-500/20">
+                            <AvatarUpload
+                                currentAvatar={profileForm.avatarUrl}
+                                displayName={profileForm.displayName}
+                                username={profileForm.username}
+                                onAvatarChange={(base64Image) => setProfileForm({ ...profileForm, avatarUrl: base64Image })}
+                            />
+                            <p className="text-xs text-gray-500 text-center mt-3">Max file size: 2MB • JPG, PNG, GIF</p>
+                        </div>
+
+                        {/* Display Name */}
                         <div className="space-y-2">
-                            <Label htmlFor="username" className="text-gray-300">Username</Label>
+                            <Label htmlFor="displayName" className="text-gray-300 flex items-center gap-2">
+                                <Sparkles className="h-4 w-4 text-violet-400" />
+                                Display Name
+                            </Label>
+                            <Input
+                                id="displayName"
+                                placeholder="How should we call you?"
+                                value={profileForm.displayName}
+                                onChange={e => setProfileForm({ ...profileForm, displayName: e.target.value })}
+                                className="h-12 bg-zinc-800 border-zinc-700 focus:border-violet-400 rounded-xl"
+                            />
+                            <p className="text-xs text-gray-500">This will be shown instead of your username</p>
+                        </div>
+
+                        {/* Username */}
+                        <div className="space-y-2">
+                            <Label htmlFor="username" className="text-gray-300 flex items-center gap-2">
+                                <User className="h-4 w-4 text-cyan-400" />
+                                Username
+                            </Label>
                             <Input
                                 id="username"
                                 value={profileForm.username}
                                 onChange={e => setProfileForm({ ...profileForm, username: e.target.value })}
-                                className="h-12 bg-zinc-800 border-zinc-700 focus:border-violet-400"
+                                className="h-12 bg-zinc-800 border-zinc-700 focus:border-violet-400 rounded-xl"
                             />
                         </div>
+
+                        {/* Email */}
                         <div className="space-y-2">
-                            <Label htmlFor="email" className="text-gray-300">Email</Label>
+                            <Label htmlFor="email" className="text-gray-300 flex items-center gap-2">
+                                <Mail className="h-4 w-4 text-emerald-400" />
+                                Email
+                            </Label>
                             <Input
                                 id="email"
                                 value={profileForm.email}
                                 onChange={e => setProfileForm({ ...profileForm, email: e.target.value })}
                                 type="email"
-                                className="h-12 bg-zinc-800 border-zinc-700 focus:border-violet-400"
+                                placeholder="your@email.com"
+                                className="h-12 bg-zinc-800 border-zinc-700 focus:border-violet-400 rounded-xl"
                             />
                         </div>
+
+                        {/* Bio */}
+                        <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                                <Label htmlFor="bio" className="text-gray-300 flex items-center gap-2">
+                                    <Edit className="h-4 w-4 text-amber-400" />
+                                    Bio
+                                </Label>
+                                <span className={`text-xs ${profileForm.bio.length > 180 ? 'text-amber-400' : 'text-gray-500'}`}>
+                                    {profileForm.bio.length}/200
+                                </span>
+                            </div>
+                            <textarea
+                                id="bio"
+                                value={profileForm.bio}
+                                onChange={e => setProfileForm({ ...profileForm, bio: e.target.value.slice(0, 200) })}
+                                placeholder="Tell us a bit about yourself..."
+                                rows={3}
+                                className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 focus:border-violet-400 rounded-xl text-white placeholder:text-gray-500 resize-none focus:outline-none focus:ring-1 focus:ring-violet-400"
+                            />
+                        </div>
+
+                        {/* Member Since Info */}
+                        {user?.createdAt && (
+                            <div className="flex items-center gap-2 text-sm text-gray-500 pt-2 border-t border-white/5">
+                                <Clock className="h-4 w-4" />
+                                <span>Member since {new Date(user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span>
+                            </div>
+                        )}
                     </div>
-                    <DialogFooter>
-                        <Button variant="ghost" onClick={() => setIsEditProfileOpen(false)}>Cancel</Button>
-                        <Button onClick={handleUpdateProfile} disabled={isLoading} className="bg-gradient-to-r from-violet-500 to-purple-500 text-white hover:opacity-90">
+
+                    <DialogFooter className="gap-2 sm:gap-0">
+                        <Button variant="ghost" onClick={() => setIsEditProfileOpen(false)} className="text-gray-400 hover:text-white">
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={handleUpdateProfile}
+                            disabled={isLoading}
+                            className="bg-gradient-to-r from-violet-500 to-purple-500 text-white hover:opacity-90 rounded-xl px-6"
+                        >
                             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                            Save changes
+                            Save Changes
                         </Button>
                     </DialogFooter>
                 </DialogContent>

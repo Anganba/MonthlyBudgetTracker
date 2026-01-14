@@ -173,15 +173,33 @@ export const logout: RequestHandler = (req, res) => {
     });
 };
 
-export const getMe: RequestHandler = (req, res) => {
+export const getMe: RequestHandler = async (req, res) => {
     if (req.session && req.session.user) {
+        try {
+            // Fetch fresh user data from database
+            const user = await User.findById(req.session.user.id);
+            if (user) {
+                const userData = {
+                    id: (user._id as any).toString(),
+                    username: user.username,
+                    email: user.email,
+                    displayName: user.displayName,
+                    bio: user.bio,
+                    avatarUrl: user.avatarUrl,
+                    createdAt: user.createdAt
+                };
+                return res.json({ success: true, user: userData });
+            }
+        } catch (error) {
+            console.error("getMe error:", error);
+        }
         return res.json({ success: true, user: req.session.user });
     }
     return res.status(401).json({ success: false, message: "Not authenticated" });
 };
 
 export const updateProfile: RequestHandler = async (req, res) => {
-    const { username, email } = req.body;
+    const { username, email, displayName, bio, avatarUrl } = req.body;
     console.log("Update Profile Request:", req.body);
     const userId = req.session?.user?.id;
     if (!userId) return res.status(401).json({ success: false, message: "Not authenticated" });
@@ -200,24 +218,38 @@ export const updateProfile: RequestHandler = async (req, res) => {
         if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
         if (username) user.username = username;
-        if (email) user.email = email;
+        if (email !== undefined) user.email = email || undefined;
+        if (displayName !== undefined) user.displayName = displayName || undefined;
+        if (bio !== undefined) user.bio = bio || undefined;
+        if (avatarUrl !== undefined) user.avatarUrl = avatarUrl || undefined;
 
         await user.save();
         console.log("User Saved:", user);
 
+        const userData = {
+            id: userId,
+            username: user.username,
+            email: user.email,
+            displayName: user.displayName,
+            bio: user.bio,
+            avatarUrl: user.avatarUrl,
+            createdAt: user.createdAt
+        };
+
         if (req.session) {
-            req.session.user = { id: userId, username: user.username, email: user.email };
+            req.session.user = userData;
             await new Promise<void>((resolve, reject) => {
                 req.session!.save((err) => err ? reject(err) : resolve());
             });
         }
 
-        res.json({ success: true, user: req.session?.user });
+        res.json({ success: true, user: userData });
     } catch (error: any) {
         console.error("Update profile error:", error);
         res.status(500).json({ success: false, message: error.message });
     }
 };
+
 
 export const updatePassword: RequestHandler = async (req, res) => {
     const { currentPassword, newPassword } = req.body;

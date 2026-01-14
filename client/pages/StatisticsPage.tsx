@@ -133,7 +133,7 @@ export default function StatisticsPage() {
             data.push({
                 day,
                 date: format(dateObj, 'dd'),
-                fullDate: format(dateObj, 'MMM dd'),
+                fullDate: format(dateObj, 'EEEE dd'),
                 week: Math.ceil(day / 7),
                 income,
                 expense,
@@ -421,7 +421,7 @@ export default function StatisticsPage() {
                                 <div className="p-2 rounded-xl bg-gradient-to-br from-emerald-500/30 to-green-500/20 shadow-inner">
                                     <TrendingUp className="h-5 w-5 text-emerald-400" />
                                 </div>
-                                <h2 className="text-xl font-semibold font-serif text-white">Daily Financial Flow</h2>
+                                <h2 className="text-xl font-semibold font-serif text-white">{xAxisMode === 'weekly' ? 'Weekly' : 'Daily'} Financial Flow</h2>
                             </div>
 
                             {/* Daily Averages - Inline Stats */}
@@ -564,6 +564,12 @@ export default function StatisticsPage() {
                                             contentStyle={{ backgroundColor: 'hsl(var(--popover))', borderColor: 'hsl(var(--border))', borderRadius: 'var(--radius)', color: 'hsl(var(--popover-foreground))' }}
                                             itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
                                             labelStyle={{ color: 'hsl(var(--muted-foreground))' }}
+                                            labelFormatter={(label, payload) => {
+                                                if (payload && payload[0]?.payload?.fullDate) {
+                                                    return payload[0].payload.fullDate;
+                                                }
+                                                return label;
+                                            }}
                                             formatter={(value: number) => [`${currency}${value.toFixed(2)}`, '']}
                                         />
                                         <Legend />
@@ -632,10 +638,7 @@ export default function StatisticsPage() {
                                                 labelLine={false}
                                                 label={(props) => {
                                                     const RADIAN = Math.PI / 180;
-                                                    const { cx, cy, midAngle, innerRadius, outerRadius, percent, index, name } = props;
-                                                    const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-                                                    const x = cx + radius * Math.cos(-midAngle * RADIAN);
-                                                    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                                                    const { cx, cy, midAngle, outerRadius, percent, index, name } = props;
 
                                                     // Custom logic for "spider" legs
                                                     const sin = Math.sin(-RADIAN * midAngle);

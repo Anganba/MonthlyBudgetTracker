@@ -20,10 +20,12 @@ export function UserProfile() {
 
     const [exportDialogOpen, setExportDialogOpen] = useState(false);
 
-    // Get initials for avatar fallback
-    const initials = user?.username
-        ? user.username.substring(0, 2).toUpperCase()
-        : "U";
+    // Get initials for avatar fallback (prefer displayName over username)
+    const initials = user?.displayName
+        ? user.displayName.substring(0, 2).toUpperCase()
+        : user?.username
+            ? user.username.substring(0, 2).toUpperCase()
+            : "U";
 
     const handleLogout = () => {
         logout();
@@ -34,16 +36,17 @@ export function UserProfile() {
             {/* User Avatar & Menu */}
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                        <Avatar className="h-10 w-10 border border-primary/20">
-                            <AvatarFallback className="bg-secondary/50 text-primary font-bold border-2 border-primary/20">{initials}</AvatarFallback>
+                    <Button variant="ghost" className="relative h-12 w-12 rounded-full p-0">
+                        <Avatar className="h-12 w-12 border-2 border-primary/30 shadow-lg shadow-primary/10">
+                            <AvatarImage src={user?.avatarUrl} alt={user?.displayName || user?.username} />
+                            <AvatarFallback className="bg-gradient-to-br from-primary/20 to-emerald-500/20 text-primary font-bold text-lg">{initials}</AvatarFallback>
                         </Avatar>
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-56" align="end" forceMount>
                     <DropdownMenuLabel className="font-normal">
                         <div className="flex flex-col space-y-1">
-                            <p className="text-sm font-medium leading-none">{user?.username}</p>
+                            <p className="text-sm font-medium leading-none">{user?.displayName || user?.username}</p>
                             <p className="text-xs leading-none text-muted-foreground">
                                 {user?.email || "user@example.com"}
                             </p>
