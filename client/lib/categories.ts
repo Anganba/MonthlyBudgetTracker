@@ -12,6 +12,7 @@ export const TRANSACTION_CATEGORIES: CategoryDef[] = [
     { id: "Debt Added", label: "Debt Added", type: 'income' },
     { id: "Freelance", label: "Freelance", type: 'income' },
     { id: "Gifts Received", label: "Gifts Received", type: 'income' },
+    { id: "Loan Repaid", label: "Loan Repaid", type: 'income' },
     { id: "Paycheck", label: "Paycheck", type: 'income' },
     { id: "Refund", label: "Refund", type: 'income' },
     { id: "Side Hustle", label: "Side Hustle", type: 'income' },
@@ -119,3 +120,7 @@ export const TRANSACTION_CATEGORIES: CategoryDef[] = [
 
 export const EXPENSE_CATEGORIES = TRANSACTION_CATEGORIES.filter(c => c.type === 'expense');
 export const INCOME_CATEGORIES = TRANSACTION_CATEGORIES.filter(c => c.type === 'income');
+
+// Categories that are asset movements, not true income/expense
+// These should be excluded from income/expense totals in reports
+export const NEUTRAL_CATEGORIES = ['Loans Given', 'Loan Repaid', 'Debt Added', 'Debt Paid'];

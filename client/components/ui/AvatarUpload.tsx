@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import ReactCrop, { Crop, PixelCrop, centerCrop, makeAspectCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Camera, Upload, X, Check, RotateCcw } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -200,6 +200,9 @@ export function AvatarUpload({ currentAvatar, displayName, username, onAvatarCha
                             <Camera className="h-5 w-5 text-violet-400" />
                             Crop Your Photo
                         </DialogTitle>
+                        <DialogDescription className="text-gray-400">
+                            Adjust the crop area to select your profile picture
+                        </DialogDescription>
                     </DialogHeader>
 
                     <div className="flex justify-center py-4">

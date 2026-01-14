@@ -30,6 +30,7 @@ import { useBudget } from "@/hooks/use-budget";
 import { useWallets } from '@/hooks/use-wallets';
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
+import { NEUTRAL_CATEGORIES } from "@/lib/categories";
 
 export function TransactionsPage() {
     const queryClient = useQueryClient();
@@ -304,6 +305,7 @@ export function TransactionsPage() {
 
     const categories = Array.from(new Set(budget?.transactions.map(t => t.category) || [])).sort();
 
+    // Stats
     // Stats
     const totalIncome = filteredTransactions.filter(t => getTransactionType(t) === 'income').reduce((sum, t) => sum + t.actual, 0);
     const totalExpenses = filteredTransactions.filter(t => getTransactionType(t) === 'expense').reduce((sum, t) => sum + t.actual, 0);

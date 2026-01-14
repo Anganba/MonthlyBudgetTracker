@@ -111,7 +111,8 @@ export default function ProfilePage() {
     const completedGoals = goals?.filter(g => g.status === 'fulfilled')?.length || 0;
     const activeGoals = goals?.filter(g => g.status === 'active')?.length || 0;
     const thisMonthSpent = stats.expenses || 0;
-    const savingsRate = stats.income > 0 ? Math.round((stats.savings / stats.income) * 100) : 0;
+    // Show 2 decimal places so small percentages like 0.41% are visible
+    const savingsRate = stats.income > 0 ? ((stats.savings / stats.income) * 100).toFixed(2) : '0';
 
     const proFeatures = [
         "Unlimited wallets & transactions",

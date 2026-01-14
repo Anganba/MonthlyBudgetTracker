@@ -82,7 +82,7 @@ export function BudgetCharts({ budget, currency }: ChartsProps) {
       {/* Budget Allocation Pie Chart */}
       <div className="bg-card border border-border rounded-xl p-6 overflow-hidden h-full shadow-sm">
         <h3 className="font-serif font-bold text-lg mb-6 text-center text-card-foreground">Expense Allocation</h3>
-        <ResponsiveContainer width="100%" height={350}>
+        <ResponsiveContainer width="100%" height={350} minWidth={1}>
           <PieChart margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
             <Pie
               data={pieData}

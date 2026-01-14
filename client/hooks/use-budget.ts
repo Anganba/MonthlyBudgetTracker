@@ -53,7 +53,7 @@ export function useBudget(selectedMonth?: string, selectedYear?: number) {
         if (!b) return { income: 0, expenses: 0, savings: 0, balance: 0, transactions: [] };
 
         const transactions = b.transactions || [];
-        const incomeCategories = ['income', 'Paycheck', 'Bonus', 'Debt Added'];
+        const incomeCategories = ['income', 'Paycheck', 'Bonus', 'Debt Added', 'Side Hustle', 'Freelance', 'Gifts Received', 'Refund', 'Loan Repaid'];
 
         // Income: type='income' OR income categories
         const income = transactions
@@ -126,7 +126,7 @@ export function useBudget(selectedMonth?: string, selectedYear?: number) {
                 return tDate.getDate() === i;
             });
 
-            const incomeCategories = ['income', 'Paycheck', 'Bonus', 'Debt Added'];
+            const incomeCategories = ['income', 'Paycheck', 'Bonus', 'Debt Added', 'Side Hustle', 'Freelance', 'Gifts Received', 'Refund', 'Loan Repaid'];
 
             if (type === 'balance') {
                 // Income: type='income' OR income categories

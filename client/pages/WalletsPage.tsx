@@ -614,6 +614,9 @@ export default function WalletsPage() {
                             <ArrowRightLeft className="h-5 w-5 text-primary" />
                             Quick Transfer
                         </DialogTitle>
+                        <DialogDescription className="text-gray-400">
+                            Move funds between your wallets
+                        </DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleTransfer} className="space-y-4 pt-4">
                         <div className="space-y-2">
