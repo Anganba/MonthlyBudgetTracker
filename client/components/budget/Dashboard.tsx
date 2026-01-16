@@ -30,6 +30,7 @@ export function Dashboard() {
 
   const { logout, user } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAllCategories, setShowAllCategories] = useState(false);
   const currency = "$";
 
@@ -54,6 +55,7 @@ export function Dashboard() {
   const { toast } = useToast();
 
   const handleTransactionSubmit = async (data: TransactionData) => {
+    setIsSubmitting(true);
     // Snapshot strictly immutable
     const snapshot = queryClient.getQueryData(['budget', month, year, user?.id]);
 
@@ -114,6 +116,8 @@ export function Dashboard() {
     } catch (error) {
       console.error('Error adding transaction:', error);
       if (isCurrentView && snapshot) queryClient.setQueryData(['budget', month, year, user?.id], snapshot);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -337,6 +341,7 @@ export function Dashboard() {
         onOpenChange={setIsDialogOpen}
         onSubmit={handleTransactionSubmit}
         mode="add"
+        isSubmitting={isSubmitting}
       />
     </div>
   );

@@ -5,7 +5,7 @@ import { useWallets } from "@/hooks/use-wallets";
 import { useTransactions } from "@/hooks/use-transactions";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Plus, PiggyBank, Trash2, Trophy, ArrowRight, Target, Sparkles, CheckCircle2, Clock, CalendarDays, TrendingUp, Zap, Banknote } from "lucide-react";
+import { Plus, PiggyBank, Trash2, Trophy, ArrowRight, Target, Sparkles, CheckCircle2, Clock, CalendarDays, TrendingUp, Zap, Banknote, Loader2 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { GoalDialog, getCategoryConfig, GOAL_CATEGORIES } from "@/components/budget/GoalDialog";
 import { Goal } from "@shared/api";
@@ -28,7 +28,7 @@ import { format, differenceInDays, formatDistanceToNow } from "date-fns";
 
 export default function GoalsPage() {
     const { goals, isLoading, createGoal, updateGoal, deleteGoal } = useGoals();
-    const { wallets } = useWallets();
+    const { wallets, isLoading: walletsLoading } = useWallets();
     const { createTransaction } = useTransactions();
     const queryClient = useQueryClient();
 
@@ -790,7 +790,12 @@ export default function GoalsPage() {
                             </p>
                         </div>
 
-                        {wallets.length > 0 && (
+                        {walletsLoading ? (
+                            <div className="flex items-center justify-center py-6 gap-3">
+                                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                                <span className="text-gray-400 text-sm">Loading wallets...</span>
+                            </div>
+                        ) : wallets.length > 0 ? (
                             <div>
                                 <Label className="text-gray-400">Pay from Wallet</Label>
                                 <Select value={quickPayWalletId} onValueChange={setQuickPayWalletId}>
@@ -819,6 +824,8 @@ export default function GoalsPage() {
                                     return null;
                                 })()}
                             </div>
+                        ) : (
+                            <p className="text-gray-500 text-sm text-center py-4">No wallets available</p>
                         )}
                     </div>
                     <DialogFooter>
@@ -826,6 +833,7 @@ export default function GoalsPage() {
                         <Button
                             onClick={confirmQuickPay}
                             disabled={
+                                walletsLoading ||
                                 !quickPayWalletId ||
                                 isProcessing ||
                                 (() => {
@@ -867,7 +875,12 @@ export default function GoalsPage() {
                             </p>
                         </div>
 
-                        {wallets.length > 0 && (
+                        {walletsLoading ? (
+                            <div className="flex items-center justify-center py-6 gap-3">
+                                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                                <span className="text-gray-400 text-sm">Loading wallets...</span>
+                            </div>
+                        ) : wallets.length > 0 ? (
                             <div>
                                 <Label className="text-gray-400">Spend from Wallet</Label>
                                 <Select value={fulfillWalletId} onValueChange={setFulfillWalletId}>
@@ -895,6 +908,8 @@ export default function GoalsPage() {
                                     return null;
                                 })()}
                             </div>
+                        ) : (
+                            <p className="text-gray-500 text-sm text-center py-4">No wallets available</p>
                         )}
                     </div>
 

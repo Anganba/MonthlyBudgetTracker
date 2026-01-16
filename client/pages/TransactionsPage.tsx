@@ -51,6 +51,7 @@ export function TransactionsPage() {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [dialogMode, setDialogMode] = useState<'add' | 'edit'>('add');
     const [selectedTransaction, setSelectedTransaction] = useState<TransactionData | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
     const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null);
@@ -232,6 +233,7 @@ export function TransactionsPage() {
     const { toast } = useToast();
 
     const handleTransactionSubmit = async (data: TransactionData) => {
+        setIsSubmitting(true);
         const snapshot = queryClient.getQueryData(['budget', month, year, user?.id]);
         const tDate = new Date(data.date || new Date());
         const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -290,6 +292,8 @@ export function TransactionsPage() {
         } catch (error) {
             console.error('Error saving transaction:', error);
             if (snapshot && user?.id && isCurrentView) queryClient.setQueryData(['budget', month, year, user.id], snapshot);
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -606,6 +610,7 @@ export function TransactionsPage() {
                 onSubmit={handleTransactionSubmit}
                 initialData={selectedTransaction}
                 mode={dialogMode}
+                isSubmitting={isSubmitting}
             />
 
             <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>

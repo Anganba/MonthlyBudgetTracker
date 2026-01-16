@@ -14,7 +14,7 @@ import {
     TabsList,
     TabsTrigger,
 } from "@/components/ui/tabs";
-import { ArrowLeftRight, ArrowDown, Receipt, TrendingUp, ArrowRightLeft, Clock } from "lucide-react";
+import { ArrowLeftRight, ArrowDown, Receipt, TrendingUp, ArrowRightLeft, Clock, Loader2 } from "lucide-react";
 import { GoalDeductionSelector, GoalDeduction } from './GoalDeductionSelector';
 
 import {
@@ -61,9 +61,10 @@ export interface TransactionData {
 interface TransactionDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    onSubmit: (data: TransactionData) => void;
+    onSubmit: (data: TransactionData) => void | Promise<void>;
     initialData?: TransactionData | null;
     mode?: 'add' | 'edit';
+    isSubmitting?: boolean;
 }
 
 const getWalletLabel = (type: string) => {
@@ -77,7 +78,7 @@ const getWalletLabel = (type: string) => {
     }
 };
 
-export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, mode = 'add' }: TransactionDialogProps) {
+export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, mode = 'add', isSubmitting = false }: TransactionDialogProps) {
     const { goals } = useGoals();
     const { wallets } = useWallets();
     const { toast } = useToast();
@@ -567,9 +568,17 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
                             </Button>
                             <Button
                                 type="submit"
-                                className="bg-primary text-black hover:bg-primary/90 font-bold rounded-xl px-6"
+                                disabled={isSubmitting}
+                                className="bg-primary text-black hover:bg-primary/90 font-bold rounded-xl px-6 gap-2 disabled:opacity-50"
                             >
-                                {mode === 'add' ? 'Save Transaction' : 'Update'}
+                                {isSubmitting ? (
+                                    <>
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        Saving...
+                                    </>
+                                ) : (
+                                    mode === 'add' ? 'Save Transaction' : 'Update'
+                                )}
                             </Button>
                         </DialogFooter>
                     </form>
