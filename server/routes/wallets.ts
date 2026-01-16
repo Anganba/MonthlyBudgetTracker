@@ -251,3 +251,28 @@ export const getUserAuditLogs: RequestHandler = async (req, res) => {
         res.status(500).json({ success: false, message: "Server error" });
     }
 };
+
+export const logDataExport: RequestHandler = async (req, res) => {
+    const userId = req.session?.user?.id;
+    const username = req.session?.user?.username || 'User';
+    if (!userId) return res.status(401).json({ success: false, message: "Not authenticated" });
+
+    try {
+        const { format, dateRange, includedData } = req.body;
+
+        await AuditLogModel.create({
+            userId,
+            entityType: 'profile',
+            entityId: userId,
+            entityName: username,
+            changeType: 'data_exported',
+            details: `${format?.toUpperCase()} | ${dateRange} | ${includedData || 'data'}`,
+            timestamp: new Date()
+        });
+
+        res.json({ success: true, message: "Export logged" });
+    } catch (error) {
+        console.error("Log export error:", error);
+        res.status(500).json({ success: false, message: "Server error" });
+    }
+};

@@ -454,6 +454,28 @@ export function ExportDialog({ open, onOpenChange }: ExportDialogProps) {
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
 
+            // Log export to audit trail
+            const includedDataTypes = [];
+            if (includeTransactions) includedDataTypes.push('transactions');
+            if (includeWallets) includedDataTypes.push('wallets');
+            if (includeGoals) includedDataTypes.push('goals');
+            if (includeRecurring) includedDataTypes.push('recurring');
+            if (includeSummary) includedDataTypes.push('summary');
+
+            try {
+                await fetch('/api/audit-logs/export', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        format,
+                        dateRange,
+                        includedData: includedDataTypes.join(', ')
+                    })
+                });
+            } catch (logError) {
+                console.error('Failed to log export:', logError);
+            }
+
             toast({
                 title: "Export Successful",
                 description: `Your data has been exported as ${filename}`,

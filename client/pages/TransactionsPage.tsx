@@ -2,11 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQueryClient } from "@tanstack/react-query";
 import { BudgetMonth, Transaction } from '@shared/api';
-import { BudgetHeader } from '../components/budget/Header';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, Filter, Edit2, Trash2, ArrowUpDown, ArrowRight, ArrowDownCircle, ArrowUpCircle, ArrowLeftRight, Receipt } from "lucide-react";
+import { Plus, Search, Filter, Edit2, Trash2, ArrowUpDown, ArrowRight, ArrowDownCircle, ArrowUpCircle, ArrowLeftRight, Receipt, ChevronLeft, ChevronRight, Calendar } from "lucide-react";
 import { format } from 'date-fns';
 import { TransactionDialog, TransactionData } from "../components/budget/TransactionDialog";
 import {
@@ -62,6 +61,24 @@ export function TransactionsPage() {
     const handleMonthChange = (newMonth: string, newYear: number) => {
         setMonth(newMonth);
         setYear(newYear);
+    };
+
+    const handlePrevMonth = () => {
+        const currentMonthIndex = MONTHS.indexOf(month);
+        if (currentMonthIndex === 0) {
+            handleMonthChange(MONTHS[11], year - 1);
+        } else {
+            handleMonthChange(MONTHS[currentMonthIndex - 1], year);
+        }
+    };
+
+    const handleNextMonth = () => {
+        const currentMonthIndex = MONTHS.indexOf(month);
+        if (currentMonthIndex === 11) {
+            handleMonthChange(MONTHS[0], year + 1);
+        } else {
+            handleMonthChange(MONTHS[currentMonthIndex + 1], year);
+        }
     };
 
     const getCurrencySymbol = (curr: string) => {
@@ -318,27 +335,36 @@ export function TransactionsPage() {
             <div className="hidden md:block absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-gradient-to-tl from-violet-500/10 via-purple-500/5 to-transparent rounded-full blur-3xl pointer-events-none animate-pulse" style={{ animationDuration: '6s' }} />
             <div className="hidden md:block absolute top-1/4 left-1/3 w-[350px] h-[350px] bg-gradient-to-br from-emerald-500/10 to-transparent rounded-full blur-3xl pointer-events-none animate-pulse" style={{ animationDuration: '7s' }} />
 
-            <BudgetHeader
-                month={month}
-                year={year}
-                onMonthChange={handleMonthChange}
-                currency={currency}
-                onCurrencyChange={setCurrency}
-            />
-
             <div className="p-6 md:p-8 relative z-10">
                 {/* Header */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
-                    <div>
-                        <h1 className="font-serif text-3xl md:text-4xl font-bold text-white">Transactions</h1>
-                        <p className="text-gray-500 mt-1">Manage and track your financial activity</p>
+                    <div className="flex flex-col md:flex-row md:items-center gap-4">
+                        <div>
+                            <h1 className="font-serif text-3xl md:text-4xl font-bold text-white">Transactions</h1>
+                            <p className="text-gray-500 mt-1">Manage and track your financial activity</p>
+                        </div>
                     </div>
-                    <Button
-                        onClick={openAddDialog}
-                        className="bg-gradient-to-r from-amber-500 to-orange-500 text-black hover:from-amber-400 hover:to-orange-400 rounded-2xl px-6 h-11 font-bold shadow-lg shadow-amber-500/30 gap-2 transition-all hover:shadow-amber-500/40 hover:scale-[1.02]"
-                    >
-                        <Plus className="h-4 w-4" /> Add Transaction
-                    </Button>
+                    <div className="flex items-center gap-4">
+                        {/* Month Selector */}
+                        <div className="flex items-center bg-zinc-900/80 backdrop-blur-sm rounded-2xl border border-white/10 p-1.5">
+                            <Button variant="ghost" size="icon" onClick={handlePrevMonth} className="h-9 w-9 hover:bg-primary hover:text-black transition-all rounded-xl">
+                                <ChevronLeft className="h-4 w-4" />
+                            </Button>
+                            <span className="font-semibold text-white min-w-[150px] text-center flex items-center justify-center gap-2 px-2">
+                                <Calendar className="h-4 w-4 text-primary" />
+                                {month} {year}
+                            </span>
+                            <Button variant="ghost" size="icon" onClick={handleNextMonth} className="h-9 w-9 hover:bg-primary hover:text-black transition-all rounded-xl">
+                                <ChevronRight className="h-4 w-4" />
+                            </Button>
+                        </div>
+                        <Button
+                            onClick={openAddDialog}
+                            className="bg-gradient-to-r from-amber-500 to-orange-500 text-black hover:from-amber-400 hover:to-orange-400 rounded-2xl px-6 h-11 font-bold shadow-lg shadow-amber-500/30 gap-2 transition-all hover:shadow-amber-500/40 hover:scale-[1.02]"
+                        >
+                            <Plus className="h-4 w-4" /> Add Transaction
+                        </Button>
+                    </div>
                 </div>
 
                 {/* Stats Row */}

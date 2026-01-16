@@ -34,6 +34,10 @@ export default function StatisticsPage() {
     const [yAxisMode, setYAxisMode] = useState<'standard' | 'cumulative'>('standard');
     const [yAxisMax, setYAxisMax] = useState<string>('');
 
+    // Yearly chart controls
+    const [yearlyXAxisMode, setYearlyXAxisMode] = useState<'monthly' | 'quarterly'>('monthly');
+    const [yearlyYAxisMax, setYearlyYAxisMax] = useState<string>('');
+
     const monthNames = ["January", "February", "March", "April", "May", "June",
         "July", "August", "September", "October", "November", "December"
     ];
@@ -50,6 +54,7 @@ export default function StatisticsPage() {
     const [showExpense, setShowExpense] = useState(true);
     const [showTransfers, setShowTransfers] = useState(false);
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+    const [selectedYearlyCategories, setSelectedYearlyCategories] = useState<string[]>([]);
 
     const handlePrevMonth = () => setDate(subMonths(date, 1));
     const handleNextMonth = () => setDate(addMonths(date, 1));
@@ -77,6 +82,15 @@ export default function StatisticsPage() {
     // Toggle category selection
     const toggleCategory = (category: string) => {
         setSelectedCategories(prev =>
+            prev.includes(category)
+                ? prev.filter(c => c !== category)
+                : [...prev, category]
+        );
+    };
+
+    // Toggle yearly category selection
+    const toggleYearlyCategory = (category: string) => {
+        setSelectedYearlyCategories(prev =>
             prev.includes(category)
                 ? prev.filter(c => c !== category)
                 : [...prev, category]
@@ -318,10 +332,79 @@ export default function StatisticsPage() {
         return pieData.reduce((acc, curr) => acc + (curr.value || 0), 0);
     }, [pieData]);
 
-    const totalYearlyExpense = useMemo(() => {
-        if (!yearlyStats) return 0;
-        return yearlyStats.reduce((acc: number, curr: any) => acc + (curr.expense || 0), 0);
+    // Get available yearly categories from yearlyStats
+    const availableYearlyCategories = useMemo(() => {
+        if (!yearlyStats) return [];
+        const categories = new Set<string>();
+        yearlyStats.forEach((monthData: any) => {
+            if (monthData.categories) {
+                Object.keys(monthData.categories).forEach(cat => categories.add(cat));
+            }
+        });
+        return Array.from(categories).sort();
     }, [yearlyStats]);
+
+    // Calculate filtered yearly data for chart
+    const filteredYearlyData = useMemo(() => {
+        if (!yearlyStats) return [];
+
+        return yearlyStats.map((monthData: any) => {
+            let expense = 0;
+
+            if (selectedYearlyCategories.length > 0) {
+                // Sum only selected categories
+                selectedYearlyCategories.forEach(cat => {
+                    expense += monthData.categories?.[cat] || 0;
+                });
+            } else {
+                // Use total expense
+                expense = monthData.expense || 0;
+            }
+
+            return {
+                name: monthData.name,
+                expense
+            };
+        });
+    }, [yearlyStats, selectedYearlyCategories]);
+
+    // Apply X-axis grouping for yearly data
+    const transformedYearlyData = useMemo(() => {
+        let data = [...filteredYearlyData];
+
+        // X-Axis Grouping: Quarterly
+        if (yearlyXAxisMode === 'quarterly') {
+            const quarters = [
+                { name: 'Q1', months: ['Jan', 'Feb', 'Mar'] },
+                { name: 'Q2', months: ['Apr', 'May', 'Jun'] },
+                { name: 'Q3', months: ['Jul', 'Aug', 'Sep'] },
+                { name: 'Q4', months: ['Oct', 'Nov', 'Dec'] }
+            ];
+
+            data = quarters.map(q => ({
+                name: q.name,
+                expense: filteredYearlyData
+                    .filter((m: any) => q.months.includes(m.name))
+                    .reduce((sum: number, m: any) => sum + m.expense, 0)
+            }));
+        }
+
+        return data;
+    }, [filteredYearlyData, yearlyXAxisMode]);
+
+    const totalYearlyExpense = useMemo(() => {
+        return filteredYearlyData.reduce((acc: number, curr: any) => acc + (curr.expense || 0), 0);
+    }, [filteredYearlyData]);
+
+    // Calculate yearly averages based on months with actual expenses
+    const yearlyAverages = useMemo(() => {
+        const monthsWithExpense = filteredYearlyData.filter((m: any) => m.expense > 0).length;
+        const avgMonthlyExpense = monthsWithExpense > 0 ? totalYearlyExpense / monthsWithExpense : 0;
+        return {
+            avgMonthlyExpense,
+            monthsWithExpense
+        };
+    }, [filteredYearlyData, totalYearlyExpense]);
 
     // Calculate daily averages based on actual spending days - uses filtered chartData for expenses
     const dailyAverages = useMemo(() => {
@@ -895,7 +978,7 @@ export default function StatisticsPage() {
                         {/* Decorative background glow */}
                         <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-rose-500/10 rounded-full blur-3xl pointer-events-none translate-x-1/2 -translate-y-1/2"></div>
 
-                        <div className="p-6 border-b border-rose-500/20 flex flex-row items-center justify-between bg-gradient-to-r from-rose-500/10 to-transparent">
+                        <div className="p-4 md:p-6 border-b border-rose-500/20 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 bg-gradient-to-r from-rose-500/10 to-transparent">
                             <div className="flex items-center gap-3">
                                 <div className="p-2 rounded-xl bg-gradient-to-br from-rose-500/30 to-red-500/20 shadow-inner">
                                     <TrendingDown className="h-5 w-5 text-rose-400" />
@@ -905,20 +988,96 @@ export default function StatisticsPage() {
                                     <p className="text-sm text-gray-500">Spending trends for {currentYear}</p>
                                 </div>
                             </div>
-                            <div className="text-right">
-                                <span className="text-2xl font-bold block text-red-400">{currency}{totalYearlyExpense.toFixed(2)}</span>
-                                <span className="text-xs text-gray-500 font-medium uppercase tracking-wider">Total Spent</span>
+
+                            {/* Avg/Month Stat - Centered */}
+                            <div className="flex-1 flex justify-center">
+                                <div className="flex items-center gap-2.5 px-4 py-2 rounded-xl bg-red-500/10 border border-red-500/20">
+                                    <TrendingDown className="h-4 w-4 text-red-400" />
+                                    <div className="text-sm">
+                                        <span className="text-gray-400">Avg/mo: </span>
+                                        <span className="font-bold text-red-400 text-base">{currency}{yearlyAverages.avgMonthlyExpense.toFixed(0)}</span>
+                                        <span className="text-gray-500 ml-1.5">({yearlyAverages.monthsWithExpense}mo)</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-3 flex-wrap">
+                                {/* Total Spent - Styled as chip */}
+                                <div className="flex items-center gap-2.5 px-4 py-2 rounded-xl bg-rose-500/15 border border-rose-500/30">
+                                    <div className="text-sm">
+                                        <span className="text-gray-400">{selectedYearlyCategories.length > 0 ? 'Filtered' : 'Total'}: </span>
+                                        <span className="font-bold text-rose-400 text-lg">{currency}{totalYearlyExpense.toFixed(2)}</span>
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-2 md:gap-3">
+                                    <Select value={yearlyXAxisMode} onValueChange={(v: any) => setYearlyXAxisMode(v)}>
+                                        <SelectTrigger className="w-[100px] md:w-[120px] bg-zinc-800 border-zinc-700 rounded-xl text-xs md:text-sm">
+                                            <SelectValue placeholder="X-Axis" />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-zinc-800 border-zinc-700">
+                                            <SelectItem value="monthly">Monthly</SelectItem>
+                                            <SelectItem value="quarterly">Quarterly</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <div className="w-[80px] md:w-[100px]">
+                                        <Input
+                                            type="number"
+                                            placeholder="Y-Max"
+                                            value={yearlyYAxisMax}
+                                            onChange={(e) => setYearlyYAxisMax(e.target.value)}
+                                            className="bg-zinc-800 border-zinc-700 rounded-xl text-xs md:text-sm"
+                                        />
+                                    </div>
+                                </div>
                             </div>
                         </div>
+
+                        {/* Category Filter - Only show when categories exist */}
+                        {availableYearlyCategories.length > 0 && (
+                            <div className="px-6 py-3 border-b border-rose-500/10 bg-zinc-900/50">
+                                <div className="flex items-center gap-3 flex-wrap">
+                                    <div className="flex items-center gap-2 text-sm text-gray-400">
+                                        <Tags className="h-4 w-4" />
+                                        <span>Filter by category:</span>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                        {availableYearlyCategories.map(category => {
+                                            const isSelected = selectedYearlyCategories.includes(category);
+                                            return (
+                                                <button
+                                                    key={category}
+                                                    onClick={() => toggleYearlyCategory(category)}
+                                                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${isSelected
+                                                        ? 'bg-red-500 text-white shadow-lg shadow-red-500/30'
+                                                        : 'bg-zinc-800 text-gray-400 hover:bg-zinc-700 hover:text-white border border-zinc-700'
+                                                        }`}
+                                                >
+                                                    {category}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                    {selectedYearlyCategories.length > 0 && (
+                                        <button
+                                            onClick={() => setSelectedYearlyCategories([])}
+                                            className="px-3 py-1.5 rounded-full text-xs font-medium bg-zinc-700 text-gray-300 hover:bg-zinc-600 transition-all"
+                                        >
+                                            Clear all
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                         <div className="p-6">
                             <div className="h-[300px] w-full mt-4">
                                 {isLoadingYearly ? (
                                     <div className="h-full flex items-center justify-center">
                                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                                     </div>
-                                ) : yearlyStats.length > 0 ? (
+                                ) : filteredYearlyData.length > 0 ? (
                                     <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
-                                        <BarChart data={yearlyStats} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                        <BarChart data={transformedYearlyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                                             <defs>
                                                 <linearGradient id="yearExpenseGradient" x1="0" y1="0" x2="0" y2="1">
                                                     <stop offset="0%" stopColor="hsl(var(--destructive))" stopOpacity={0.8} />
@@ -939,7 +1098,12 @@ export default function StatisticsPage() {
                                                 fontSize={12}
                                                 tickLine={false}
                                                 axisLine={false}
-                                                tickFormatter={(value) => `${currency}${value}`}
+                                                tickFormatter={(value) => {
+                                                    if (value >= 1000000) return `${currency}${(value / 1000000).toFixed(1)}M`;
+                                                    if (value >= 1000) return `${currency}${(value / 1000).toFixed(0)}k`;
+                                                    return `${currency}${value}`;
+                                                }}
+                                                domain={[0, yearlyYAxisMax ? parseInt(yearlyYAxisMax) : 'auto']}
                                             />
                                             <Tooltip
                                                 cursor={{ fill: 'hsl(var(--muted)/0.2)' }}

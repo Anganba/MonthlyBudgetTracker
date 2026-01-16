@@ -108,7 +108,7 @@ export interface RecurringTransactionResponse {
   message?: string;
 }
 
-export type AuditEntityType = 'wallet' | 'goal' | 'recurring' | 'transaction';
+export type AuditEntityType = 'wallet' | 'goal' | 'recurring' | 'transaction' | 'profile';
 
 export type AuditChangeType =
   // Wallet changes
@@ -129,7 +129,10 @@ export type AuditChangeType =
   // Transaction changes
   | 'transaction_created'
   | 'transaction_updated'
-  | 'transaction_deleted';
+  | 'transaction_deleted'
+  // Profile changes
+  | 'password_changed'
+  | 'data_exported';
 
 export interface AuditLog {
   id: string;

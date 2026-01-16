@@ -1070,28 +1070,46 @@ export const getYearlyStats: RequestHandler = async (req, res) => {
   try {
     const y = parseInt(year as string);
 
+    // Aggregate to get both total per month AND breakdown by category
     const aggregation = await Budget.aggregate([
       { $match: { userId, year: y } },
       { $unwind: "$transactions" },
       {
         $match: {
-          "transactions.category": { $nin: ['income', 'Paycheck', 'Bonus', 'Debt Added', 'Savings'] }
+          "transactions.category": { $nin: ['income', 'Paycheck', 'Bonus', 'Debt Added', 'Savings', 'Transfer'] },
+          "transactions.type": { $nin: ['transfer', 'income'] }
         }
       },
       {
         $group: {
-          _id: "$month",
-          totalExpense: { $sum: "$transactions.actual" }
+          _id: {
+            month: "$month",
+            category: "$transactions.category"
+          },
+          amount: { $sum: "$transactions.actual" }
         }
       }
     ]);
 
-    const monthlyStats = Array(12).fill(0).map((_, i) => {
-      const mName = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"][i];
-      const found = aggregation.find(stat => stat._id === mName);
+    // Build the response structure
+    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+    const monthlyStats = monthNames.map((mName, i) => {
+      const monthData = aggregation.filter(stat => stat._id.month === mName);
+
+      // Calculate total for this month
+      const total = monthData.reduce((sum, item) => sum + item.amount, 0);
+
+      // Build categories object
+      const categories: { [key: string]: number } = {};
+      monthData.forEach(item => {
+        categories[item._id.category] = item.amount;
+      });
+
       return {
         name: mName.substring(0, 3), // Jan, Feb...
-        expense: found ? found.totalExpense : 0
+        expense: total,
+        categories: categories
       };
     });
 

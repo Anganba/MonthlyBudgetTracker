@@ -42,11 +42,16 @@ export const login: RequestHandler = async (req, res) => {
         if (isMatch) {
             if (req.session) {
                 console.log(`[Login] User ${username} authenticated. Creating session.`);
-                req.session.user = {
+                const userData = {
                     id: (user._id as any).toString(),
                     username: user.username,
-                    email: user.email
+                    email: user.email,
+                    displayName: user.displayName,
+                    bio: user.bio,
+                    avatarUrl: user.avatarUrl,
+                    createdAt: user.createdAt
                 };
+                req.session.user = userData;
 
                 req.session.save((err) => {
                     if (err) {
@@ -54,7 +59,7 @@ export const login: RequestHandler = async (req, res) => {
                         return res.status(500).json({ success: false, message: "Session save failed" });
                     }
                     console.log(`[Login] Session saved for ${username}.`);
-                    res.json({ success: true, user: req.session.user });
+                    res.json({ success: true, user: userData });
                 });
                 return;
             } else {
@@ -274,6 +279,18 @@ export const updatePassword: RequestHandler = async (req, res) => {
         const hashedPassword = await bcrypt.hash(newPassword, 10);
         user.passwordHash = hashedPassword;
         await user.save();
+
+        // Log password change to audit trail
+        const { AuditLogModel } = await import("../models/WalletAuditLog");
+        await AuditLogModel.create({
+            userId,
+            entityType: 'profile',
+            entityId: userId,
+            entityName: user.displayName || user.username,
+            changeType: 'password_changed',
+            details: 'Password was changed',
+            timestamp: new Date()
+        });
 
         res.json({ success: true, message: "Password updated" });
     } catch (error: any) {

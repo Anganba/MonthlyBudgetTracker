@@ -4,7 +4,7 @@ import { AuditLog } from '@shared/api';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, ArrowUpDown, History, Wallet, Target, Repeat, Receipt, Clock, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, ArrowUpDown, History, Wallet, Target, Repeat, Receipt, Clock, ChevronLeft, ChevronRight, Calendar, User } from "lucide-react";
 import { format, addMonths, subMonths } from 'date-fns';
 import { cn } from "@/lib/utils";
 
@@ -62,6 +62,7 @@ export function AuditTrailPage() {
             case 'goal': return Target;
             case 'recurring': return Repeat;
             case 'transaction': return Receipt;
+            case 'profile': return User;
             default: return History;
         }
     };
@@ -72,6 +73,7 @@ export function AuditTrailPage() {
             case 'goal': return { color: 'text-purple-400', bg: 'bg-purple-500/20' };
             case 'recurring': return { color: 'text-cyan-400', bg: 'bg-cyan-500/20' };
             case 'transaction': return { color: 'text-amber-400', bg: 'bg-amber-500/20' };
+            case 'profile': return { color: 'text-pink-400', bg: 'bg-pink-500/20' };
             default: return { color: 'text-gray-400', bg: 'bg-gray-500/20' };
         }
     };
@@ -85,6 +87,8 @@ export function AuditTrailPage() {
         if (changeType.includes('deleted')) return 'text-red-400 bg-red-500/20';
         if (changeType.includes('updated') || changeType.includes('change')) return 'text-yellow-400 bg-yellow-500/20';
         if (changeType.includes('fulfilled') || changeType.includes('reactivated')) return 'text-purple-400 bg-purple-500/20';
+        if (changeType === 'password_changed') return 'text-pink-400 bg-pink-500/20';
+        if (changeType === 'data_exported') return 'text-cyan-400 bg-cyan-500/20';
         return 'text-gray-400 bg-gray-500/20';
     };
 
@@ -172,27 +176,28 @@ export function AuditTrailPage() {
                             <p className="text-gray-500 text-[10px] md:text-xs mt-0.5 hidden sm:block">Track all activities and changes in your account</p>
                         </div>
 
-                        {/* Right: Date Navigator */}
+                        {/* Right: Date Navigator - Matching Transactions Page */}
                         <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
-                            <div className="flex items-center bg-zinc-900/80 backdrop-blur-sm rounded-xl border border-white/10 p-0.5 md:p-1 shadow-lg">
+                            <div className="flex items-center bg-zinc-900/80 backdrop-blur-sm rounded-2xl border border-white/10 p-1.5">
                                 <Button
                                     variant="ghost"
                                     size="icon"
                                     onClick={handlePrevMonth}
-                                    className="h-7 w-7 md:h-8 md:w-8 hover:bg-primary hover:text-black transition-all rounded-lg"
+                                    className="h-9 w-9 hover:bg-primary hover:text-black transition-all rounded-xl"
                                 >
-                                    <ChevronLeft className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                                    <ChevronLeft className="h-4 w-4" />
                                 </Button>
-                                <span className="min-w-[80px] md:min-w-[110px] text-center font-semibold text-[10px] md:text-xs lg:text-sm px-1">
-                                    {month.slice(0, 3)} {year}
+                                <span className="font-semibold text-white min-w-[150px] text-center flex items-center justify-center gap-2 px-2">
+                                    <Calendar className="h-4 w-4 text-primary" />
+                                    {month} {year}
                                 </span>
                                 <Button
                                     variant="ghost"
                                     size="icon"
                                     onClick={handleNextMonth}
-                                    className="h-7 w-7 md:h-8 md:w-8 hover:bg-primary hover:text-black transition-all rounded-lg"
+                                    className="h-9 w-9 hover:bg-primary hover:text-black transition-all rounded-xl"
                                 >
-                                    <ChevronRight className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                                    <ChevronRight className="h-4 w-4" />
                                 </Button>
                             </div>
                         </div>
@@ -269,6 +274,7 @@ export function AuditTrailPage() {
                                 <SelectItem value="wallet">Wallets</SelectItem>
                                 <SelectItem value="goal">Goals</SelectItem>
                                 <SelectItem value="recurring">Recurring</SelectItem>
+                                <SelectItem value="profile">Profile</SelectItem>
                             </SelectContent>
                         </Select>
 

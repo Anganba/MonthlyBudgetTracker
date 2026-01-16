@@ -37,7 +37,8 @@ import {
   updateWallet,
   deleteWallet,
   getWalletAuditLogs,
-  getUserAuditLogs
+  getUserAuditLogs,
+  logDataExport
 } from "./routes/wallets";
 
 import { connectDB } from "./db";
@@ -134,6 +135,7 @@ export function createServer() {
   // Wallet Audit Logs API routes
   app.get("/api/wallets/:id/audit-logs", requireAuth, getWalletAuditLogs);
   app.get("/api/audit-logs", requireAuth, getUserAuditLogs);
+  app.post("/api/audit-logs/export", requireAuth, logDataExport);
 
   return app;
 }

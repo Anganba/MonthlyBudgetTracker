@@ -21,7 +21,9 @@ export interface IAuditLog extends Document {
     | 'recurring_deleted'
     | 'transaction_created'
     | 'transaction_updated'
-    | 'transaction_deleted';
+    | 'transaction_deleted'
+    | 'password_changed'
+    | 'data_exported';
     previousBalance?: number;
     newBalance?: number;
     changeAmount?: number;
@@ -35,7 +37,7 @@ const AuditLogSchema = new Schema<IAuditLog>(
         userId: { type: String, required: true, index: true },
         entityType: {
             type: String,
-            enum: ['wallet', 'goal', 'recurring', 'transaction'],
+            enum: ['wallet', 'goal', 'recurring', 'transaction', 'profile'],
             required: true
         },
         entityId: { type: String, required: true, index: true },
@@ -57,7 +59,9 @@ const AuditLogSchema = new Schema<IAuditLog>(
                 'recurring_deleted',
                 'transaction_created',
                 'transaction_updated',
-                'transaction_deleted'
+                'transaction_deleted',
+                'password_changed',
+                'data_exported'
             ],
             required: true
         },
