@@ -53,6 +53,7 @@ export default function StatisticsPage() {
     const [showIncome, setShowIncome] = useState(false);
     const [showExpense, setShowExpense] = useState(true);
     const [showTransfers, setShowTransfers] = useState(false);
+    const [showNetWorth, setShowNetWorth] = useState(false);
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
     const [selectedYearlyCategories, setSelectedYearlyCategories] = useState<string[]>([]);
 
@@ -152,10 +153,10 @@ export default function StatisticsPage() {
                 income,
                 expense,
                 transfers,
+                netWorth: income - expense,
             });
         }
 
-        // X-Axis Aggregation: Weekly
         if (xAxisMode === 'weekly') {
             const weeklyMap = new Map();
             data.forEach((d: any) => {
@@ -166,32 +167,36 @@ export default function StatisticsPage() {
                         fullDate: key,
                         income: 0,
                         expense: 0,
-                        transfers: 0
+                        transfers: 0,
+                        netWorth: 0
                     });
                 }
                 const weekData = weeklyMap.get(key);
                 weekData.income += d.income;
                 weekData.expense += d.expense;
                 weekData.transfers += d.transfers;
+                weekData.netWorth += d.netWorth;
             });
             data = Array.from(weeklyMap.values());
         }
 
-        // Y-Axis Transformation: Cumulative
         if (yAxisMode === 'cumulative') {
             let runningIncome = 0;
             let runningExpense = 0;
             let runningTransfers = 0;
+            let runningNetWorth = 0;
 
             data = data.map((d: any) => {
                 runningIncome += d.income;
                 runningExpense += d.expense;
                 runningTransfers += d.transfers;
+                runningNetWorth += d.netWorth;
                 return {
                     ...d,
                     income: runningIncome,
                     expense: runningExpense,
-                    transfers: runningTransfers
+                    transfers: runningTransfers,
+                    netWorth: runningNetWorth
                 };
             });
         }
@@ -363,7 +368,9 @@ export default function StatisticsPage() {
 
             return {
                 name: monthData.name,
-                expense
+                expense,
+                income: monthData.income || 0,
+                netWorth: monthData.netWorth || 0
             };
         });
     }, [yearlyStats, selectedYearlyCategories]);
@@ -385,7 +392,13 @@ export default function StatisticsPage() {
                 name: q.name,
                 expense: filteredYearlyData
                     .filter((m: any) => q.months.includes(m.name))
-                    .reduce((sum: number, m: any) => sum + m.expense, 0)
+                    .reduce((sum: number, m: any) => sum + m.expense, 0),
+                income: filteredYearlyData
+                    .filter((m: any) => q.months.includes(m.name))
+                    .reduce((sum: number, m: any) => sum + (m.income || 0), 0),
+                netWorth: filteredYearlyData
+                    .filter((m: any) => q.months.includes(m.name))
+                    .reduce((sum: number, m: any) => sum + (m.netWorth || 0), 0)
             }));
         }
 
@@ -491,6 +504,13 @@ export default function StatisticsPage() {
                                 className={`h-10 rounded-xl ${showTransfers ? 'bg-blue-500 hover:bg-blue-600 text-white' : 'border-zinc-700 text-gray-400 hover:text-white hover:border-blue-500/50'}`}
                             >
                                 <ArrowRightLeft className="h-4 w-4 mr-1" /> Transfers
+                            </Button>
+                            <Button
+                                variant={showNetWorth ? "default" : "outline"}
+                                onClick={() => setShowNetWorth(!showNetWorth)}
+                                className={`h-10 rounded-xl ${showNetWorth ? 'bg-violet-500 hover:bg-violet-600 text-white' : 'border-zinc-700 text-gray-400 hover:text-white hover:border-violet-500/50'}`}
+                            >
+                                <TrendingUp className="h-4 w-4 mr-1" /> Net Worth
                             </Button>
                         </div>
                     </div>
@@ -626,6 +646,10 @@ export default function StatisticsPage() {
                                                 <stop offset="5%" stopColor="hsl(var(--chart-2))" stopOpacity={0.8} />
                                                 <stop offset="95%" stopColor="hsl(var(--chart-2))" stopOpacity={0.1} />
                                             </linearGradient>
+                                            <linearGradient id="colorNetWorth" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.8} />
+                                                <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.1} />
+                                            </linearGradient>
                                         </defs>
                                         <XAxis
                                             dataKey="date"
@@ -686,6 +710,17 @@ export default function StatisticsPage() {
                                                 stroke="hsl(var(--chart-2))"
                                                 fillOpacity={1}
                                                 fill="url(#colorSavings)"
+                                                strokeWidth={2}
+                                            />
+                                        )}
+                                        {showNetWorth && (
+                                            <Area
+                                                type="monotone"
+                                                dataKey="netWorth"
+                                                name="Net Worth"
+                                                stroke="#8b5cf6"
+                                                fillOpacity={1}
+                                                fill="url(#colorNetWorth)"
                                                 strokeWidth={2}
                                             />
                                         )}
@@ -1083,6 +1118,14 @@ export default function StatisticsPage() {
                                                     <stop offset="0%" stopColor="hsl(var(--destructive))" stopOpacity={0.8} />
                                                     <stop offset="95%" stopColor="hsl(var(--destructive))" stopOpacity={0.3} />
                                                 </linearGradient>
+                                                <linearGradient id="yearIncomeGradient" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.8} />
+                                                    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                                                </linearGradient>
+                                                <linearGradient id="yearNetWorthGradient" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.8} />
+                                                    <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.3} />
+                                                </linearGradient>
                                             </defs>
                                             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} opacity={0.4} />
                                             <XAxis
@@ -1103,7 +1146,7 @@ export default function StatisticsPage() {
                                                     if (value >= 1000) return `${currency}${(value / 1000).toFixed(0)}k`;
                                                     return `${currency}${value}`;
                                                 }}
-                                                domain={[0, yearlyYAxisMax ? parseInt(yearlyYAxisMax) : 'auto']}
+                                                domain={['auto', yearlyYAxisMax ? parseInt(yearlyYAxisMax) : 'auto']}
                                             />
                                             <Tooltip
                                                 cursor={{ fill: 'hsl(var(--muted)/0.2)' }}
@@ -1113,9 +1156,18 @@ export default function StatisticsPage() {
                                                     borderRadius: '0.5rem',
                                                     boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
                                                 }}
-                                                itemStyle={{ color: 'hsl(var(--destructive))', fontWeight: 600 }}
-                                                formatter={(value: number) => [`${currency}${value.toFixed(2)}`, 'Expense']}
+                                                formatter={(value: number, name: string) => [`${currency}${value.toFixed(2)}`, name]}
                                             />
+                                            <Legend />
+                                            {showIncome && (
+                                                <Bar
+                                                    dataKey="income"
+                                                    name="Income"
+                                                    fill="url(#yearIncomeGradient)"
+                                                    radius={[6, 6, 0, 0]}
+                                                    maxBarSize={50}
+                                                />
+                                            )}
                                             <Bar
                                                 dataKey="expense"
                                                 name="Expense"
@@ -1123,6 +1175,15 @@ export default function StatisticsPage() {
                                                 radius={[6, 6, 0, 0]}
                                                 maxBarSize={50}
                                             />
+                                            {showNetWorth && (
+                                                <Bar
+                                                    dataKey="netWorth"
+                                                    name="Net Worth"
+                                                    fill="url(#yearNetWorthGradient)"
+                                                    radius={[6, 6, 0, 0]}
+                                                    maxBarSize={50}
+                                                />
+                                            )}
                                         </BarChart>
                                     </ResponsiveContainer>
                                 ) : (

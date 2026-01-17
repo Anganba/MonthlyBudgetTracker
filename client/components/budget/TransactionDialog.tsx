@@ -190,7 +190,7 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
         }
     }, [type, open, category, filteredCategories]);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
         if (!name.trim()) {
@@ -262,7 +262,8 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
         // No longer need to track locally - frequent categories are calculated from transaction history
         // The server endpoint /api/budget/frequent-categories handles this
 
-        onSubmit({
+        // Await the submit handler to complete before closing (allows loading state to show)
+        await onSubmit({
             id: initialData?.id,
             category: type === 'transfer' ? 'Transfer' : category,
             name,
@@ -276,6 +277,8 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
             toWalletId: toWalletId === 'unassigned' || !toWalletId ? undefined : toWalletId,
             goalDeductions: goalDeductions.length > 0 ? goalDeductions : undefined
         });
+
+        // Close dialog after submit completes
         onOpenChange(false);
     };
 
@@ -516,7 +519,7 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
                                         </SelectTrigger>
                                         <SelectContent className="bg-zinc-800 border-zinc-700">
                                             <SelectItem value="unassigned">None</SelectItem>
-                                            {goals.map(g => (
+                                            {goals.filter(g => g.status === 'active' || !g.status).map(g => (
                                                 <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
                                             ))}
                                         </SelectContent>

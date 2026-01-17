@@ -23,7 +23,8 @@ import {
   getGoals,
   createGoal,
   updateGoal,
-  deleteGoal
+  deleteGoal,
+  resetGoalProgress
 } from "./routes/goals";
 import {
   getRecurringTransactions,
@@ -119,6 +120,7 @@ export function createServer() {
   app.put("/api/goals/:id", requireAuth, updateGoal);
   app.delete("/api/goals/:id", requireAuth, deleteGoal);
   app.post("/api/goals/revert-fulfillment", requireAuth, revertGoalFulfillment);
+  app.post("/api/goals/reset-progress", requireAuth, resetGoalProgress);
 
   // Recurring Transactions API routes
   app.get("/api/recurring", requireAuth, getRecurringTransactions);

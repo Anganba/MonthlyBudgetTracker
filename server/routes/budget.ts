@@ -116,6 +116,20 @@ const getOrCreateBudget = async (month: string, year: number, userId: string): P
         const tMonth = months[transDate.getMonth()];
         const tYear = transDate.getFullYear();
 
+        // TIME CHECK: If rule has a specific time set, check if we've passed that time today
+        const ruleTime = (rule as any).time; // HH:mm format
+        if (ruleTime && rule.nextRunDate === format(today, 'yyyy-MM-dd')) {
+          const [ruleHour, ruleMinute] = ruleTime.split(':').map(Number);
+          const currentHour = today.getHours();
+          const currentMinute = today.getMinutes();
+
+          // If current time is before scheduled time, skip this rule for now
+          if (currentHour < ruleHour || (currentHour === ruleHour && currentMinute < ruleMinute)) {
+            console.log(`[Recurring] Skipping "${rule.name}" - scheduled for ${ruleTime}, current time is ${format(today, 'HH:mm')}`);
+            continue;
+          }
+        }
+
         let targetBudget = budget;
         if (tMonth !== month || tYear !== year) {
           // Different month, find/create that one
@@ -130,13 +144,21 @@ const getOrCreateBudget = async (month: string, year: number, userId: string): P
         }
 
         // DUPLICATE CHECK: Query fresh data from DB to prevent race conditions
+        // Use atomic operation to check and insert in one step
         const freshBudget = await Budget.findOne({ month: tMonth, year: tYear, userId });
+
+        // Create a unique identifier for this recurring transaction instance
+        const recurringInstanceId = `${rule._id.toString()}_${rule.nextRunDate}`;
+
         const existingTransaction = freshBudget?.transactions.find(
           (t: Transaction) =>
-            t.name === rule.name &&
-            t.date === rule.nextRunDate &&
-            t.category === rule.category &&
-            t.walletId === (rule.walletId || undefined)
+            // Check by recurringInstanceId if available (new method)
+            (t as any).recurringInstanceId === recurringInstanceId ||
+            // Fallback to old method for backward compatibility
+            (t.name === rule.name &&
+              t.date === rule.nextRunDate &&
+              t.category === rule.category &&
+              t.walletId === (rule.walletId || undefined))
         );
 
         if (existingTransaction) {
@@ -155,22 +177,68 @@ const getOrCreateBudget = async (month: string, year: number, userId: string): P
           continue; // Skip creating this transaction
         }
 
-        // Create transaction
-        const newTransaction: Transaction = {
+        // Create transaction - use rule.time if set, otherwise current time
+        const transactionTimestamp = ruleTime ? `${ruleTime}:00` : format(new Date(), 'HH:mm:ss');
+        const newTransaction: Transaction & { recurringInstanceId?: string } = {
           id: generateId(),
           name: rule.name,
           planned: rule.amount,
           actual: rule.amount,
           category: rule.category,
           date: rule.nextRunDate, // Use the date it was supposed to run
-          timestamp: format(new Date(), 'HH:mm:ss'),
+          timestamp: transactionTimestamp,
           goalId: undefined,
           walletId: rule.walletId || undefined,
-          type: rule.type || 'expense' // Preserve income/expense type from rule
+          type: rule.type || 'expense', // Preserve income/expense type from rule
+          recurringInstanceId // Add unique identifier to prevent duplicates
         };
 
-        targetBudget.transactions.push(newTransaction);
-        await targetBudget.save();
+        // Use findOneAndUpdate with $push to atomically add the transaction
+        // This prevents race conditions where two requests try to add the same transaction
+        const updateResult = await Budget.findOneAndUpdate(
+          {
+            month: tMonth,
+            year: tYear,
+            userId,
+            // Ensure no transaction with this recurringInstanceId already exists
+            'transactions.recurringInstanceId': { $ne: recurringInstanceId }
+          },
+          { $push: { transactions: newTransaction } },
+          { new: true }
+        );
+
+        // If updateResult is null, it means either the budget doesn't exist or the transaction already exists
+        if (!updateResult) {
+          // Double-check if it's because the transaction already exists
+          const checkBudget = await Budget.findOne({ month: tMonth, year: tYear, userId });
+          const alreadyExists = checkBudget?.transactions.some(
+            (t: any) => t.recurringInstanceId === recurringInstanceId
+          );
+
+          if (alreadyExists) {
+            console.log(`[Recurring] Atomic check caught duplicate for rule "${rule.name}" on ${rule.nextRunDate}`);
+            // Update nextRunDate anyway
+            let nextDate = new Date(rule.nextRunDate);
+            switch (rule.frequency) {
+              case 'daily': nextDate = addDays(nextDate, 1); break;
+              case 'weekly': nextDate = addWeeks(nextDate, 1); break;
+              case 'monthly': nextDate = addMonths(nextDate, 1); break;
+              case 'yearly': nextDate = addYears(nextDate, 1); break;
+            }
+            rule.lastRunDate = rule.nextRunDate;
+            rule.nextRunDate = format(nextDate, 'yyyy-MM-dd');
+            await rule.save();
+            continue;
+          }
+
+          // Budget doesn't exist, create it and add transaction
+          const newBudget = await Budget.create({
+            month: tMonth, year: tYear, transactions: [newTransaction], userId,
+            rolloverPlanned: 0, rolloverActual: 0,
+            categoryLimits: defaultLimits
+          });
+          console.log(`[Recurring] Created new budget for ${tMonth} ${tYear} with transaction "${rule.name}"`);
+        }
 
         if (rule.walletId) {
           const { WalletModel } = await import("../models/Wallet");
@@ -1070,8 +1138,8 @@ export const getYearlyStats: RequestHandler = async (req, res) => {
   try {
     const y = parseInt(year as string);
 
-    // Aggregate to get both total per month AND breakdown by category
-    const aggregation = await Budget.aggregate([
+    // Aggregate expenses (excluding income, savings, transfers)
+    const expenseAggregation = await Budget.aggregate([
       { $match: { userId, year: y } },
       { $unwind: "$transactions" },
       {
@@ -1091,24 +1159,50 @@ export const getYearlyStats: RequestHandler = async (req, res) => {
       }
     ]);
 
+    // Aggregate income
+    const incomeAggregation = await Budget.aggregate([
+      { $match: { userId, year: y } },
+      { $unwind: "$transactions" },
+      {
+        $match: {
+          $or: [
+            { "transactions.type": "income" },
+            { "transactions.category": { $in: ['income', 'Paycheck', 'Bonus', 'Debt Added'] } }
+          ]
+        }
+      },
+      {
+        $group: {
+          _id: "$month",
+          amount: { $sum: "$transactions.actual" }
+        }
+      }
+    ]);
+
     // Build the response structure
     const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
     const monthlyStats = monthNames.map((mName, i) => {
-      const monthData = aggregation.filter(stat => stat._id.month === mName);
+      const monthExpenseData = expenseAggregation.filter(stat => stat._id.month === mName);
+      const monthIncomeData = incomeAggregation.find(stat => stat._id === mName);
 
-      // Calculate total for this month
-      const total = monthData.reduce((sum, item) => sum + item.amount, 0);
+      // Calculate total expense for this month
+      const totalExpense = monthExpenseData.reduce((sum, item) => sum + item.amount, 0);
+
+      // Get income for this month
+      const totalIncome = monthIncomeData?.amount || 0;
 
       // Build categories object
       const categories: { [key: string]: number } = {};
-      monthData.forEach(item => {
+      monthExpenseData.forEach(item => {
         categories[item._id.category] = item.amount;
       });
 
       return {
         name: mName.substring(0, 3), // Jan, Feb...
-        expense: total,
+        expense: totalExpense,
+        income: totalIncome,
+        netWorth: totalIncome - totalExpense,
         categories: categories
       };
     });

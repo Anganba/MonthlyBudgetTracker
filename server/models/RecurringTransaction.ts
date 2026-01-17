@@ -16,6 +16,7 @@ const RecurringTransactionSchema = new Schema<IRecurringTransaction>(
             required: true
         },
         startDate: { type: String, required: true },
+        time: { type: String, required: false }, // HH:mm format
         nextRunDate: { type: String, required: true },
         lastRunDate: { type: String },
         active: { type: Boolean, default: true },

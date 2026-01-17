@@ -87,6 +87,7 @@ export function AuditTrailPage() {
         if (changeType.includes('deleted')) return 'text-red-400 bg-red-500/20';
         if (changeType.includes('updated') || changeType.includes('change')) return 'text-yellow-400 bg-yellow-500/20';
         if (changeType.includes('fulfilled') || changeType.includes('reactivated')) return 'text-purple-400 bg-purple-500/20';
+        if (changeType.includes('reset')) return 'text-orange-400 bg-orange-500/20';
         if (changeType === 'password_changed') return 'text-pink-400 bg-pink-500/20';
         if (changeType === 'data_exported') return 'text-cyan-400 bg-cyan-500/20';
         return 'text-gray-400 bg-gray-500/20';

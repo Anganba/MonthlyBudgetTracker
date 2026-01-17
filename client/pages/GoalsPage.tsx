@@ -5,7 +5,7 @@ import { useWallets } from "@/hooks/use-wallets";
 import { useTransactions } from "@/hooks/use-transactions";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Plus, PiggyBank, Trash2, Trophy, ArrowRight, Target, Sparkles, CheckCircle2, Clock, CalendarDays, TrendingUp, Zap, Banknote, Loader2 } from "lucide-react";
+import { Plus, PiggyBank, Trash2, Trophy, ArrowRight, Target, Sparkles, CheckCircle2, Clock, CalendarDays, TrendingUp, Zap, Banknote, Loader2, RotateCcw } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { GoalDialog, getCategoryConfig, GOAL_CATEGORIES } from "@/components/budget/GoalDialog";
 import { Goal } from "@shared/api";
@@ -50,6 +50,9 @@ export default function GoalsPage() {
     // Quick Pay Remaining State
     const [quickPayGoal, setQuickPayGoal] = useState<Goal | null>(null);
     const [quickPayWalletId, setQuickPayWalletId] = useState<string>('');
+
+    // Reset Goal Progress State
+    const [resetGoal, setResetGoal] = useState<Goal | null>(null);
 
     const handleAdd = () => {
         setEditingGoal(null);
@@ -216,6 +219,12 @@ export default function GoalsPage() {
                 // Update goal to target amount (100% complete)
                 updateGoal({ ...quickPayGoal, currentAmount: quickPayGoal.targetAmount });
 
+                // Refresh wallet data before opening next dialog
+                await queryClient.invalidateQueries({ queryKey: ['wallets'] });
+
+                // Small delay to ensure UI has fresh data
+                await new Promise(resolve => setTimeout(resolve, 600));
+
                 // Close Quick Pay dialog
                 setQuickPayGoal(null);
                 setQuickPayWalletId('');
@@ -226,6 +235,45 @@ export default function GoalsPage() {
             } finally {
                 setIsProcessing(false);
             }
+        }
+    };
+
+    // Reset goal progress - opens confirmation dialog
+    const handleResetGoalProgress = (e: React.MouseEvent, goal: Goal) => {
+        e.stopPropagation();
+        setResetGoal(goal);
+    };
+
+    // Confirm reset goal progress
+    const confirmResetGoalProgress = async () => {
+        if (!resetGoal) return;
+
+        setIsProcessing(true);
+        try {
+            const response = await fetch('/api/goals/reset-progress', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ goalId: resetGoal.id }),
+            });
+            const result = await response.json();
+
+            if (result.success) {
+                // Update goal amount to 0
+                updateGoal({ ...resetGoal, currentAmount: 0 });
+
+                // Refresh all data
+                queryClient.invalidateQueries({ queryKey: ['wallets'] });
+                queryClient.invalidateQueries({ queryKey: ['budget'] });
+                queryClient.invalidateQueries({ queryKey: ['goals'] });
+            } else {
+                alert(result.message || 'Failed to reset goal progress');
+            }
+        } catch (error) {
+            console.error('Error resetting goal:', error);
+            alert('Failed to reset goal progress');
+        } finally {
+            setIsProcessing(false);
+            setResetGoal(null);
         }
     };
 
@@ -499,16 +547,28 @@ export default function GoalsPage() {
                                                             </Button>
                                                         )}
                                                         {isCompleted && (
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                className="h-8 px-3 gap-1.5 text-yellow-500 hover:text-yellow-400 bg-yellow-500/10 hover:bg-yellow-500/20 rounded-xl transition-all font-medium text-xs border border-yellow-500/30 hover:border-yellow-500/50"
-                                                                onClick={(e) => handleFulfillClick(e, goal)}
-                                                                title="Move to Hall of Fame"
-                                                            >
-                                                                <Trophy className="h-3.5 w-3.5" />
-                                                                <span className="hidden md:inline">Hall of Fame</span>
-                                                            </Button>
+                                                            <>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="h-8 w-8 text-gray-400 hover:text-orange-400 hover:bg-orange-500/20 rounded-xl transition-all"
+                                                                    onClick={(e) => handleResetGoalProgress(e, goal)}
+                                                                    title="Reset progress - reverse all savings"
+                                                                    disabled={isProcessing}
+                                                                >
+                                                                    <RotateCcw className="h-4 w-4" />
+                                                                </Button>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    className="h-8 px-3 gap-1.5 text-yellow-500 hover:text-yellow-400 bg-yellow-500/10 hover:bg-yellow-500/20 rounded-xl transition-all font-medium text-xs border border-yellow-500/30 hover:border-yellow-500/50"
+                                                                    onClick={(e) => handleFulfillClick(e, goal)}
+                                                                    title="Move to Hall of Fame"
+                                                                >
+                                                                    <Trophy className="h-3.5 w-3.5" />
+                                                                    <span className="hidden md:inline">Hall of Fame</span>
+                                                                </Button>
+                                                            </>
                                                         )}
                                                         <Button
                                                             variant="ghost"
@@ -970,6 +1030,33 @@ export default function GoalsPage() {
                         <AlertDialogCancel className="border-zinc-700 hover:bg-zinc-800">Cancel</AlertDialogCancel>
                         <AlertDialogAction onClick={confirmDelete} className="bg-red-500 hover:bg-red-600 text-white">
                             Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Reset Goal Confirmation Dialog */}
+            <AlertDialog open={!!resetGoal} onOpenChange={(open) => !open && setResetGoal(null)}>
+                <AlertDialogContent className="bg-zinc-900 border-white/10">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-xl font-serif flex items-center gap-2">
+                            <RotateCcw className="h-5 w-5 text-orange-400" />
+                            Reset Goal Progress?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-gray-400">
+                            This will reverse all savings transactions linked to <strong className="text-white">"{resetGoal?.name}"</strong> and reset progress to $0.
+                            <br /><br />
+                            The money will be refunded to the original source wallets.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel className="border-zinc-700 hover:bg-zinc-800">Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={confirmResetGoalProgress}
+                            className="bg-orange-500 hover:bg-orange-600 text-white"
+                            disabled={isProcessing}
+                        >
+                            {isProcessing ? 'Resetting...' : 'Reset Progress'}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

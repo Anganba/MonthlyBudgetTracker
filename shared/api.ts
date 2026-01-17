@@ -95,6 +95,7 @@ export interface RecurringTransaction {
   category: TransactionCategory;
   frequency: 'daily' | 'weekly' | 'monthly' | 'yearly';
   startDate: string;
+  time?: string; // HH:mm format for specific execution time
   nextRunDate: string;
   lastRunDate?: string;
   active: boolean;

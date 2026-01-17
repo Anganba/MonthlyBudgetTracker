@@ -129,11 +129,7 @@ export const updateGoal: RequestHandler = async (req, res) => {
                     entityId: id,
                     entityName: goal.name,
                     changeType: 'goal_fulfilled',
-                    details: JSON.stringify({
-                        targetAmount: goal.targetAmount,
-                        currentAmount: goal.currentAmount,
-                        category: goal.category
-                    })
+                    details: `Goal completed! Target: $${goal.targetAmount}, Category: ${goal.category}`
                 });
             } else if (status === 'active' && (previousStatus === 'fulfilled' || previousStatus === 'archived')) {
                 // Goal reactivated from archived or fulfilled
@@ -143,7 +139,7 @@ export const updateGoal: RequestHandler = async (req, res) => {
                     entityId: id,
                     entityName: goal.name,
                     changeType: 'goal_reactivated',
-                    details: JSON.stringify({ previousStatus })
+                    details: 'Goal reactivated from Hall of Fame'
                 });
             }
         } else if (!status || status === previousStatus) {
@@ -211,6 +207,86 @@ export const deleteGoal: RequestHandler = async (req, res) => {
         res.json({ success: true, message: "Goal deleted" });
     } catch (error) {
         console.error("Error deleting goal:", error);
+        res.status(500).json({ success: false, message: "Internal server error" });
+    }
+};
+
+export const resetGoalProgress: RequestHandler = async (req, res) => {
+    const userId = req.session?.user?.id;
+    if (!userId) return res.status(401).json({ success: false, message: "Not authenticated" });
+
+    const { goalId } = req.body;
+    if (!goalId) return res.status(400).json({ success: false, message: "Goal ID required" });
+
+    try {
+        // Import models
+        const { Budget } = await import("../models/Budget");
+        const { WalletModel } = await import("../models/Wallet");
+
+        // Find the goal
+        const goal = await GoalModel.findOne({ _id: goalId, userId });
+        if (!goal) return res.status(404).json({ success: false, message: "Goal not found" });
+
+        // Find all transactions linked to this goal (savings deposits)
+        const budgets = await Budget.find({ userId });
+        let totalReversed = 0;
+        const walletRefunds: Record<string, number> = {}; // walletId -> amount to refund
+
+        for (const budget of budgets) {
+            const transactionsToRemove: string[] = [];
+
+            for (const tx of budget.transactions) {
+                // Match transactions linked to this goal (savings transactions)
+                if (tx.goalId === goalId && (tx.type === 'savings' || tx.name?.includes(`Savings: ${goal.name}`))) {
+                    transactionsToRemove.push(tx.id);
+                    totalReversed += tx.actual || 0;
+
+                    // Track wallet refunds - refund the source wallet, deduct from destination
+                    if (tx.walletId) {
+                        walletRefunds[tx.walletId] = (walletRefunds[tx.walletId] || 0) + (tx.actual || 0);
+                    }
+                    if (tx.toWalletId) {
+                        walletRefunds[tx.toWalletId] = (walletRefunds[tx.toWalletId] || 0) - (tx.actual || 0);
+                    }
+                }
+            }
+
+            // Remove the transactions from the budget
+            if (transactionsToRemove.length > 0) {
+                budget.transactions = budget.transactions.filter(
+                    (tx: any) => !transactionsToRemove.includes(tx.id)
+                );
+                await budget.save();
+            }
+        }
+
+        // Update wallet balances
+        for (const [walletId, amount] of Object.entries(walletRefunds)) {
+            if (amount !== 0) {
+                await WalletModel.findByIdAndUpdate(walletId, { $inc: { balance: amount } });
+            }
+        }
+
+        // Reset goal's currentAmount to 0
+        goal.currentAmount = 0;
+        await goal.save();
+
+        // Create audit log for goal reset
+        await AuditLogModel.create({
+            userId,
+            entityType: 'goal',
+            entityId: goalId,
+            entityName: goal.name,
+            changeType: 'goal_reset',
+            details: `Reversed $${totalReversed.toLocaleString()} in savings transactions`
+        });
+
+        res.json({
+            success: true,
+            message: `Reset ${goal.name} - reversed $${totalReversed.toLocaleString()} in savings transactions`
+        });
+    } catch (error) {
+        console.error("Error resetting goal progress:", error);
         res.status(500).json({ success: false, message: "Internal server error" });
     }
 };

@@ -15,6 +15,7 @@ export interface IAuditLog extends Document {
     | 'goal_updated'
     | 'goal_fulfilled'
     | 'goal_reactivated'
+    | 'goal_reset'
     | 'goal_deleted'
     | 'recurring_created'
     | 'recurring_updated'
@@ -53,6 +54,7 @@ const AuditLogSchema = new Schema<IAuditLog>(
                 'goal_updated',
                 'goal_fulfilled',
                 'goal_reactivated',
+                'goal_reset',
                 'goal_deleted',
                 'recurring_created',
                 'recurring_updated',

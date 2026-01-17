@@ -18,6 +18,7 @@ export const getRecurringTransactions: RequestHandler = async (req, res) => {
             category: doc.category,
             frequency: doc.frequency,
             startDate: doc.startDate,
+            time: (doc as any).time,
             nextRunDate: doc.nextRunDate,
             lastRunDate: doc.lastRunDate,
             active: doc.active,
@@ -35,7 +36,7 @@ export const createRecurringTransaction: RequestHandler = async (req, res) => {
     const userId = req.session?.user?.id;
     if (!userId) return res.status(401).json({ success: false, message: "Not authenticated" });
 
-    const { name, amount, type, category, frequency, startDate, walletId } = req.body;
+    const { name, amount, type, category, frequency, startDate, time, walletId } = req.body;
 
     if (!name || amount === undefined || !category || !frequency || !startDate) {
         return res.status(400).json({ success: false, message: "Missing required fields" });
@@ -50,6 +51,7 @@ export const createRecurringTransaction: RequestHandler = async (req, res) => {
             category,
             frequency,
             startDate,
+            time: time || undefined,
             nextRunDate: startDate, // First run is on start date
             active: true,
             walletId: walletId || undefined
@@ -91,7 +93,7 @@ export const updateRecurringTransaction: RequestHandler = async (req, res) => {
         const oldStartDate = item.startDate;
         const oldWalletId = item.walletId;
 
-        const allowedUpdates = ['name', 'amount', 'type', 'category', 'frequency', 'startDate', 'nextRunDate', 'active', 'walletId'];
+        const allowedUpdates = ['name', 'amount', 'type', 'category', 'frequency', 'startDate', 'time', 'nextRunDate', 'active', 'walletId'];
         allowedUpdates.forEach(key => {
             if (req.body[key] !== undefined) (item as any)[key] = req.body[key];
         });

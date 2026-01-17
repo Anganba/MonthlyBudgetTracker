@@ -349,10 +349,10 @@ function RecurringDialog({ open, onOpenChange, onSubmit, initialData, mode }: Re
     const [category, setCategory] = useState("Rent");
     const [frequency, setFrequency] = useState("monthly");
     const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+    const [time, setTime] = useState<string>("");
     const [walletId, setWalletId] = useState<string>("");
     const { wallets } = useWallets();
 
-    // Initialize form when editing
     useEffect(() => {
         if (open && initialData) {
             setType(initialData.type || 'expense');
@@ -361,6 +361,7 @@ function RecurringDialog({ open, onOpenChange, onSubmit, initialData, mode }: Re
             setCategory(initialData.category);
             setFrequency(initialData.frequency);
             setStartDate(initialData.startDate || new Date().toISOString().split('T')[0]);
+            setTime(initialData.time || "");
             setWalletId(initialData.walletId || "");
         } else if (open && mode === 'add') {
             // Reset form for new entries
@@ -370,6 +371,7 @@ function RecurringDialog({ open, onOpenChange, onSubmit, initialData, mode }: Re
             setCategory("Rent");
             setFrequency("monthly");
             setStartDate(new Date().toISOString().split('T')[0]);
+            setTime("");
             setWalletId("");
         }
     }, [open, initialData, mode]);
@@ -403,6 +405,7 @@ function RecurringDialog({ open, onOpenChange, onSubmit, initialData, mode }: Re
                 category === initialData.category &&
                 frequency === initialData.frequency &&
                 startDate === (initialData.startDate || '') &&
+                (time || '') === (initialData.time || '') &&
                 (walletId || '') === (initialData.walletId || '');
 
             if (noChanges) {
@@ -422,6 +425,7 @@ function RecurringDialog({ open, onOpenChange, onSubmit, initialData, mode }: Re
             category,
             frequency,
             startDate,
+            time: time || undefined,
             walletId: walletId || undefined
         });
     };
@@ -519,15 +523,26 @@ function RecurringDialog({ open, onOpenChange, onSubmit, initialData, mode }: Re
                         </Select>
                     </div>
 
-                    <div className="space-y-2">
-                        <Label className="text-gray-300">Start Date</Label>
-                        <Input
-                            type="date"
-                            value={startDate}
-                            onChange={e => setStartDate(e.target.value)}
-                            required
-                            className="h-11 bg-zinc-800 border-zinc-700 focus:border-primary rounded-xl"
-                        />
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label className="text-gray-300">Start Date</Label>
+                            <Input
+                                type="date"
+                                value={startDate}
+                                onChange={e => setStartDate(e.target.value)}
+                                required
+                                className="h-11 bg-zinc-800 border-zinc-700 focus:border-primary rounded-xl"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-gray-300">Time (Optional)</Label>
+                            <Input
+                                type="time"
+                                value={time}
+                                onChange={e => setTime(e.target.value)}
+                                className="h-11 bg-zinc-800 border-zinc-700 focus:border-primary rounded-xl"
+                            />
+                        </div>
                     </div>
 
                     {wallets.length > 0 && (
