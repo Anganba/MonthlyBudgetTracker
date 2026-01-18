@@ -273,8 +273,12 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
         // No longer need to track locally - frequent categories are calculated from transaction history
         // The server endpoint /api/budget/frequent-categories handles this
 
-        // Await the submit handler to complete before closing (allows loading state to show)
-        await onSubmit({
+        // Close dialog immediately (optimistic update will handle UI)
+        onOpenChange(false);
+
+        // Fire and forget - don't await so dialog closes instantly
+        // The optimistic update in use-transactions hook handles immediate UI feedback
+        onSubmit({
             id: initialData?.id,
             category: type === 'transfer' ? 'Transfer' : category,
             name,
@@ -288,9 +292,6 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
             toWalletId: toWalletId === 'unassigned' || !toWalletId ? undefined : toWalletId,
             goalDeductions: goalDeductions.length > 0 ? goalDeductions : undefined
         });
-
-        // Close dialog after submit completes
-        onOpenChange(false);
     };
 
     const title = mode === 'add' ? 'Add Transaction' : 'Edit Transaction';
