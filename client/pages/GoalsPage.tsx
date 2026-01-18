@@ -219,11 +219,9 @@ export default function GoalsPage() {
                 // Update goal to target amount (100% complete)
                 updateGoal({ ...quickPayGoal, currentAmount: quickPayGoal.targetAmount });
 
-                // Refresh wallet data before opening next dialog
-                await queryClient.invalidateQueries({ queryKey: ['wallets'] });
-
-                // Small delay to ensure UI has fresh data
-                await new Promise(resolve => setTimeout(resolve, 600));
+                // Await fresh wallet and goals data before opening next dialog
+                await queryClient.refetchQueries({ queryKey: ['wallets'] });
+                await queryClient.refetchQueries({ queryKey: ['goals'] });
 
                 // Close Quick Pay dialog
                 setQuickPayGoal(null);

@@ -106,8 +106,18 @@ export default function StatisticsPage() {
         // Get days in current month
         const daysInMonth = new Date(currentYear, date.getMonth() + 1, 0).getDate();
 
-        // Build daily data from transactions (allows category filtering)
-        let data = [];
+        // Calculate total wallet balance as starting point for Net Worth
+        const totalWalletBalance = wallets.reduce((sum, w) => sum + w.balance, 0);
+
+        // Calculate cumulative changes from today backwards to get starting balance
+        // We need to reverse-calculate what the balance was at the START of the month
+        const today = new Date();
+        const isCurrentMonth = date.getMonth() === today.getMonth() && currentYear === today.getFullYear();
+
+        // For net worth, we calculate cumulative changes starting from beginning of month
+        // First pass: collect all daily net changes
+        let dailyNetChanges: { day: number; netChange: number; income: number; expense: number; transfers: number }[] = [];
+
         for (let day = 1; day <= daysInMonth; day++) {
             const dateObj = new Date(currentYear, date.getMonth(), day);
             const dayStr = format(dateObj, 'yyyy-MM-dd');
@@ -145,20 +155,47 @@ export default function StatisticsPage() {
                 .filter((t: any) => t.type === 'transfer' || t.category === 'Transfer')
                 .reduce((sum: number, t: any) => sum + t.actual, 0);
 
-            data.push({
+            dailyNetChanges.push({
                 day,
-                date: format(dateObj, 'dd'),
-                fullDate: format(dateObj, 'EEEE dd'),
-                week: Math.ceil(day / 7),
+                netChange: income - expense,
                 income,
                 expense,
-                transfers,
-                netWorth: income - expense,
+                transfers
+            });
+        }
+
+        // Calculate starting balance by working backwards from current wallet balance
+        // Total wallet balance = startingBalanceAtMonthStart + allChangesThisMonth
+        // So: startingBalanceAtMonthStart = Total wallet balance - allChangesThisMonth
+        const totalMonthlyChange = dailyNetChanges.reduce((sum, d) => sum + d.netChange, 0);
+        const startingBalance = isCurrentMonth ? totalWalletBalance - totalMonthlyChange : 0;
+
+        // Build daily data with cumulative net worth
+        let data = [];
+        let cumulativeNetWorth = startingBalance;
+
+        for (let i = 0; i < dailyNetChanges.length; i++) {
+            const dayData = dailyNetChanges[i];
+            const dateObj = new Date(currentYear, date.getMonth(), dayData.day);
+
+            cumulativeNetWorth += dayData.netChange;
+
+            data.push({
+                day: dayData.day,
+                date: format(dateObj, 'dd'),
+                fullDate: format(dateObj, 'EEEE dd'),
+                week: Math.ceil(dayData.day / 7),
+                income: dayData.income,
+                expense: dayData.expense,
+                transfers: dayData.transfers,
+                netWorth: cumulativeNetWorth,
             });
         }
 
         if (xAxisMode === 'weekly') {
             const weeklyMap = new Map();
+            let weeklyNetWorth = startingBalance;
+
             data.forEach((d: any) => {
                 const key = `Week ${d.week}`;
                 if (!weeklyMap.has(key)) {
@@ -175,34 +212,38 @@ export default function StatisticsPage() {
                 weekData.income += d.income;
                 weekData.expense += d.expense;
                 weekData.transfers += d.transfers;
-                weekData.netWorth += d.netWorth;
             });
-            data = Array.from(weeklyMap.values());
+
+            // Recalculate cumulative net worth for weekly view
+            const weeks = Array.from(weeklyMap.values());
+            weeks.forEach((w: any) => {
+                weeklyNetWorth += (w.income - w.expense);
+                w.netWorth = weeklyNetWorth;
+            });
+            data = weeks;
         }
 
         if (yAxisMode === 'cumulative') {
             let runningIncome = 0;
             let runningExpense = 0;
             let runningTransfers = 0;
-            let runningNetWorth = 0;
 
             data = data.map((d: any) => {
                 runningIncome += d.income;
                 runningExpense += d.expense;
                 runningTransfers += d.transfers;
-                runningNetWorth += d.netWorth;
                 return {
                     ...d,
                     income: runningIncome,
                     expense: runningExpense,
                     transfers: runningTransfers,
-                    netWorth: runningNetWorth
+                    // Net Worth is already cumulative, don't change it
                 };
             });
         }
 
         return data;
-    }, [budget?.transactions, currentYear, date, xAxisMode, yAxisMode, selectedCategories]);
+    }, [budget?.transactions, currentYear, date, xAxisMode, yAxisMode, selectedCategories, wallets]);
 
     // 2. Prepare Pie Data (Expenses) - Use Optimized Server Data
     const pieData = useMemo(() => {
@@ -222,10 +263,12 @@ export default function StatisticsPage() {
         '#a855f7', // Purple-600
     ];
 
-    // 3. Prepare Goals Data
+    // 3. Prepare Goals Data - Only show active goals (exclude fulfilled/completed)
     const goalsData = useMemo(() => {
         if (!goals) return [];
-        return goals.map(g => {
+        // Filter to only active goals to avoid showing fulfilled goals in progress section
+        const activeGoals = goals.filter(g => g.status === 'active' || !g.status);
+        return activeGoals.map(g => {
             const current = g.currentAmount || 0;
             const target = g.targetAmount || 1; // Prevent div by zero
             const percent = Math.min(100, (current / target) * 100);
@@ -665,6 +708,7 @@ export default function StatisticsPage() {
                                             axisLine={false}
                                             tickFormatter={(value) => `${currency}${value}`}
                                             domain={[0, yAxisMax ? parseInt(yAxisMax) : 'auto']}
+                                            allowDataOverflow={true}
                                         />
                                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} opacity={0.4} />
                                         <Tooltip
@@ -1146,7 +1190,8 @@ export default function StatisticsPage() {
                                                     if (value >= 1000) return `${currency}${(value / 1000).toFixed(0)}k`;
                                                     return `${currency}${value}`;
                                                 }}
-                                                domain={['auto', yearlyYAxisMax ? parseInt(yearlyYAxisMax) : 'auto']}
+                                                domain={[0, yearlyYAxisMax ? parseInt(yearlyYAxisMax) : 'auto']}
+                                                allowDataOverflow={true}
                                             />
                                             <Tooltip
                                                 cursor={{ fill: 'hsl(var(--muted)/0.2)' }}

@@ -87,38 +87,58 @@ export function GoalDialog({ open, onOpenChange, onSubmit, initialData, mode = '
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (name.trim() && targetAmount) {
-            // Check for no changes in edit mode
-            if (mode === 'edit' && initialData) {
-                const noChanges =
-                    name === (initialData.name || '') &&
-                    (parseFloat(targetAmount) || 0) === (initialData.targetAmount || 0) &&
-                    targetDate === (initialData.targetDate?.split('T')[0] || '') &&
-                    category === (initialData.category || 'Other') &&
-                    description === (initialData.description || '');
 
-                if (noChanges) {
-                    toast({
-                        title: "No Changes",
-                        description: "No changes were made to this goal.",
-                    });
-                    setTimeout(() => onOpenChange(false), 100);
-                    return;
-                }
-            }
-
-            onSubmit({
-                id: initialData?.id,
-                name,
-                targetAmount: parseFloat(targetAmount) || 0,
-                currentAmount: initialData?.currentAmount || 0,
-                targetDate: targetDate || undefined,
-                category: category as any,
-                description: description || undefined,
-                startedAt: initialData?.startedAt || new Date().toISOString(),
+        // Validate name
+        if (!name.trim()) {
+            toast({
+                title: "Goal Name Required",
+                description: "Please enter a name for your goal.",
+                variant: "destructive",
             });
-            onOpenChange(false);
+            return;
         }
+
+        // Validate target amount
+        const parsedAmount = parseFloat(targetAmount);
+        if (!targetAmount || parsedAmount <= 0) {
+            toast({
+                title: "Target Amount Required",
+                description: "Please enter a target amount greater than $0.",
+                variant: "destructive",
+            });
+            return;
+        }
+
+        // Check for no changes in edit mode
+        if (mode === 'edit' && initialData) {
+            const noChanges =
+                name === (initialData.name || '') &&
+                parsedAmount === (initialData.targetAmount || 0) &&
+                targetDate === (initialData.targetDate?.split('T')[0] || '') &&
+                category === (initialData.category || 'Other') &&
+                description === (initialData.description || '');
+
+            if (noChanges) {
+                toast({
+                    title: "No Changes",
+                    description: "No changes were made to this goal.",
+                });
+                setTimeout(() => onOpenChange(false), 100);
+                return;
+            }
+        }
+
+        onSubmit({
+            id: initialData?.id,
+            name,
+            targetAmount: parsedAmount,
+            currentAmount: initialData?.currentAmount || 0,
+            targetDate: targetDate || undefined,
+            category: category as any,
+            description: description || undefined,
+            startedAt: initialData?.startedAt || new Date().toISOString(),
+        });
+        onOpenChange(false);
     };
 
     const title = mode === 'add' ? 'Add New Goal' : 'Edit Goal';

@@ -76,7 +76,7 @@ export const createWallet: RequestHandler = async (req, res) => {
             entityName: wallet.name,
             changeType: 'wallet_created',
             newBalance: wallet.balance,
-            details: JSON.stringify({ type: wallet.type })
+            details: `Type: ${wallet.type}${wallet.balance > 0 ? `, Initial Balance: $${wallet.balance}` : ''}`
         });
 
         res.json({ success: true, data: mapToWallet(wallet) });
@@ -197,7 +197,7 @@ export const deleteWallet: RequestHandler = async (req, res) => {
             entityName: wallet.name,
             changeType: 'wallet_deleted',
             previousBalance: wallet.balance,
-            details: JSON.stringify({ type: wallet.type })
+            details: `Type: ${wallet.type}, Final Balance: $${wallet.balance}`
         });
 
         await WalletModel.deleteOne({ _id: id, userId });

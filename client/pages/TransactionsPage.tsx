@@ -89,10 +89,12 @@ export function TransactionsPage() {
     const symbol = getCurrencySymbol(currency);
 
     const getTransactionType = (t: Transaction) => {
+        // Income categories - synced with use-budget.ts for consistency
+        const incomeCategories = ['income', 'Paycheck', 'Bonus', 'Debt Added', 'Side Hustle', 'Freelance', 'Gifts Received', 'Refund', 'Loan Repaid'];
         // Treat savings as transfer for backwards compatibility
         if (t.type === 'savings' || ['Savings'].includes(t.category)) return 'transfer';
         if (t.type) return t.type;
-        if (['Paycheck', 'Bonus', 'Debt Added'].includes(t.category)) return 'income';
+        if (incomeCategories.includes(t.category)) return 'income';
         return 'expense';
     };
 

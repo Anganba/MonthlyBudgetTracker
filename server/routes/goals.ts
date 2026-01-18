@@ -63,11 +63,7 @@ export const createGoal: RequestHandler = async (req, res) => {
             entityId: goal._id.toString(),
             entityName: name,
             changeType: 'goal_created',
-            details: JSON.stringify({
-                targetAmount,
-                category,
-                targetDate
-            })
+            details: `Target: $${targetAmount}${category ? `, Category: ${category}` : ''}${targetDate ? `, Due: ${new Date(targetDate).toLocaleDateString()}` : ''}`
         });
 
         res.json({ success: true, data: mapToGoal(goal) });
@@ -201,7 +197,7 @@ export const deleteGoal: RequestHandler = async (req, res) => {
             entityId: id,
             entityName: goalName,
             changeType: 'goal_deleted',
-            details: JSON.stringify(goalDetails)
+            details: `Target: $${goalDetails.targetAmount}, Progress: $${goalDetails.currentAmount}${goalDetails.category ? `, Category: ${goalDetails.category}` : ''}, Status: ${goalDetails.status}`
         });
 
         res.json({ success: true, message: "Goal deleted" });

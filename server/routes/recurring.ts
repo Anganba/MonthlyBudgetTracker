@@ -65,7 +65,7 @@ export const createRecurringTransaction: RequestHandler = async (req, res) => {
             entityName: name,
             changeType: 'recurring_created',
             changeAmount: amount,
-            details: JSON.stringify({ category, frequency })
+            details: `Category: ${category}, Frequency: ${frequency}`
         });
 
         res.json({ success: true, data: { ...newItem.toObject(), id: newItem._id.toString() } });
@@ -157,7 +157,7 @@ export const deleteRecurringTransaction: RequestHandler = async (req, res) => {
             entityName: recurring.name,
             changeType: 'recurring_deleted',
             changeAmount: recurring.amount,
-            details: JSON.stringify({ category: recurring.category, frequency: recurring.frequency })
+            details: `Category: ${recurring.category}, Frequency: ${recurring.frequency}`
         });
 
         await RecurringTransactionModel.deleteOne({ _id: id, userId });
