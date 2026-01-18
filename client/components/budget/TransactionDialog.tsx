@@ -100,6 +100,10 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
     const [name, setName] = useState('');
     const [actual, setActual] = useState('');
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+    const [time, setTime] = useState(() => {
+        const now = new Date();
+        return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+    });
     const [goalId, setGoalId] = useState<string>('');
     const [walletId, setWalletId] = useState<string>('');
     const [toWalletId, setToWalletId] = useState<string>('');
@@ -115,6 +119,13 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
             setActual(initialData.actual?.toString() || '');
             const rawDate = initialData.date || new Date().toISOString();
             setDate(rawDate.split('T')[0]);
+            // Parse existing timestamp or use current time
+            if (initialData.timestamp) {
+                setTime(initialData.timestamp.substring(0, 5)); // HH:MM from HH:MM:SS
+            } else {
+                const now = new Date();
+                setTime(`${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`);
+            }
             setGoalId(initialData.goalId || 'unassigned');
             setWalletId(initialData.walletId || '');
             setToWalletId(initialData.toWalletId || '');
@@ -124,6 +135,8 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
             setName('');
             setActual('');
             setDate(new Date().toISOString().split('T')[0]);
+            const now = new Date();
+            setTime(`${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`);
             setGoalId('unassigned');
 
             if (wallets.length > 0) {
@@ -254,10 +267,8 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
             }
         }
 
-        // Generate current timestamp (HH:MM:SS) for new transactions, preserve existing for edits
-        const now = new Date();
-        const currentTimestamp = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
-        const timestamp = mode === 'edit' && initialData?.timestamp ? initialData.timestamp : currentTimestamp;
+        // Generate timestamp from the time input field (HH:MM -> HH:MM:SS)
+        const timestamp = time ? `${time}:00` : undefined;
 
         // No longer need to track locally - frequent categories are calculated from transaction history
         // The server endpoint /api/budget/frequent-categories handles this
@@ -340,38 +351,55 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
                     </TabsList>
 
                     <form onSubmit={handleSubmit} className="space-y-4">
+                        {/* Date & Time Row */}
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label htmlFor="date" className="text-gray-400">Date</Label>
+                                <Label htmlFor="date" className="text-gray-400 h-5 flex items-center">Date</Label>
                                 <Input
                                     id="date"
                                     type="date"
                                     value={date}
                                     onChange={(e) => setDate(e.target.value)}
-                                    className="bg-zinc-800 border-zinc-700 rounded-xl h-11 focus:border-primary"
+                                    onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
+                                    className="bg-zinc-800 border-zinc-700 rounded-xl h-11 focus:border-primary cursor-pointer"
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="amount" className="text-gray-400">Amount</Label>
+                                <Label htmlFor="time" className="text-gray-400 h-5 flex items-center gap-1">
+                                    <Clock className="h-3 w-3" />
+                                    Time
+                                </Label>
                                 <Input
-                                    id="amount"
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
-                                    inputMode="decimal"
-                                    placeholder="0.00"
-                                    value={actual}
-                                    onChange={(e) => setActual(e.target.value)}
-                                    onKeyDown={(e) => {
-                                        if (['+', '-', 'e', 'E'].includes(e.key)) {
-                                            e.preventDefault();
-                                        }
-                                    }}
-                                    className="bg-zinc-800 border-zinc-700 rounded-xl h-11 focus:border-primary"
+                                    id="time"
+                                    type="time"
+                                    value={time}
+                                    onChange={(e) => setTime(e.target.value)}
+                                    onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
+                                    className="bg-zinc-800 border-zinc-700 rounded-xl h-11 focus:border-primary cursor-pointer"
                                 />
                             </div>
                         </div>
 
+                        {/* Amount Row */}
+                        <div className="space-y-2">
+                            <Label htmlFor="amount" className="text-gray-400">Amount</Label>
+                            <Input
+                                id="amount"
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                inputMode="decimal"
+                                placeholder="0.00"
+                                value={actual}
+                                onChange={(e) => setActual(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (['+', '-', 'e', 'E'].includes(e.key)) {
+                                        e.preventDefault();
+                                    }
+                                }}
+                                className="bg-zinc-800 border-zinc-700 rounded-xl h-11 focus:border-primary text-lg"
+                            />
+                        </div>
                         {type !== 'transfer' && (
                             <div className="space-y-2">
                                 <Label htmlFor="category" className="text-gray-400">Category</Label>
@@ -587,6 +615,6 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
                     </form>
                 </Tabs>
             </DialogContent>
-        </Dialog>
+        </Dialog >
     );
 }
