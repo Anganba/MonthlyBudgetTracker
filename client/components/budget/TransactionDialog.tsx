@@ -109,8 +109,21 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
     const [toWalletId, setToWalletId] = useState<string>('');
     const [goalDeductions, setGoalDeductions] = useState<GoalDeduction[]>([]);
 
+    // Track if we've initialized for this dialog open session
+    const [hasInitialized, setHasInitialized] = useState(false);
+
+    // Reset initialization flag when dialog closes
     useEffect(() => {
-        if (open && initialData) {
+        if (!open) {
+            setHasInitialized(false);
+        }
+    }, [open]);
+
+    // Main form initialization - only runs once when dialog opens
+    useEffect(() => {
+        if (!open || hasInitialized) return;
+
+        if (initialData) {
             // Map old 'savings' type to 'transfer' for backwards compatibility
             const mappedType = initialData.type === 'savings' ? 'transfer' : (initialData.type || 'expense');
             setType(mappedType as 'expense' | 'income' | 'transfer');
@@ -129,7 +142,8 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
             setGoalId(initialData.goalId || 'unassigned');
             setWalletId(initialData.walletId || '');
             setToWalletId(initialData.toWalletId || '');
-        } else if (open && mode === 'add') {
+            setHasInitialized(true);
+        } else if (mode === 'add') {
             setType('expense');
             setCategory('Food');
             setName('');
@@ -138,19 +152,21 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
             const now = new Date();
             setTime(`${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`);
             setGoalId('unassigned');
-
-            if (wallets.length > 0) {
-                const cashWallet = wallets.find(w => w.type === 'cash');
-                const def = wallets.find(w => w.isDefault);
-                setWalletId(cashWallet?.id || def?.id || wallets[0].id);
-                const other = wallets.find(w => w.id !== (cashWallet?.id || def?.id || wallets[0].id));
-                setToWalletId(other?.id || '');
-            } else {
-                setWalletId('');
-                setToWalletId('');
-            }
+            setHasInitialized(true);
         }
-    }, [open, initialData, mode, wallets]);
+    }, [open, initialData, mode, hasInitialized]);
+
+    // Separate effect for wallet initialization - only sets wallet if not already set
+    useEffect(() => {
+        if (open && mode === 'add' && wallets.length > 0 && !walletId) {
+            const cashWallet = wallets.find(w => w.type === 'cash');
+            const def = wallets.find(w => w.isDefault);
+            const defaultWalletId = cashWallet?.id || def?.id || wallets[0].id;
+            setWalletId(defaultWalletId);
+            const other = wallets.find(w => w.id !== defaultWalletId);
+            setToWalletId(other?.id || '');
+        }
+    }, [open, mode, wallets, walletId]);
 
     const filteredCategories = TRANSACTION_CATEGORIES.filter(cat => {
         if (type === 'income') return cat.type === 'income';

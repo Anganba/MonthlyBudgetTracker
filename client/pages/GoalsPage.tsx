@@ -50,6 +50,8 @@ export default function GoalsPage() {
     // Quick Pay Remaining State
     const [quickPayGoal, setQuickPayGoal] = useState<Goal | null>(null);
     const [quickPayWalletId, setQuickPayWalletId] = useState<string>('');
+    const [quickPayStep, setQuickPayStep] = useState<'pay' | 'complete'>('pay');
+    const [quickPayCompletedGoal, setQuickPayCompletedGoal] = useState<Goal | null>(null);
 
     // Reset Goal Progress State
     const [resetGoal, setResetGoal] = useState<Goal | null>(null);
@@ -176,6 +178,8 @@ export default function GoalsPage() {
     const handleQuickPay = (e: React.MouseEvent, goal: Goal) => {
         e.stopPropagation();
         setQuickPayGoal(goal);
+        setQuickPayStep('pay');
+        setQuickPayCompletedGoal(null);
         // Default to first wallet
         if (wallets.length > 0) {
             setQuickPayWalletId(wallets[0].id);
@@ -219,17 +223,19 @@ export default function GoalsPage() {
                 // Update goal to target amount (100% complete)
                 updateGoal({ ...quickPayGoal, currentAmount: quickPayGoal.targetAmount });
 
-                // Await fresh wallet and goals data before opening next dialog
+                // Await fresh wallet and goals data
                 await queryClient.refetchQueries({ queryKey: ['wallets'] });
                 await queryClient.refetchQueries({ queryKey: ['goals'] });
 
-                // Close Quick Pay dialog
-                setQuickPayGoal(null);
-                setQuickPayWalletId('');
+                // Small delay to ensure React state is fully updated before transitioning
+                await new Promise(resolve => setTimeout(resolve, 100));
 
-                // Open fulfillment dialog with Savings Wallet auto-selected
-                setFulfillGoal(quickPayGoal);
+                // Store the completed goal and auto-select savings wallet for the completion step
+                setQuickPayCompletedGoal(quickPayGoal);
                 setFulfillWalletId(savingsWallet.id);
+
+                // Transition to the 'complete' step within the same dialog
+                setQuickPayStep('complete');
             } finally {
                 setIsProcessing(false);
             }
@@ -825,86 +831,213 @@ export default function GoalsPage() {
                 </DialogContent>
             </Dialog>
 
-            {/* Quick Pay Remaining Dialog */}
-            <Dialog open={!!quickPayGoal} onOpenChange={(open) => !open && setQuickPayGoal(null)}>
-                <DialogContent className="sm:max-w-sm bg-zinc-900 border-white/10">
-                    <DialogHeader>
-                        <DialogTitle className="text-xl font-serif flex items-center gap-2">
-                            <Banknote className="h-5 w-5 text-green-400" />
-                            Pay Remaining
-                        </DialogTitle>
-                        <DialogDescription className="text-gray-400">
-                            Complete <strong className="text-white">{quickPayGoal?.name}</strong> by paying the remaining amount
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="py-4 space-y-4">
-                        <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20">
-                            <p className="text-sm text-gray-400 mb-1">Amount to pay</p>
-                            <p className="text-3xl font-bold text-green-400">
-                                ${((quickPayGoal?.targetAmount || 0) - (quickPayGoal?.currentAmount || 0)).toLocaleString()}
-                            </p>
-                            <p className="text-xs text-gray-500 mt-1">
-                                This will complete your goal 100%
-                            </p>
+            {/* Quick Pay Remaining Dialog (with built-in completion transition) */}
+            <Dialog open={!!quickPayGoal} onOpenChange={(open) => {
+                if (!open) {
+                    setQuickPayGoal(null);
+                    setQuickPayStep('pay');
+                    setQuickPayCompletedGoal(null);
+                    setQuickPayWalletId('');
+                }
+            }}>
+                <DialogContent className="sm:max-w-md bg-zinc-900 border-white/10 overflow-hidden">
+                    <div className="relative">
+                        {/* Step 1: Pay Remaining */}
+                        <div className={`transition-all duration-500 ease-out ${quickPayStep === 'pay' ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-full absolute inset-0 pointer-events-none'}`}>
+                            <DialogHeader>
+                                <DialogTitle className="text-xl font-serif flex items-center gap-2">
+                                    <Banknote className="h-5 w-5 text-green-400" />
+                                    Pay Remaining
+                                </DialogTitle>
+                                <DialogDescription className="text-gray-400">
+                                    Complete <strong className="text-white">{quickPayGoal?.name}</strong> by paying the remaining amount
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="py-4 space-y-4">
+                                <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20">
+                                    <p className="text-sm text-gray-400 mb-1">Amount to pay</p>
+                                    <p className="text-3xl font-bold text-green-400">
+                                        ${((quickPayGoal?.targetAmount || 0) - (quickPayGoal?.currentAmount || 0)).toLocaleString()}
+                                    </p>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        This will complete your goal 100%
+                                    </p>
+                                </div>
+
+                                {walletsLoading ? (
+                                    <div className="flex items-center justify-center py-6 gap-3">
+                                        <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                                        <span className="text-gray-400 text-sm">Loading wallets...</span>
+                                    </div>
+                                ) : wallets.length > 0 ? (
+                                    <div>
+                                        <Label className="text-gray-400">Pay from Wallet</Label>
+                                        <Select value={quickPayWalletId} onValueChange={setQuickPayWalletId}>
+                                            <SelectTrigger className="mt-2 h-11 bg-zinc-800 border-zinc-700 rounded-xl">
+                                                <SelectValue placeholder="Select wallet" />
+                                            </SelectTrigger>
+                                            <SelectContent className="bg-zinc-800 border-zinc-700">
+                                                {wallets.filter(w => !w.isSavingsWallet).map(w => {
+                                                    const remaining = (quickPayGoal?.targetAmount || 0) - (quickPayGoal?.currentAmount || 0);
+                                                    const hasEnough = w.balance >= remaining;
+                                                    return (
+                                                        <SelectItem key={w.id} value={w.id}>
+                                                            {w.name} (${w.balance.toLocaleString()})
+                                                            {!hasEnough && ' ⚠️'}
+                                                        </SelectItem>
+                                                    );
+                                                })}
+                                            </SelectContent>
+                                        </Select>
+                                        {(() => {
+                                            const selected = wallets.find(w => w.id === quickPayWalletId);
+                                            const remaining = (quickPayGoal?.targetAmount || 0) - (quickPayGoal?.currentAmount || 0);
+                                            if (selected && remaining > 0 && selected.balance < remaining) {
+                                                return <p className="text-xs text-yellow-400 mt-1">⚠️ Insufficient balance in this wallet</p>;
+                                            }
+                                            return null;
+                                        })()}
+                                    </div>
+                                ) : (
+                                    <p className="text-gray-500 text-sm text-center py-4">No wallets available</p>
+                                )}
+                            </div>
+                            <DialogFooter>
+                                <Button variant="ghost" onClick={() => setQuickPayGoal(null)}>Cancel</Button>
+                                <Button
+                                    onClick={confirmQuickPay}
+                                    disabled={
+                                        walletsLoading ||
+                                        !quickPayWalletId ||
+                                        isProcessing ||
+                                        (() => {
+                                            const selected = wallets.find(w => w.id === quickPayWalletId);
+                                            const remaining = (quickPayGoal?.targetAmount || 0) - (quickPayGoal?.currentAmount || 0);
+                                            return selected ? selected.balance < remaining : false;
+                                        })()
+                                    }
+                                    className="bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {isProcessing ? 'Processing...' : 'Pay & Complete Goal'}
+                                </Button>
+                            </DialogFooter>
                         </div>
 
-                        {walletsLoading ? (
-                            <div className="flex items-center justify-center py-6 gap-3">
-                                <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                                <span className="text-gray-400 text-sm">Loading wallets...</span>
+                        {/* Step 2: Goal Completed - Record Purchase */}
+                        <div className={`transition-all duration-500 ease-out ${quickPayStep === 'complete' ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-full absolute inset-0 pointer-events-none'}`}>
+                            <DialogHeader>
+                                <DialogTitle className="text-xl font-serif flex items-center gap-2">
+                                    <Trophy className="h-5 w-5 text-yellow-500" />
+                                    Goal Completed! 🎉
+                                </DialogTitle>
+                                <DialogDescription className="text-gray-400">
+                                    Congratulations on reaching your goal <strong className="text-white">{quickPayCompletedGoal?.name}</strong>!
+                                    <br /><br />
+                                    You're about to record the purchase of this item for <strong className="text-primary">${quickPayCompletedGoal?.targetAmount.toLocaleString()}</strong>.
+                                    <br /><br />
+                                    This will create an expense transaction and deduct from your <strong className="text-primary">Savings Wallet</strong>.
+                                </DialogDescription>
+                            </DialogHeader>
+
+                            <div className="py-4 space-y-4">
+                                <div className="p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/20">
+                                    <p className="text-sm text-gray-400 mb-1">Purchase Amount</p>
+                                    <p className="text-3xl font-bold text-yellow-400">
+                                        ${quickPayCompletedGoal?.targetAmount.toLocaleString()}
+                                    </p>
+                                </div>
+
+                                {walletsLoading ? (
+                                    <div className="flex items-center justify-center py-6 gap-3">
+                                        <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                                        <span className="text-gray-400 text-sm">Loading wallets...</span>
+                                    </div>
+                                ) : wallets.length > 0 ? (
+                                    <div>
+                                        <Label className="text-gray-400">Spend from Wallet</Label>
+                                        <Select value={fulfillWalletId} onValueChange={setFulfillWalletId}>
+                                            <SelectTrigger className="mt-2 h-11 bg-zinc-800 border-zinc-700 rounded-xl">
+                                                <SelectValue placeholder="Select wallet" />
+                                            </SelectTrigger>
+                                            <SelectContent className="bg-zinc-800 border-zinc-700">
+                                                {wallets.filter(w => w.isSavingsWallet).map(w => {
+                                                    const hasEnough = w.balance >= (quickPayCompletedGoal?.targetAmount || 0);
+                                                    return (
+                                                        <SelectItem key={w.id} value={w.id}>
+                                                            {w.name} (${w.balance.toLocaleString()})
+                                                            {!hasEnough && ' ⚠️'}
+                                                        </SelectItem>
+                                                    );
+                                                })}
+                                            </SelectContent>
+                                        </Select>
+                                        {(() => {
+                                            const selected = wallets.find(w => w.id === fulfillWalletId);
+                                            const amount = quickPayCompletedGoal?.targetAmount || 0;
+                                            if (selected && amount > 0 && selected.balance < amount) {
+                                                return <p className="text-xs text-yellow-400 mt-1">⚠️ Insufficient balance in this wallet</p>;
+                                            }
+                                            return null;
+                                        })()}
+                                    </div>
+                                ) : (
+                                    <p className="text-gray-500 text-sm text-center py-4">No wallets available</p>
+                                )}
                             </div>
-                        ) : wallets.length > 0 ? (
-                            <div>
-                                <Label className="text-gray-400">Pay from Wallet</Label>
-                                <Select value={quickPayWalletId} onValueChange={setQuickPayWalletId}>
-                                    <SelectTrigger className="mt-2 h-11 bg-zinc-800 border-zinc-700 rounded-xl">
-                                        <SelectValue placeholder="Select wallet" />
-                                    </SelectTrigger>
-                                    <SelectContent className="bg-zinc-800 border-zinc-700">
-                                        {wallets.filter(w => !w.isSavingsWallet).map(w => {
-                                            const remaining = (quickPayGoal?.targetAmount || 0) - (quickPayGoal?.currentAmount || 0);
-                                            const hasEnough = w.balance >= remaining;
-                                            return (
-                                                <SelectItem key={w.id} value={w.id}>
-                                                    {w.name} (${w.balance.toLocaleString()})
-                                                    {!hasEnough && ' ⚠️'}
-                                                </SelectItem>
-                                            );
-                                        })}
-                                    </SelectContent>
-                                </Select>
-                                {(() => {
-                                    const selected = wallets.find(w => w.id === quickPayWalletId);
-                                    const remaining = (quickPayGoal?.targetAmount || 0) - (quickPayGoal?.currentAmount || 0);
-                                    if (selected && remaining > 0 && selected.balance < remaining) {
-                                        return <p className="text-xs text-yellow-400 mt-1">⚠️ Insufficient balance in this wallet</p>;
-                                    }
-                                    return null;
-                                })()}
-                            </div>
-                        ) : (
-                            <p className="text-gray-500 text-sm text-center py-4">No wallets available</p>
-                        )}
+
+                            <DialogFooter>
+                                <Button variant="ghost" onClick={() => {
+                                    setQuickPayGoal(null);
+                                    setQuickPayStep('pay');
+                                    setQuickPayCompletedGoal(null);
+                                    setQuickPayWalletId('');
+                                }}>Cancel</Button>
+                                <Button
+                                    onClick={async () => {
+                                        if (quickPayCompletedGoal && fulfillWalletId && !isProcessing) {
+                                            setIsProcessing(true);
+                                            try {
+                                                const categoryConfig = getCategoryConfig(quickPayCompletedGoal.category);
+
+                                                // Create expense transaction
+                                                await createTransaction({
+                                                    name: `Bought: ${quickPayCompletedGoal.name}`,
+                                                    category: categoryConfig.label,
+                                                    type: 'expense',
+                                                    planned: quickPayCompletedGoal.targetAmount,
+                                                    actual: quickPayCompletedGoal.targetAmount,
+                                                    date: new Date().toISOString().split('T')[0],
+                                                    walletId: fulfillWalletId,
+                                                    goalId: quickPayCompletedGoal.id,
+                                                });
+
+                                                // Mark goal as fulfilled
+                                                updateGoal({
+                                                    ...quickPayCompletedGoal,
+                                                    status: 'fulfilled',
+                                                    completedAt: new Date().toISOString()
+                                                });
+
+                                                // Close dialog and reset state
+                                                setQuickPayGoal(null);
+                                                setQuickPayStep('pay');
+                                                setQuickPayCompletedGoal(null);
+                                                setQuickPayWalletId('');
+                                                setFulfillWalletId('');
+                                            } finally {
+                                                setIsProcessing(false);
+                                            }
+                                        }
+                                    }}
+                                    disabled={!fulfillWalletId || isProcessing}
+                                    className="bg-yellow-600 hover:bg-yellow-700 text-white font-bold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    <Trophy className="h-4 w-4 mr-2" />
+                                    {isProcessing ? 'Processing...' : 'Record Purchase & Move to Hall of Fame'}
+                                </Button>
+                            </DialogFooter>
+                        </div>
                     </div>
-                    <DialogFooter>
-                        <Button variant="ghost" onClick={() => setQuickPayGoal(null)}>Cancel</Button>
-                        <Button
-                            onClick={confirmQuickPay}
-                            disabled={
-                                walletsLoading ||
-                                !quickPayWalletId ||
-                                isProcessing ||
-                                (() => {
-                                    const selected = wallets.find(w => w.id === quickPayWalletId);
-                                    const remaining = (quickPayGoal?.targetAmount || 0) - (quickPayGoal?.currentAmount || 0);
-                                    return selected ? selected.balance < remaining : false;
-                                })()
-                            }
-                            className="bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            {isProcessing ? 'Processing...' : 'Pay & Complete Goal'}
-                        </Button>
-                    </DialogFooter>
                 </DialogContent>
             </Dialog>
 
