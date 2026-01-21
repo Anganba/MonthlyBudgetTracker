@@ -152,28 +152,33 @@ export function GoalDialog({ open, onOpenChange, onSubmit, initialData, mode = '
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-lg bg-zinc-900 border-white/10 max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                    <DialogTitle className="font-serif text-2xl text-white flex items-center gap-3">
-                        <div className={`p-2 rounded-xl ${selectedCategory.color.split(' ')[1]}`}>
-                            <CategoryIcon className={`h-5 w-5 ${selectedCategory.color.split(' ')[0]}`} />
+            <DialogContent className="sm:max-w-[420px] bg-zinc-900/95 backdrop-blur-xl border-white/10 p-0 overflow-hidden shadow-2xl shadow-black/50 max-h-[90vh] overflow-y-auto">
+                {/* Gradient Header */}
+                <div className="bg-gradient-to-b from-emerald-500/20 via-green-500/10 to-transparent p-4 pb-3">
+                    <DialogHeader className="space-y-1">
+                        <div className="flex items-center gap-2">
+                            <div className="p-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30">
+                                <Target className="h-4 w-4 text-emerald-400" />
+                            </div>
+                            <DialogTitle className="text-base font-semibold text-white">{title}</DialogTitle>
                         </div>
-                        {title}
-                    </DialogTitle>
-                    <DialogDescription className="text-gray-500">
-                        {description_text}
-                    </DialogDescription>
-                </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    {/* Category Selection - Dropdown */}
-                    <div className="space-y-2">
-                        <Label className="text-gray-400">Category</Label>
+                        <DialogDescription className="sr-only">
+                            {description_text}
+                        </DialogDescription>
+                    </DialogHeader>
+                </div>
+
+                {/* Form Content */}
+                <form onSubmit={handleSubmit} className="p-4 pt-3 space-y-3">
+                    {/* Category */}
+                    <div>
+                        <Label className="text-gray-400 text-xs font-medium mb-1.5 block">Category</Label>
                         <Select value={category} onValueChange={setCategory}>
-                            <SelectTrigger className="h-11 bg-zinc-800 border-zinc-700 rounded-xl focus:border-primary">
+                            <SelectTrigger className="bg-zinc-800/50 border-zinc-700/50 rounded-lg h-10">
                                 <SelectValue placeholder="Select a category">
                                     {category && (
                                         <div className="flex items-center gap-2">
-                                            <CategoryIcon className="h-4 w-4 text-primary" />
+                                            <CategoryIcon className="h-4 w-4 text-emerald-400" />
                                             <span>{selectedCategory.label}</span>
                                         </div>
                                     )}
@@ -186,7 +191,7 @@ export function GoalDialog({ open, onOpenChange, onSubmit, initialData, mode = '
                                         <SelectItem
                                             key={cat.id}
                                             value={cat.id}
-                                            className="focus:bg-primary/20 focus:text-white"
+                                            className="focus:bg-emerald-500/20 focus:text-white"
                                         >
                                             <div className="flex items-center gap-2">
                                                 <Icon className="h-4 w-4 text-gray-400" />
@@ -199,67 +204,77 @@ export function GoalDialog({ open, onOpenChange, onSubmit, initialData, mode = '
                         </Select>
                     </div>
 
-                    <div className="space-y-2">
-                        <Label htmlFor="name" className="text-gray-400">Goal Name</Label>
-                        <Input
-                            id="name"
-                            type="text"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            placeholder="e.g., New Car, Holiday Trip"
-                            autoFocus
-                            className="bg-zinc-800 border-zinc-700 rounded-xl h-11 focus:border-primary"
-                        />
+                    {/* Name + Amount Row */}
+                    <div className="grid grid-cols-5 gap-3">
+                        <div className="col-span-3">
+                            <Label htmlFor="name" className="text-gray-400 text-xs font-medium mb-1.5 block">Goal Name</Label>
+                            <Input
+                                id="name"
+                                type="text"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                placeholder="e.g., New Car"
+                                autoFocus
+                                className="bg-zinc-800/50 border-zinc-700/50 rounded-lg h-10 focus:border-white/30"
+                            />
+                        </div>
+                        <div className="col-span-2">
+                            <Label htmlFor="target" className="text-gray-400 text-xs font-medium mb-1.5 block">Target</Label>
+                            <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-emerald-400">$</span>
+                                <Input
+                                    id="target"
+                                    type="number"
+                                    value={targetAmount}
+                                    onChange={(e) => setTargetAmount(e.target.value)}
+                                    placeholder="0.00"
+                                    step="0.01"
+                                    min="0"
+                                    className="bg-zinc-800/50 border-zinc-700/50 rounded-lg h-10 pl-7 focus:border-white/30 text-base font-medium"
+                                />
+                            </div>
+                        </div>
                     </div>
 
-                    <div className="space-y-2">
-                        <Label htmlFor="target" className="text-gray-400">Target Amount</Label>
-                        <Input
-                            id="target"
-                            type="number"
-                            value={targetAmount}
-                            onChange={(e) => setTargetAmount(e.target.value)}
-                            placeholder="0.00"
-                            step="0.01"
-                            className="bg-zinc-800 border-zinc-700 rounded-xl h-11 focus:border-primary"
-                        />
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label htmlFor="targetDate" className="text-gray-400">Target Date (Optional)</Label>
+                    {/* Target Date */}
+                    <div>
+                        <Label htmlFor="targetDate" className="text-gray-400 text-xs font-medium mb-1.5 block">Target Date (Optional)</Label>
                         <Input
                             id="targetDate"
                             type="date"
                             value={targetDate}
                             onChange={(e) => setTargetDate(e.target.value)}
-                            className="bg-zinc-800 border-zinc-700 rounded-xl h-11 focus:border-primary"
+                            onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
+                            className="bg-zinc-800/50 border-zinc-700/50 rounded-lg h-10 focus:border-white/30 cursor-pointer text-sm"
                         />
                     </div>
 
-                    <div className="space-y-2">
-                        <Label htmlFor="description" className="text-gray-400">Notes (Optional)</Label>
+                    {/* Notes */}
+                    <div>
+                        <Label htmlFor="description" className="text-gray-400 text-xs font-medium mb-1.5 block">Notes (Optional)</Label>
                         <Textarea
                             id="description"
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
                             placeholder="Why are you saving for this goal?"
                             rows={2}
-                            className="bg-zinc-800 border-zinc-700 rounded-xl focus:border-primary resize-none"
+                            className="bg-zinc-800/50 border-zinc-700/50 rounded-lg focus:border-white/30 resize-none"
                         />
                     </div>
 
-                    <DialogFooter className="mt-6 gap-2 sm:gap-0 pt-4">
+                    {/* Footer */}
+                    <DialogFooter className="pt-2 gap-2 sm:gap-2">
                         <Button
                             type="button"
                             variant="ghost"
                             onClick={() => onOpenChange(false)}
-                            className="text-gray-400 hover:text-white"
+                            className="text-gray-400 hover:text-white hover:bg-white/5 h-9 px-4"
                         >
                             Cancel
                         </Button>
                         <Button
                             type="submit"
-                            className="bg-primary text-black hover:bg-primary/90 font-bold rounded-xl px-6"
+                            className="h-9 px-5 font-semibold rounded-lg gap-2 bg-gradient-to-r from-emerald-500 to-green-500 shadow-lg shadow-emerald-500/25 text-white transition-all hover:opacity-90 active:scale-[0.98]"
                         >
                             {submitText}
                         </Button>

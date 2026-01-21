@@ -571,35 +571,39 @@ export default function ProfilePage() {
 
             {/* Edit Profile Dialog */}
             <Dialog open={isEditProfileOpen} onOpenChange={setIsEditProfileOpen}>
-                <DialogContent className="sm:max-w-[550px] bg-zinc-900 border-violet-500/30 max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
-                        <DialogTitle className="text-2xl font-serif flex items-center gap-3">
-                            <div className="p-2 rounded-xl bg-gradient-to-br from-violet-500/30 to-purple-500/20">
-                                <UserCircle className="h-5 w-5 text-violet-400" />
+                <DialogContent className="sm:max-w-[480px] bg-zinc-900/95 backdrop-blur-xl border-white/10 p-0 overflow-hidden shadow-2xl shadow-black/50 max-h-[90vh] overflow-y-auto">
+                    {/* Gradient Header */}
+                    <div className="bg-gradient-to-b from-violet-500/20 via-purple-500/10 to-transparent p-4 pb-3">
+                        <DialogHeader className="space-y-1">
+                            <div className="flex items-center gap-2">
+                                <div className="p-1.5 rounded-lg bg-violet-500/10 border border-violet-500/30">
+                                    <UserCircle className="h-4 w-4 text-violet-400" />
+                                </div>
+                                <DialogTitle className="text-base font-semibold text-white">Edit Profile</DialogTitle>
                             </div>
-                            Edit Profile
-                        </DialogTitle>
-                        <DialogDescription className="text-gray-400">
-                            Personalize your profile with your details
-                        </DialogDescription>
-                    </DialogHeader>
+                            <DialogDescription className="sr-only">
+                                Personalize your profile with your details
+                            </DialogDescription>
+                        </DialogHeader>
+                    </div>
 
-                    <div className="space-y-6 py-4">
-                        {/* Avatar Section with Upload */}
-                        <div className="p-6 rounded-2xl bg-gradient-to-br from-violet-500/10 to-purple-500/5 border border-violet-500/20">
+                    {/* Form Content */}
+                    <div className="p-4 pt-3 space-y-4">
+                        {/* Avatar Section */}
+                        <div className="p-4 rounded-xl bg-violet-500/5 border border-violet-500/20">
                             <AvatarUpload
                                 currentAvatar={profileForm.avatarUrl}
                                 displayName={profileForm.displayName}
                                 username={profileForm.username}
                                 onAvatarChange={(base64Image) => setProfileForm({ ...profileForm, avatarUrl: base64Image })}
                             />
-                            <p className="text-xs text-gray-500 text-center mt-3">Max file size: 2MB • JPG, PNG, GIF</p>
+                            <p className="text-[10px] text-gray-500 text-center mt-2">Max 2MB • JPG, PNG, GIF</p>
                         </div>
 
                         {/* Display Name */}
-                        <div className="space-y-2">
-                            <Label htmlFor="displayName" className="text-gray-300 flex items-center gap-2">
-                                <Sparkles className="h-4 w-4 text-violet-400" />
+                        <div>
+                            <Label htmlFor="displayName" className="text-gray-400 text-xs font-medium mb-1.5 flex items-center gap-1.5">
+                                <Sparkles className="h-3 w-3 text-violet-400" />
                                 Display Name
                             </Label>
                             <Input
@@ -607,49 +611,49 @@ export default function ProfilePage() {
                                 placeholder="How should we call you?"
                                 value={profileForm.displayName}
                                 onChange={e => setProfileForm({ ...profileForm, displayName: e.target.value })}
-                                className="h-12 bg-zinc-800 border-zinc-700 focus:border-violet-400 rounded-xl"
+                                className="bg-zinc-800/50 border-zinc-700/50 rounded-lg h-10 focus:border-white/30"
                             />
-                            <p className="text-xs text-gray-500">This will be shown instead of your username</p>
+                            <p className="text-[10px] text-gray-500 mt-1">Shown instead of username</p>
                         </div>
 
-                        {/* Username */}
-                        <div className="space-y-2">
-                            <Label htmlFor="username" className="text-gray-300 flex items-center gap-2">
-                                <User className="h-4 w-4 text-cyan-400" />
-                                Username
-                            </Label>
-                            <Input
-                                id="username"
-                                value={profileForm.username}
-                                onChange={e => setProfileForm({ ...profileForm, username: e.target.value })}
-                                className="h-12 bg-zinc-800 border-zinc-700 focus:border-violet-400 rounded-xl"
-                            />
-                        </div>
-
-                        {/* Email */}
-                        <div className="space-y-2">
-                            <Label htmlFor="email" className="text-gray-300 flex items-center gap-2">
-                                <Mail className="h-4 w-4 text-emerald-400" />
-                                Email
-                            </Label>
-                            <Input
-                                id="email"
-                                value={profileForm.email}
-                                onChange={e => setProfileForm({ ...profileForm, email: e.target.value })}
-                                type="email"
-                                placeholder="your@email.com"
-                                className="h-12 bg-zinc-800 border-zinc-700 focus:border-violet-400 rounded-xl"
-                            />
+                        {/* Username + Email Row */}
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <Label htmlFor="username" className="text-gray-400 text-xs font-medium mb-1.5 flex items-center gap-1.5">
+                                    <User className="h-3 w-3 text-cyan-400" />
+                                    Username
+                                </Label>
+                                <Input
+                                    id="username"
+                                    value={profileForm.username}
+                                    onChange={e => setProfileForm({ ...profileForm, username: e.target.value })}
+                                    className="bg-zinc-800/50 border-zinc-700/50 rounded-lg h-10 focus:border-white/30"
+                                />
+                            </div>
+                            <div>
+                                <Label htmlFor="email" className="text-gray-400 text-xs font-medium mb-1.5 flex items-center gap-1.5">
+                                    <Mail className="h-3 w-3 text-emerald-400" />
+                                    Email
+                                </Label>
+                                <Input
+                                    id="email"
+                                    value={profileForm.email}
+                                    onChange={e => setProfileForm({ ...profileForm, email: e.target.value })}
+                                    type="email"
+                                    placeholder="your@email.com"
+                                    className="bg-zinc-800/50 border-zinc-700/50 rounded-lg h-10 focus:border-white/30"
+                                />
+                            </div>
                         </div>
 
                         {/* Bio */}
-                        <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                                <Label htmlFor="bio" className="text-gray-300 flex items-center gap-2">
-                                    <Edit className="h-4 w-4 text-amber-400" />
+                        <div>
+                            <div className="flex items-center justify-between mb-1.5">
+                                <Label htmlFor="bio" className="text-gray-400 text-xs font-medium flex items-center gap-1.5">
+                                    <Edit className="h-3 w-3 text-amber-400" />
                                     Bio
                                 </Label>
-                                <span className={`text-xs ${profileForm.bio.length > 180 ? 'text-amber-400' : 'text-gray-500'}`}>
+                                <span className={`text-[10px] ${profileForm.bio.length > 180 ? 'text-amber-400' : 'text-gray-500'}`}>
                                     {profileForm.bio.length}/200
                                 </span>
                             </div>
@@ -657,85 +661,119 @@ export default function ProfilePage() {
                                 id="bio"
                                 value={profileForm.bio}
                                 onChange={e => setProfileForm({ ...profileForm, bio: e.target.value.slice(0, 200) })}
-                                placeholder="Tell us a bit about yourself..."
-                                rows={3}
-                                className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 focus:border-violet-400 rounded-xl text-white placeholder:text-gray-500 resize-none focus:outline-none focus:ring-1 focus:ring-violet-400"
+                                placeholder="Tell us about yourself..."
+                                rows={2}
+                                className="w-full px-3 py-2.5 bg-zinc-800/50 border border-zinc-700/50 focus:border-white/30 rounded-lg text-white text-sm placeholder:text-gray-500 resize-none focus:outline-none"
                             />
                         </div>
 
-                        {/* Member Since Info */}
+                        {/* Member Since */}
                         {user?.createdAt && (
-                            <div className="flex items-center gap-2 text-sm text-gray-500 pt-2 border-t border-white/5">
-                                <Clock className="h-4 w-4" />
-                                <span>Member since {new Date(user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span>
+                            <div className="flex items-center gap-1.5 text-[10px] text-gray-500 pt-2 border-t border-white/5">
+                                <Clock className="h-3 w-3" />
+                                Member since {new Date(user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                             </div>
                         )}
-                    </div>
 
-                    <DialogFooter className="gap-2 sm:gap-0">
-                        <Button variant="ghost" onClick={() => setIsEditProfileOpen(false)} className="text-gray-400 hover:text-white">
-                            Cancel
-                        </Button>
-                        <Button
-                            onClick={handleUpdateProfile}
-                            disabled={isLoading}
-                            className="bg-gradient-to-r from-violet-500 to-purple-500 text-white hover:opacity-90 rounded-xl px-6"
-                        >
-                            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                            Save Changes
-                        </Button>
-                    </DialogFooter>
+                        {/* Footer */}
+                        <DialogFooter className="pt-2 gap-2 sm:gap-2">
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                onClick={() => setIsEditProfileOpen(false)}
+                                className="text-gray-400 hover:text-white hover:bg-white/5 h-9 px-4"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                onClick={handleUpdateProfile}
+                                disabled={isLoading}
+                                className="h-9 px-5 font-semibold rounded-lg gap-1.5 bg-gradient-to-r from-violet-500 to-purple-500 shadow-lg shadow-violet-500/25 text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
+                            >
+                                {isLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                                Save Changes
+                            </Button>
+                        </DialogFooter>
+                    </div>
                 </DialogContent>
             </Dialog>
 
             {/* Change Password Dialog */}
             <Dialog open={isChangePasswordOpen} onOpenChange={setIsChangePasswordOpen}>
-                <DialogContent className="sm:max-w-[425px] bg-zinc-900 border-violet-500/30">
-                    <DialogHeader>
-                        <DialogTitle className="text-xl font-serif">Change Password</DialogTitle>
-                        <DialogDescription className="text-gray-400">
-                            Enter your current password and choose a new one
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="current" className="text-gray-300">Current Password</Label>
+                <DialogContent className="sm:max-w-[380px] bg-zinc-900/95 backdrop-blur-xl border-white/10 p-0 overflow-hidden shadow-2xl shadow-black/50">
+                    {/* Gradient Header */}
+                    <div className="bg-gradient-to-b from-violet-500/20 via-purple-500/10 to-transparent p-4 pb-3">
+                        <DialogHeader className="space-y-1">
+                            <div className="flex items-center gap-2">
+                                <div className="p-1.5 rounded-lg bg-violet-500/10 border border-violet-500/30">
+                                    <Key className="h-4 w-4 text-violet-400" />
+                                </div>
+                                <DialogTitle className="text-base font-semibold text-white">Change Password</DialogTitle>
+                            </div>
+                            <DialogDescription className="sr-only">
+                                Enter your current password and choose a new one
+                            </DialogDescription>
+                        </DialogHeader>
+                    </div>
+
+                    {/* Form Content */}
+                    <div className="p-4 pt-3 space-y-3">
+                        {/* Current Password */}
+                        <div>
+                            <Label htmlFor="current" className="text-gray-400 text-xs font-medium mb-1.5 block">Current Password</Label>
                             <Input
                                 id="current"
                                 type="password"
                                 value={passwordForm.current}
                                 onChange={e => setPasswordForm({ ...passwordForm, current: e.target.value })}
-                                className="h-12 bg-zinc-800 border-zinc-700 focus:border-violet-400"
+                                className="bg-zinc-800/50 border-zinc-700/50 rounded-lg h-10 focus:border-white/30"
                             />
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="new" className="text-gray-300">New Password</Label>
+
+                        {/* New Password */}
+                        <div>
+                            <Label htmlFor="new" className="text-gray-400 text-xs font-medium mb-1.5 block">New Password</Label>
                             <Input
                                 id="new"
                                 type="password"
                                 value={passwordForm.new}
                                 onChange={e => setPasswordForm({ ...passwordForm, new: e.target.value })}
-                                className="h-12 bg-zinc-800 border-zinc-700 focus:border-violet-400"
+                                className="bg-zinc-800/50 border-zinc-700/50 rounded-lg h-10 focus:border-white/30"
                             />
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="confirm" className="text-gray-300">Confirm New Password</Label>
+
+                        {/* Confirm Password */}
+                        <div>
+                            <Label htmlFor="confirm" className="text-gray-400 text-xs font-medium mb-1.5 block">Confirm New Password</Label>
                             <Input
                                 id="confirm"
                                 type="password"
                                 value={passwordForm.confirm}
                                 onChange={e => setPasswordForm({ ...passwordForm, confirm: e.target.value })}
-                                className="h-12 bg-zinc-800 border-zinc-700 focus:border-violet-400"
+                                className="bg-zinc-800/50 border-zinc-700/50 rounded-lg h-10 focus:border-white/30"
                             />
                         </div>
+
+                        {/* Footer */}
+                        <DialogFooter className="pt-2 gap-2 sm:gap-2">
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                onClick={() => setIsChangePasswordOpen(false)}
+                                className="text-gray-400 hover:text-white hover:bg-white/5 h-9 px-4"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                onClick={handleChangePassword}
+                                disabled={isLoading}
+                                className="h-9 px-5 font-semibold rounded-lg gap-1.5 bg-gradient-to-r from-violet-500 to-purple-500 shadow-lg shadow-violet-500/25 text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
+                            >
+                                {isLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                                Update Password
+                            </Button>
+                        </DialogFooter>
                     </div>
-                    <DialogFooter>
-                        <Button variant="ghost" onClick={() => setIsChangePasswordOpen(false)}>Cancel</Button>
-                        <Button onClick={handleChangePassword} disabled={isLoading} className="bg-gradient-to-r from-violet-500 to-purple-500 text-white hover:opacity-90">
-                            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                            Update Password
-                        </Button>
-                    </DialogFooter>
                 </DialogContent>
             </Dialog>
 

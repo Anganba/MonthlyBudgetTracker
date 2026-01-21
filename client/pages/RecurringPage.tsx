@@ -28,6 +28,7 @@ import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "@/lib/categories";
 export default function RecurringPage() {
     const { user } = useAuth();
     const navigate = useNavigate();
+    const { wallets } = useWallets();
     const queryClient = useQueryClient();
     const [isAddOpen, setIsAddOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<RecurringTransaction | null>(null);
@@ -214,6 +215,7 @@ export default function RecurringPage() {
                         <div className="divide-y divide-white/5">
                             {recurringList?.map((item) => {
                                 const isIncome = item.type === 'income';
+                                const wallet = wallets.find(w => w.id === item.walletId);
                                 return (
                                     <div
                                         key={item.id}
@@ -235,6 +237,12 @@ export default function RecurringPage() {
                                                         {isIncome ? 'Income' : 'Expense'}
                                                     </span>
                                                     <span className="text-[10px] md:text-xs px-1.5 md:px-2 py-0.5 rounded-full bg-primary/10 text-primary capitalize">{item.frequency}</span>
+                                                    {wallet && (
+                                                        <span className="text-[10px] md:text-xs px-1.5 md:px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 flex items-center gap-1">
+                                                            <DollarSign className="h-2.5 w-2.5" />
+                                                            {wallet.name}
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
@@ -282,6 +290,7 @@ export default function RecurringPage() {
                 onOpenChange={setIsAddOpen}
                 onSubmit={(data) => createMutation.mutate(data)}
                 mode="add"
+                isSubmitting={createMutation.isPending}
             />
 
             <RecurringDialog
@@ -290,6 +299,7 @@ export default function RecurringPage() {
                 onSubmit={(data) => updateMutation.mutate({ id: editingItem?.id, ...data })}
                 initialData={editingItem}
                 mode="edit"
+                isSubmitting={updateMutation.isPending}
             />
 
             {/* Delete Confirmation Dialog */}
@@ -340,9 +350,10 @@ interface RecurringDialogProps {
     onSubmit: (data: any) => void;
     initialData?: RecurringTransaction | null;
     mode: 'add' | 'edit';
+    isSubmitting?: boolean;
 }
 
-function RecurringDialog({ open, onOpenChange, onSubmit, initialData, mode }: RecurringDialogProps) {
+function RecurringDialog({ open, onOpenChange, onSubmit, initialData, mode, isSubmitting }: RecurringDialogProps) {
     const [type, setType] = useState<'expense' | 'income'>('expense');
     const [name, setName] = useState("");
     const [amount, setAmount] = useState("");
@@ -396,11 +407,22 @@ function RecurringDialog({ open, onOpenChange, onSubmit, initialData, mode }: Re
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
+        // Validate amount is greater than 0
+        const amountValue = parseFloat(amount) || 0;
+        if (amountValue <= 0) {
+            toast({
+                title: "Amount Required",
+                description: "Please enter an amount greater than $0.",
+                variant: "destructive",
+            });
+            return;
+        }
+
         // Check for no changes in edit mode
         if (mode === 'edit' && initialData) {
             const noChanges =
                 name === initialData.name &&
-                (parseFloat(amount) || 0) === initialData.amount &&
+                amountValue === initialData.amount &&
                 type === (initialData.type || 'expense') &&
                 category === initialData.category &&
                 frequency === initialData.frequency &&
@@ -432,71 +454,111 @@ function RecurringDialog({ open, onOpenChange, onSubmit, initialData, mode }: Re
 
     const categories = type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
 
+    // Type-based color schemes
+    const typeColors = {
+        expense: {
+            gradient: 'from-red-500/20 via-rose-500/10 to-transparent',
+            border: 'border-red-500/30',
+            accent: 'text-red-400',
+            bg: 'bg-red-500/10',
+        },
+        income: {
+            gradient: 'from-emerald-500/20 via-green-500/10 to-transparent',
+            border: 'border-emerald-500/30',
+            accent: 'text-emerald-400',
+            bg: 'bg-emerald-500/10',
+        },
+    };
+
+    const colors = typeColors[type];
+    const title = mode === 'add' ? 'New Recurring Transaction' : 'Edit Recurring Transaction';
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[425px] bg-zinc-900 border-white/10">
-                <DialogHeader>
-                    <DialogTitle className="text-xl font-serif flex items-center gap-2">
-                        <Repeat className="h-5 w-5 text-primary" />
-                        {mode === 'add' ? 'New Recurring Transaction' : 'Edit Recurring Transaction'}
-                    </DialogTitle>
-                    <DialogDescription className="text-gray-400">
-                        {mode === 'add' ? 'Automatically create this transaction on a schedule.' : 'Update the recurring transaction details.'}
-                    </DialogDescription>
-                </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-4 py-4">
+            <DialogContent className="sm:max-w-[420px] bg-zinc-900/95 backdrop-blur-xl border-white/10 p-0 overflow-hidden shadow-2xl shadow-black/50">
+                {/* Gradient Header */}
+                <div className={`bg-gradient-to-b p-4 pb-3 ${colors.gradient}`}>
+                    <DialogHeader className="space-y-1">
+                        <div className="flex items-center gap-2">
+                            <div className={`p-1.5 rounded-lg ${colors.bg} ${colors.border} border`}>
+                                <Repeat className={`h-4 w-4 ${colors.accent}`} />
+                            </div>
+                            <DialogTitle className="text-base font-semibold text-white">{title}</DialogTitle>
+                        </div>
+                        <DialogDescription className="sr-only">
+                            {mode === 'add' ? 'Set up a recurring transaction schedule.' : 'Update the recurring transaction.'}
+                        </DialogDescription>
+                    </DialogHeader>
+
                     {/* Type Toggle */}
-                    <div className="flex gap-2 p-1 bg-zinc-800 rounded-xl">
+                    <div className="flex gap-1 p-0.5 bg-black/30 backdrop-blur rounded-lg mt-3 border border-white/5">
                         <button
                             type="button"
                             onClick={() => setType('expense')}
-                            className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${type === 'expense'
-                                ? 'bg-orange-500 text-white shadow-lg'
-                                : 'text-gray-400 hover:text-white'
+                            className={`flex-1 py-2 px-4 rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5 ${type === 'expense'
+                                ? 'bg-gradient-to-r from-red-500 to-rose-500 text-white shadow-lg shadow-red-500/25'
+                                : 'text-gray-400 hover:text-gray-300'
                                 }`}
                         >
+                            <ArrowDownCircle className="h-3 w-3" />
                             Expense
                         </button>
                         <button
                             type="button"
                             onClick={() => setType('income')}
-                            className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${type === 'income'
-                                ? 'bg-green-500 text-white shadow-lg'
-                                : 'text-gray-400 hover:text-white'
+                            className={`flex-1 py-2 px-4 rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5 ${type === 'income'
+                                ? 'bg-gradient-to-r from-emerald-500 to-green-500 text-white shadow-lg shadow-emerald-500/25'
+                                : 'text-gray-400 hover:text-gray-300'
                                 }`}
                         >
+                            <ArrowUpCircle className="h-3 w-3" />
                             Income
                         </button>
                     </div>
+                </div>
 
-                    <div className="space-y-2">
-                        <Label className="text-gray-300">Name</Label>
+                {/* Form Content */}
+                <form onSubmit={handleSubmit} className="p-4 pt-3 space-y-3">
+                    {/* Name */}
+                    <div>
+                        <Label className="text-gray-400 text-xs font-medium mb-1.5 block">Name</Label>
                         <Input
                             value={name}
                             onChange={e => setName(e.target.value)}
                             placeholder={type === 'income' ? 'e.g. Salary, Freelance' : 'e.g. Rent, Netflix'}
                             required
-                            className="h-11 bg-zinc-800 border-zinc-700 focus:border-primary rounded-xl"
+                            autoFocus
+                            className="bg-zinc-800/50 border-zinc-700/50 rounded-lg h-10 focus:border-white/30"
                         />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label className="text-gray-300">Amount</Label>
-                            <Input
-                                type="number"
-                                step="0.01"
-                                value={amount}
-                                onChange={e => setAmount(e.target.value)}
-                                placeholder="0.00"
-                                required
-                                className="h-11 bg-zinc-800 border-zinc-700 focus:border-primary rounded-xl"
-                            />
+                    {/* Amount + Frequency Row */}
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <Label className="text-gray-400 text-xs font-medium mb-1.5 block">Amount</Label>
+                            <div className="relative">
+                                <span className={`absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium ${colors.accent}`}>$</span>
+                                <Input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={amount}
+                                    onChange={e => setAmount(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (['+', '-', 'e', 'E'].includes(e.key)) {
+                                            e.preventDefault();
+                                        }
+                                    }}
+                                    placeholder="0.00"
+                                    required
+                                    className="bg-zinc-800/50 border-zinc-700/50 rounded-lg h-10 pl-7 focus:border-white/30 text-base font-medium"
+                                />
+                            </div>
                         </div>
-                        <div className="space-y-2">
-                            <Label className="text-gray-300">Frequency</Label>
+                        <div>
+                            <Label className="text-gray-400 text-xs font-medium mb-1.5 block">Frequency</Label>
                             <Select value={frequency} onValueChange={setFrequency}>
-                                <SelectTrigger className="h-11 bg-zinc-800 border-zinc-700 rounded-xl">
+                                <SelectTrigger className="bg-zinc-800/50 border-zinc-700/50 rounded-lg h-10">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent className="bg-zinc-800 border-zinc-700">
@@ -509,10 +571,11 @@ function RecurringDialog({ open, onOpenChange, onSubmit, initialData, mode }: Re
                         </div>
                     </div>
 
-                    <div className="space-y-2">
-                        <Label className="text-gray-300">Category</Label>
+                    {/* Category */}
+                    <div>
+                        <Label className="text-gray-400 text-xs font-medium mb-1.5 block">Category</Label>
                         <Select value={category} onValueChange={setCategory}>
-                            <SelectTrigger className="h-11 bg-zinc-800 border-zinc-700 rounded-xl">
+                            <SelectTrigger className="bg-zinc-800/50 border-zinc-700/50 rounded-lg h-10">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="bg-zinc-800 border-zinc-700 max-h-[200px]">
@@ -523,49 +586,75 @@ function RecurringDialog({ open, onOpenChange, onSubmit, initialData, mode }: Re
                         </Select>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label className="text-gray-300">Start Date</Label>
+                    {/* Start Date + Time Row */}
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <Label className="text-gray-400 text-xs font-medium mb-1.5 block">Start Date</Label>
                             <Input
                                 type="date"
                                 value={startDate}
                                 onChange={e => setStartDate(e.target.value)}
+                                onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
                                 required
-                                className="h-11 bg-zinc-800 border-zinc-700 focus:border-primary rounded-xl"
+                                className="bg-zinc-800/50 border-zinc-700/50 rounded-lg h-10 focus:border-white/30 cursor-pointer text-sm"
                             />
                         </div>
-                        <div className="space-y-2">
-                            <Label className="text-gray-300">Time (Optional)</Label>
+                        <div>
+                            <Label className="text-gray-400 text-xs font-medium mb-1.5 block">Time (Optional)</Label>
                             <Input
                                 type="time"
                                 value={time}
                                 onChange={e => setTime(e.target.value)}
-                                className="h-11 bg-zinc-800 border-zinc-700 focus:border-primary rounded-xl"
+                                onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
+                                className="bg-zinc-800/50 border-zinc-700/50 rounded-lg h-10 focus:border-white/30 cursor-pointer text-sm"
                             />
                         </div>
                     </div>
 
+                    {/* Wallet Selection */}
                     {wallets.length > 0 && (
-                        <div className="space-y-2">
-                            <Label className="text-gray-300">{type === 'income' ? 'Deposit to Wallet' : 'Pay from Wallet'} (Optional)</Label>
-                            <Select value={walletId} onValueChange={setWalletId}>
-                                <SelectTrigger className="h-11 bg-zinc-800 border-zinc-700 rounded-xl">
+                        <div>
+                            <Label className="text-gray-400 text-xs font-medium mb-1.5 block">
+                                {type === 'income' ? 'Deposit to' : 'Pay from'}
+                            </Label>
+                            <Select value={walletId} onValueChange={setWalletId} required>
+                                <SelectTrigger className="bg-zinc-800/50 border-zinc-700/50 rounded-lg h-10">
                                     <SelectValue placeholder="Select Wallet" />
                                 </SelectTrigger>
                                 <SelectContent className="bg-zinc-800 border-zinc-700">
-                                    <SelectItem value="unassigned">None</SelectItem>
                                     {wallets.map(w => (
-                                        <SelectItem key={w.id} value={w.id}>{w.name} ({w.type})</SelectItem>
+                                        <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
+                            {!walletId && (
+                                <p className="text-xs text-amber-400 mt-1.5 flex items-center gap-1">
+                                    <span>⚠️</span> Please select a wallet
+                                </p>
+                            )}
                         </div>
                     )}
 
-                    <DialogFooter className="pt-4">
-                        <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-                        <Button type="submit" className="bg-primary text-black hover:bg-primary/90 font-bold rounded-xl">
-                            {mode === 'add' ? 'Create Rule' : 'Save Changes'}
+                    {/* Footer */}
+                    <DialogFooter className="pt-2 gap-2 sm:gap-2">
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => onOpenChange(false)}
+                            disabled={isSubmitting}
+                            className="text-gray-400 hover:text-white hover:bg-white/5 h-9 px-4"
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            type="submit"
+                            disabled={isSubmitting || !walletId}
+                            className={`h-9 px-5 font-semibold rounded-lg gap-2 bg-gradient-to-r shadow-lg transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${type === 'expense'
+                                ? 'from-red-500 to-rose-500 shadow-red-500/25 text-white'
+                                : 'from-emerald-500 to-green-500 shadow-emerald-500/25 text-white'
+                                }`}
+                        >
+                            {isSubmitting ? 'Saving...' : (mode === 'add' ? 'Create Rule' : 'Save Changes')}
                         </Button>
                     </DialogFooter>
                 </form>

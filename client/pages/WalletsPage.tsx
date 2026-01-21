@@ -496,76 +496,99 @@ export default function WalletsPage() {
 
             {/* Add/Edit Dialog */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="sm:max-w-[425px] bg-zinc-900 border-white/10">
-                    <DialogHeader>
-                        <DialogTitle className="text-2xl font-serif">{editingWallet ? "Edit Wallet" : "Add New Wallet"}</DialogTitle>
-                        <DialogDescription className="text-gray-400">
-                            {editingWallet ? "Update your wallet details" : "Add a new wallet to track your funds"}
-                        </DialogDescription>
-                    </DialogHeader>
-                    <form onSubmit={handleSubmit} className="space-y-4 pt-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="name" className="text-gray-300">Wallet Name</Label>
+                <DialogContent className="sm:max-w-[420px] bg-zinc-900/95 backdrop-blur-xl border-white/10 p-0 overflow-hidden shadow-2xl shadow-black/50">
+                    {/* Gradient Header */}
+                    <div className="bg-gradient-to-b from-blue-500/20 via-cyan-500/10 to-transparent p-4 pb-3">
+                        <DialogHeader className="space-y-1">
+                            <div className="flex items-center gap-2">
+                                <div className="p-1.5 rounded-lg bg-blue-500/10 border border-blue-500/30">
+                                    <WalletIcon className="h-4 w-4 text-blue-400" />
+                                </div>
+                                <DialogTitle className="text-base font-semibold text-white">
+                                    {editingWallet ? "Edit Wallet" : "Add New Wallet"}
+                                </DialogTitle>
+                            </div>
+                            <DialogDescription className="sr-only">
+                                {editingWallet ? "Update your wallet details" : "Add a new wallet to track your funds"}
+                            </DialogDescription>
+                        </DialogHeader>
+                    </div>
+
+                    {/* Form Content */}
+                    <form onSubmit={handleSubmit} className="p-4 pt-3 space-y-3">
+                        {/* Name */}
+                        <div>
+                            <Label htmlFor="name" className="text-gray-400 text-xs font-medium mb-1.5 block">Wallet Name</Label>
                             <Input
                                 id="name"
                                 placeholder="e.g. Bkash, City Bank"
                                 value={formData.name}
                                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                 required
-                                className="h-11 bg-zinc-800 border-zinc-700 focus:border-primary"
+                                autoFocus
+                                className="bg-zinc-800/50 border-zinc-700/50 rounded-lg h-10 focus:border-white/30"
                             />
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="type" className="text-gray-300">Type</Label>
-                            <Select
-                                value={formData.type}
-                                onValueChange={(v) => setFormData({ ...formData, type: v })}
-                            >
-                                <SelectTrigger className="h-11 bg-zinc-800 border-zinc-700 focus:border-primary">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent className="bg-zinc-800 border-zinc-700">
-                                    <SelectItem value="mfs">MFS (Bkash, Nagad)</SelectItem>
-                                    <SelectItem value="cash">Cash</SelectItem>
-                                    <SelectItem value="bank">Bank Account</SelectItem>
-                                    <SelectItem value="credit_card">Credit Card</SelectItem>
-                                    <SelectItem value="debit_card">Debit Card</SelectItem>
-                                    <SelectItem value="virtual_card">Virtual Card (RedotPay, PayPal)</SelectItem>
-                                    <SelectItem value="other">Other</SelectItem>
-                                </SelectContent>
-                            </Select>
+
+                        {/* Type + Balance Row */}
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <Label htmlFor="type" className="text-gray-400 text-xs font-medium mb-1.5 block">Type</Label>
+                                <Select
+                                    value={formData.type}
+                                    onValueChange={(v) => setFormData({ ...formData, type: v })}
+                                >
+                                    <SelectTrigger className="bg-zinc-800/50 border-zinc-700/50 rounded-lg h-10">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-zinc-800 border-zinc-700">
+                                        <SelectItem value="mfs">MFS (Bkash, Nagad)</SelectItem>
+                                        <SelectItem value="cash">Cash</SelectItem>
+                                        <SelectItem value="bank">Bank Account</SelectItem>
+                                        <SelectItem value="credit_card">Credit Card</SelectItem>
+                                        <SelectItem value="debit_card">Debit Card</SelectItem>
+                                        <SelectItem value="virtual_card">Virtual Card</SelectItem>
+                                        <SelectItem value="other">Other</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div>
+                                <Label htmlFor="balance" className="text-gray-400 text-xs font-medium mb-1.5 block">Balance</Label>
+                                <div className="relative">
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-blue-400">$</span>
+                                    <Input
+                                        id="balance"
+                                        type="number"
+                                        step="0.01"
+                                        value={formData.balance}
+                                        onChange={(e) => setFormData({ ...formData, balance: e.target.value })}
+                                        required
+                                        className="bg-zinc-800/50 border-zinc-700/50 rounded-lg h-10 pl-7 focus:border-white/30 text-base font-medium"
+                                    />
+                                </div>
+                            </div>
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="balance" className="text-gray-300">Current Balance</Label>
-                            <Input
-                                id="balance"
-                                type="number"
-                                step="0.01"
-                                value={formData.balance}
-                                onChange={(e) => setFormData({ ...formData, balance: e.target.value })}
-                                required
-                                className="h-11 bg-zinc-800 border-zinc-700 focus:border-primary"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="description" className="text-gray-300">Notes (Optional)</Label>
+
+                        {/* Notes */}
+                        <div>
+                            <Label htmlFor="description" className="text-gray-400 text-xs font-medium mb-1.5 block">Notes (Optional)</Label>
                             <Textarea
                                 id="description"
                                 placeholder="e.g. Main savings account"
                                 value={formData.description}
                                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                className="min-h-[60px] resize-y bg-zinc-800 border-zinc-700 focus:border-primary"
+                                className="min-h-[60px] resize-y bg-zinc-800/50 border-zinc-700/50 rounded-lg focus:border-white/30"
                             />
                         </div>
+
                         {/* Savings Wallet Toggle */}
                         {(() => {
                             const existingSavingsWallet = wallets.find(w => w.isSavingsWallet === true);
                             const isCurrentWalletSavings = editingWallet && existingSavingsWallet && editingWallet.id === existingSavingsWallet.id;
-                            // Can toggle if: no existing savings wallet, OR the current wallet IS the savings wallet
                             const canToggle = !existingSavingsWallet || isCurrentWalletSavings;
 
                             return (
-                                <div className={`p-4 rounded-xl border space-y-3 ${canToggle ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-yellow-500/5 border-yellow-500/20'}`}>
+                                <div className={`p-3 rounded-xl border ${canToggle ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-amber-500/5 border-amber-500/20'}`}>
                                     <div className="flex items-start gap-3">
                                         <input
                                             type="checkbox"
@@ -573,24 +596,18 @@ export default function WalletsPage() {
                                             checked={formData.isSavingsWallet}
                                             onChange={(e) => setFormData({ ...formData, isSavingsWallet: e.target.checked })}
                                             disabled={!canToggle}
-                                            className="mt-1 w-4 h-4 accent-emerald-500 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                                            className="mt-0.5 w-4 h-4 accent-emerald-500 rounded disabled:opacity-50 disabled:cursor-not-allowed"
                                         />
-                                        <div>
+                                        <div className="flex-1">
                                             <Label
                                                 htmlFor="isSavingsWallet"
-                                                className={`font-medium ${canToggle ? 'text-emerald-400 cursor-pointer' : 'text-gray-500 cursor-not-allowed'}`}
+                                                className={`text-xs font-medium ${canToggle ? 'text-emerald-400 cursor-pointer' : 'text-gray-500 cursor-not-allowed'}`}
                                             >
                                                 Use as Savings Wallet for Goals
                                             </Label>
-                                            {canToggle ? (
-                                                <p className="text-xs text-gray-500 mt-1">
-                                                    Goal savings will be transferred to this wallet. When you complete a goal, the purchase expense will be deducted from here.
-                                                </p>
-                                            ) : (
-                                                <p className="text-xs text-yellow-400 mt-1">
-                                                    ⚠️ "{existingSavingsWallet?.name}" is already set as the savings wallet.
-                                                    <br />
-                                                    <span className="text-gray-500">Unmark it first to designate a different wallet.</span>
+                                            {!canToggle && (
+                                                <p className="text-[10px] text-amber-400 mt-1">
+                                                    ⚠️ "{existingSavingsWallet?.name}" is already the savings wallet.
                                                 </p>
                                             )}
                                         </div>
@@ -598,9 +615,23 @@ export default function WalletsPage() {
                                 </div>
                             );
                         })()}
-                        <DialogFooter className="gap-2 sm:gap-0 pt-2">
-                            <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-                            <Button type="submit" className="bg-primary text-black hover:bg-primary/90 font-bold">{editingWallet ? "Update" : "Create"}</Button>
+
+                        {/* Footer */}
+                        <DialogFooter className="pt-2 gap-2 sm:gap-2">
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                onClick={() => setIsDialogOpen(false)}
+                                className="text-gray-400 hover:text-white hover:bg-white/5 h-9 px-4"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                type="submit"
+                                className="h-9 px-5 font-semibold rounded-lg gap-2 bg-gradient-to-r from-blue-500 to-cyan-500 shadow-lg shadow-blue-500/25 text-white transition-all hover:opacity-90 active:scale-[0.98]"
+                            >
+                                {editingWallet ? "Update Wallet" : "Create Wallet"}
+                            </Button>
                         </DialogFooter>
                     </form>
                 </DialogContent>
@@ -608,24 +639,32 @@ export default function WalletsPage() {
 
             {/* Quick Transfer Dialog */}
             <Dialog open={isTransferOpen} onOpenChange={setIsTransferOpen}>
-                <DialogContent className="sm:max-w-[400px] bg-zinc-900 border-white/10">
-                    <DialogHeader>
-                        <DialogTitle className="text-xl font-serif flex items-center gap-2">
-                            <ArrowRightLeft className="h-5 w-5 text-primary" />
-                            Quick Transfer
-                        </DialogTitle>
-                        <DialogDescription className="text-gray-400">
-                            Move funds between your wallets
-                        </DialogDescription>
-                    </DialogHeader>
-                    <form onSubmit={handleTransfer} className="space-y-4 pt-4">
-                        <div className="space-y-2">
-                            <Label className="text-gray-300">From</Label>
+                <DialogContent className="sm:max-w-[400px] bg-zinc-900/95 backdrop-blur-xl border-white/10 p-0 overflow-hidden shadow-2xl shadow-black/50">
+                    {/* Gradient Header */}
+                    <div className="bg-gradient-to-b from-purple-500/20 via-violet-500/10 to-transparent p-4 pb-3">
+                        <DialogHeader className="space-y-1">
+                            <div className="flex items-center gap-2">
+                                <div className="p-1.5 rounded-lg bg-purple-500/10 border border-purple-500/30">
+                                    <ArrowRightLeft className="h-4 w-4 text-purple-400" />
+                                </div>
+                                <DialogTitle className="text-base font-semibold text-white">Quick Transfer</DialogTitle>
+                            </div>
+                            <DialogDescription className="sr-only">
+                                Move funds between your wallets
+                            </DialogDescription>
+                        </DialogHeader>
+                    </div>
+
+                    {/* Form Content */}
+                    <form onSubmit={handleTransfer} className="p-4 pt-3 space-y-3">
+                        {/* From Wallet */}
+                        <div>
+                            <Label className="text-gray-400 text-xs font-medium mb-1.5 block">From</Label>
                             <Select
                                 value={transferData.fromWalletId}
                                 onValueChange={(v) => setTransferData({ ...transferData, fromWalletId: v })}
                             >
-                                <SelectTrigger className="h-11 bg-zinc-800 border-zinc-700">
+                                <SelectTrigger className="bg-zinc-800/50 border-zinc-700/50 rounded-lg h-10">
                                     <SelectValue placeholder="Select wallet" />
                                 </SelectTrigger>
                                 <SelectContent className="bg-zinc-800 border-zinc-700">
@@ -640,18 +679,22 @@ export default function WalletsPage() {
                                 </SelectContent>
                             </Select>
                         </div>
+
+                        {/* Arrow Icon */}
                         <div className="flex justify-center">
-                            <div className="p-2 rounded-full bg-white/5">
-                                <ArrowRightLeft className="h-4 w-4 text-gray-500" />
+                            <div className="p-2 rounded-full bg-purple-500/10 border border-purple-500/20">
+                                <ArrowRightLeft className="h-4 w-4 text-purple-400 rotate-90" />
                             </div>
                         </div>
-                        <div className="space-y-2">
-                            <Label className="text-gray-300">To</Label>
+
+                        {/* To Wallet */}
+                        <div>
+                            <Label className="text-gray-400 text-xs font-medium mb-1.5 block">To</Label>
                             <Select
                                 value={transferData.toWalletId}
                                 onValueChange={(v) => setTransferData({ ...transferData, toWalletId: v })}
                             >
-                                <SelectTrigger className="h-11 bg-zinc-800 border-zinc-700">
+                                <SelectTrigger className="bg-zinc-800/50 border-zinc-700/50 rounded-lg h-10">
                                     <SelectValue placeholder="Select wallet" />
                                 </SelectTrigger>
                                 <SelectContent className="bg-zinc-800 border-zinc-700">
@@ -666,29 +709,44 @@ export default function WalletsPage() {
                                 </SelectContent>
                             </Select>
                         </div>
-                        <div className="space-y-2">
-                            <Label className="text-gray-300">Amount</Label>
-                            <Input
-                                type="number"
-                                step="0.01"
-                                placeholder="0.00"
-                                value={transferData.amount}
-                                onChange={(e) => setTransferData({ ...transferData, amount: e.target.value })}
-                                required
-                                className="h-11 bg-zinc-800 border-zinc-700 focus:border-primary text-lg"
-                            />
+
+                        {/* Amount */}
+                        <div>
+                            <Label className="text-gray-400 text-xs font-medium mb-1.5 block">Amount</Label>
+                            <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-purple-400">$</span>
+                                <Input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    placeholder="0.00"
+                                    value={transferData.amount}
+                                    onChange={(e) => setTransferData({ ...transferData, amount: e.target.value })}
+                                    required
+                                    className="bg-zinc-800/50 border-zinc-700/50 rounded-lg h-10 pl-7 focus:border-white/30 text-base font-medium"
+                                />
+                            </div>
                             {transferData.fromWalletId && (
-                                <p className="text-xs text-gray-500">
+                                <p className="text-[10px] text-gray-500 mt-1.5">
                                     Available: ${wallets.find(w => w.id === transferData.fromWalletId)?.balance.toLocaleString() || 0}
                                 </p>
                             )}
                         </div>
-                        <DialogFooter className="gap-2 sm:gap-0 pt-2">
-                            <Button type="button" variant="ghost" onClick={() => setIsTransferOpen(false)}>Cancel</Button>
+
+                        {/* Footer */}
+                        <DialogFooter className="pt-2 gap-2 sm:gap-2">
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                onClick={() => setIsTransferOpen(false)}
+                                className="text-gray-400 hover:text-white hover:bg-white/5 h-9 px-4"
+                            >
+                                Cancel
+                            </Button>
                             <Button
                                 type="submit"
-                                className="bg-primary text-black hover:bg-primary/90 font-bold"
                                 disabled={!transferData.fromWalletId || !transferData.toWalletId || !transferData.amount || transferData.fromWalletId === transferData.toWalletId}
+                                className="h-9 px-5 font-semibold rounded-lg gap-2 bg-gradient-to-r from-purple-500 to-violet-500 shadow-lg shadow-purple-500/25 text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
                             >
                                 Transfer
                             </Button>

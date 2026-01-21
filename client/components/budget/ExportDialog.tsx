@@ -495,24 +495,28 @@ export function ExportDialog({ open, onOpenChange }: ExportDialogProps) {
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-lg bg-zinc-900 border-white/10 max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                    <DialogTitle className="font-serif text-2xl text-white flex items-center gap-3">
-                        <div className="p-2 rounded-xl bg-primary/20">
-                            <Download className="h-5 w-5 text-primary" />
+            <DialogContent className="sm:max-w-[480px] bg-zinc-900/95 backdrop-blur-xl border-white/10 p-0 overflow-hidden shadow-2xl shadow-black/50 max-h-[90vh] overflow-y-auto">
+                {/* Gradient Header */}
+                <div className="bg-gradient-to-b from-orange-500/20 via-amber-500/10 to-transparent p-4 pb-3">
+                    <DialogHeader className="space-y-1">
+                        <div className="flex items-center gap-2">
+                            <div className="p-1.5 rounded-lg bg-orange-500/10 border border-orange-500/30">
+                                <Download className="h-4 w-4 text-orange-400" />
+                            </div>
+                            <DialogTitle className="text-base font-semibold text-white">Export Data</DialogTitle>
                         </div>
-                        Export Data
-                    </DialogTitle>
-                    <DialogDescription className="text-gray-500">
-                        Download your financial data in your preferred format.
-                    </DialogDescription>
-                </DialogHeader>
+                        <DialogDescription className="sr-only">
+                            Download your financial data in your preferred format.
+                        </DialogDescription>
+                    </DialogHeader>
+                </div>
 
-                <div className="space-y-6 py-4">
+                {/* Form Content */}
+                <div className="p-4 pt-3 space-y-4">
                     {/* Format Selection */}
-                    <div className="space-y-3">
-                        <Label className="text-gray-400 text-sm uppercase tracking-wider">Export Format</Label>
-                        <div className="grid grid-cols-3 gap-3">
+                    <div>
+                        <Label className="text-gray-400 text-xs font-medium mb-2 block uppercase tracking-wider">Format</Label>
+                        <div className="grid grid-cols-3 gap-2">
                             {formatOptions.map((option) => {
                                 const Icon = option.icon;
                                 const isSelected = format === option.value;
@@ -520,19 +524,19 @@ export function ExportDialog({ open, onOpenChange }: ExportDialogProps) {
                                     <button
                                         key={option.value}
                                         onClick={() => setFormat(option.value)}
-                                        className={`relative p-4 rounded-xl border-2 transition-all duration-200 text-left group ${isSelected
-                                            ? 'border-primary bg-primary/10'
-                                            : 'border-zinc-700 bg-zinc-800/50 hover:border-zinc-600 hover:bg-zinc-800'
+                                        className={`relative p-3 rounded-lg border transition-all text-left group ${isSelected
+                                            ? 'border-orange-500/50 bg-orange-500/10'
+                                            : 'border-zinc-700/50 bg-zinc-800/30 hover:border-zinc-600 hover:bg-zinc-800/50'
                                             }`}
                                     >
                                         {isSelected && (
-                                            <CheckCircle2 className="absolute top-2 right-2 h-4 w-4 text-primary" />
+                                            <CheckCircle2 className="absolute top-1.5 right-1.5 h-3.5 w-3.5 text-orange-400" />
                                         )}
-                                        <Icon className={`h-6 w-6 mb-2 ${isSelected ? 'text-primary' : 'text-gray-400 group-hover:text-gray-300'}`} />
-                                        <p className={`font-medium ${isSelected ? 'text-white' : 'text-gray-300'}`}>
+                                        <Icon className={`h-5 w-5 mb-1.5 ${isSelected ? 'text-orange-400' : 'text-gray-400'}`} />
+                                        <p className={`text-sm font-medium ${isSelected ? 'text-white' : 'text-gray-300'}`}>
                                             {option.label}
                                         </p>
-                                        <p className="text-xs text-gray-500 mt-0.5">{option.description}</p>
+                                        <p className="text-[10px] text-gray-500 mt-0.5 leading-tight">{option.description}</p>
                                     </button>
                                 );
                             })}
@@ -540,19 +544,19 @@ export function ExportDialog({ open, onOpenChange }: ExportDialogProps) {
                     </div>
 
                     {/* Date Range */}
-                    <div className="space-y-3">
-                        <Label className="text-gray-400 text-sm uppercase tracking-wider flex items-center gap-2">
-                            <Calendar className="h-4 w-4" />
+                    <div>
+                        <Label className="text-gray-400 text-xs font-medium mb-2 flex items-center gap-1.5 uppercase tracking-wider">
+                            <Calendar className="h-3 w-3" />
                             Date Range
                         </Label>
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap gap-1.5">
                             {dateRangeOptions.map((option) => (
                                 <button
                                     key={option.value}
                                     onClick={() => setDateRange(option.value)}
-                                    className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${dateRange === option.value
-                                        ? 'bg-primary text-black'
-                                        : 'bg-zinc-800 text-gray-400 hover:bg-zinc-700 hover:text-white'
+                                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${dateRange === option.value
+                                        ? 'bg-orange-500 text-black'
+                                        : 'bg-zinc-800/50 text-gray-400 hover:bg-zinc-700/50 hover:text-white'
                                         }`}
                                 >
                                     {option.label}
@@ -562,123 +566,124 @@ export function ExportDialog({ open, onOpenChange }: ExportDialogProps) {
                     </div>
 
                     {/* Data Selection */}
-                    <div className="space-y-3">
-                        <Label className="text-gray-400 text-sm uppercase tracking-wider flex items-center gap-2">
-                            <Package className="h-4 w-4" />
+                    <div>
+                        <Label className="text-gray-400 text-xs font-medium mb-2 flex items-center gap-1.5 uppercase tracking-wider">
+                            <Package className="h-3 w-3" />
                             Include Data
                         </Label>
-                        <div className="space-y-3">
-                            <label className="flex items-center gap-3 p-3 rounded-xl bg-zinc-800/50 border border-zinc-700 cursor-pointer hover:bg-zinc-800 transition-colors">
+                        <div className="space-y-1.5">
+                            <label className="flex items-center gap-2.5 p-2.5 rounded-lg bg-zinc-800/30 border border-zinc-700/30 cursor-pointer hover:bg-zinc-800/50 transition-colors">
                                 <Checkbox
                                     checked={includeTransactions}
                                     onCheckedChange={(checked) => setIncludeTransactions(checked as boolean)}
-                                    className="border-zinc-600 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                                    className="border-zinc-600 data-[state=checked]:bg-orange-500 data-[state=checked]:border-orange-500 h-4 w-4"
                                 />
-                                <div className="flex-1">
-                                    <p className="text-white font-medium">Transactions</p>
-                                    <p className="text-xs text-gray-500">All your income, expenses, and transfers</p>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm text-white font-medium">Transactions</p>
+                                    <p className="text-[10px] text-gray-500">Income, expenses, transfers</p>
                                 </div>
                                 {transactionCount !== null && (
-                                    <span className="text-xs text-primary bg-primary/10 px-2 py-1 rounded-full">
-                                        {transactionCount} records
+                                    <span className="text-[10px] text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded-full font-medium">
+                                        {transactionCount}
                                     </span>
                                 )}
                             </label>
 
-                            <label className="flex items-center gap-3 p-3 rounded-xl bg-zinc-800/50 border border-zinc-700 cursor-pointer hover:bg-zinc-800 transition-colors">
+                            <label className="flex items-center gap-2.5 p-2.5 rounded-lg bg-zinc-800/30 border border-zinc-700/30 cursor-pointer hover:bg-zinc-800/50 transition-colors">
                                 <Checkbox
                                     checked={includeWallets}
                                     onCheckedChange={(checked) => setIncludeWallets(checked as boolean)}
-                                    className="border-zinc-600 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                                    className="border-zinc-600 data-[state=checked]:bg-orange-500 data-[state=checked]:border-orange-500 h-4 w-4"
                                 />
-                                <div className="flex-1">
-                                    <p className="text-white font-medium">Wallets</p>
-                                    <p className="text-xs text-gray-500">Your wallet names, types, and balances</p>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm text-white font-medium">Wallets</p>
+                                    <p className="text-[10px] text-gray-500">Names, types, balances</p>
                                 </div>
-                                <span className="text-xs text-primary bg-primary/10 px-2 py-1 rounded-full">
-                                    {wallets.length} wallets
+                                <span className="text-[10px] text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded-full font-medium">
+                                    {wallets.length}
                                 </span>
                             </label>
 
-                            <label className="flex items-center gap-3 p-3 rounded-xl bg-zinc-800/50 border border-zinc-700 cursor-pointer hover:bg-zinc-800 transition-colors">
+                            <label className="flex items-center gap-2.5 p-2.5 rounded-lg bg-zinc-800/30 border border-zinc-700/30 cursor-pointer hover:bg-zinc-800/50 transition-colors">
                                 <Checkbox
                                     checked={includeGoals}
                                     onCheckedChange={(checked) => setIncludeGoals(checked as boolean)}
-                                    className="border-zinc-600 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                                    className="border-zinc-600 data-[state=checked]:bg-orange-500 data-[state=checked]:border-orange-500 h-4 w-4"
                                 />
-                                <div className="flex-1 flex items-center gap-2">
-                                    <div className="flex-1">
-                                        <p className="text-white font-medium">Goals</p>
-                                        <p className="text-xs text-gray-500">Your savings goals and progress</p>
+                                <div className="flex-1 min-w-0 flex items-center gap-1.5">
+                                    <div>
+                                        <p className="text-sm text-white font-medium">Goals</p>
+                                        <p className="text-[10px] text-gray-500">Savings goals & progress</p>
                                     </div>
-                                    <Target className="h-4 w-4 text-gray-400" />
+                                    <Target className="h-3.5 w-3.5 text-gray-500" />
                                 </div>
-                                <span className="text-xs text-primary bg-primary/10 px-2 py-1 rounded-full">
-                                    {goals?.length || 0} goals
+                                <span className="text-[10px] text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded-full font-medium">
+                                    {goals?.length || 0}
                                 </span>
                             </label>
 
-                            <label className="flex items-center gap-3 p-3 rounded-xl bg-zinc-800/50 border border-zinc-700 cursor-pointer hover:bg-zinc-800 transition-colors">
+                            <label className="flex items-center gap-2.5 p-2.5 rounded-lg bg-zinc-800/30 border border-zinc-700/30 cursor-pointer hover:bg-zinc-800/50 transition-colors">
                                 <Checkbox
                                     checked={includeRecurring}
                                     onCheckedChange={(checked) => setIncludeRecurring(checked as boolean)}
-                                    className="border-zinc-600 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                                    className="border-zinc-600 data-[state=checked]:bg-orange-500 data-[state=checked]:border-orange-500 h-4 w-4"
                                 />
-                                <div className="flex-1 flex items-center gap-2">
-                                    <div className="flex-1">
-                                        <p className="text-white font-medium">Recurring Rules</p>
-                                        <p className="text-xs text-gray-500">Your active recurring transactions</p>
+                                <div className="flex-1 min-w-0 flex items-center gap-1.5">
+                                    <div>
+                                        <p className="text-sm text-white font-medium">Recurring Rules</p>
+                                        <p className="text-[10px] text-gray-500">Active recurring transactions</p>
                                     </div>
-                                    <Repeat className="h-4 w-4 text-gray-400" />
+                                    <Repeat className="h-3.5 w-3.5 text-gray-500" />
                                 </div>
-                                <span className="text-xs text-primary bg-primary/10 px-2 py-1 rounded-full">
-                                    {recurringRules.length} rules
+                                <span className="text-[10px] text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded-full font-medium">
+                                    {recurringRules.length}
                                 </span>
                             </label>
 
-                            <label className="flex items-center gap-3 p-3 rounded-xl bg-zinc-800/50 border border-zinc-700 cursor-pointer hover:bg-zinc-800 transition-colors">
+                            <label className="flex items-center gap-2.5 p-2.5 rounded-lg bg-zinc-800/30 border border-zinc-700/30 cursor-pointer hover:bg-zinc-800/50 transition-colors">
                                 <Checkbox
                                     checked={includeSummary}
                                     onCheckedChange={(checked) => setIncludeSummary(checked as boolean)}
-                                    className="border-zinc-600 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                                    className="border-zinc-600 data-[state=checked]:bg-orange-500 data-[state=checked]:border-orange-500 h-4 w-4"
                                 />
-                                <div className="flex-1">
-                                    <p className="text-white font-medium">Monthly Summary</p>
-                                    <p className="text-xs text-gray-500">Aggregated income, expenses, and savings by month</p>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm text-white font-medium">Monthly Summary</p>
+                                    <p className="text-[10px] text-gray-500">Aggregated by month</p>
                                 </div>
                             </label>
                         </div>
                     </div>
-                </div>
 
-                <DialogFooter className="mt-2 gap-2 sm:gap-0 pt-4 border-t border-zinc-800">
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={() => onOpenChange(false)}
-                        className="text-gray-400 hover:text-white"
-                        disabled={isExporting}
-                    >
-                        Cancel
-                    </Button>
-                    <Button
-                        onClick={handleExport}
-                        className="bg-primary text-black hover:bg-primary/90 font-bold rounded-xl px-6 gap-2"
-                        disabled={isExporting}
-                    >
-                        {isExporting ? (
-                            <>
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                                Exporting...
-                            </>
-                        ) : (
-                            <>
-                                <Download className="h-4 w-4" />
-                                Export {format.toUpperCase()}
-                            </>
-                        )}
-                    </Button>
-                </DialogFooter>
+                    {/* Footer */}
+                    <DialogFooter className="pt-3 gap-2 sm:gap-2 border-t border-white/5">
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => onOpenChange(false)}
+                            className="text-gray-400 hover:text-white hover:bg-white/5 h-9 px-4"
+                            disabled={isExporting}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={handleExport}
+                            disabled={isExporting}
+                            className="h-9 px-5 font-semibold rounded-lg gap-1.5 bg-gradient-to-r from-orange-500 to-amber-500 shadow-lg shadow-orange-500/25 text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
+                        >
+                            {isExporting ? (
+                                <>
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    Exporting...
+                                </>
+                            ) : (
+                                <>
+                                    <Download className="h-3.5 w-3.5" />
+                                    Export {format.toUpperCase()}
+                                </>
+                            )}
+                        </Button>
+                    </DialogFooter>
+                </div>
             </DialogContent>
         </Dialog>
     );

@@ -254,6 +254,16 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
         const finalGoalId = goalId; // Allow goal linking for all transaction types
         const amount = parseFloat(actual) || 0;
 
+        // Validate amount is greater than 0
+        if (amount <= 0) {
+            toast({
+                title: "Amount Required",
+                description: "Please enter an amount greater than $0.",
+                variant: "destructive",
+            });
+            return;
+        }
+
         // Check for no changes in edit mode
         if (mode === 'edit' && initialData) {
             // Compare dates by extracting just the YYYY-MM-DD part
@@ -320,117 +330,179 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
     };
     const TypeIcon = getTypeIcon();
 
+    // Type-based color schemes
+    const typeColors = {
+        expense: {
+            gradient: 'from-red-500/20 via-rose-500/10 to-transparent',
+            border: 'border-red-500/30',
+            accent: 'text-red-400',
+            bg: 'bg-red-500/10',
+            glow: 'shadow-red-500/20',
+        },
+        income: {
+            gradient: 'from-emerald-500/20 via-green-500/10 to-transparent',
+            border: 'border-emerald-500/30',
+            accent: 'text-emerald-400',
+            bg: 'bg-emerald-500/10',
+            glow: 'shadow-emerald-500/20',
+        },
+        transfer: {
+            gradient: 'from-blue-500/20 via-indigo-500/10 to-transparent',
+            border: 'border-blue-500/30',
+            accent: 'text-blue-400',
+            bg: 'bg-blue-500/10',
+            glow: 'shadow-blue-500/20',
+        },
+    };
+
+    const colors = typeColors[type];
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-md bg-zinc-900 border-white/10">
-                <DialogHeader>
-                    <DialogTitle className="font-serif text-2xl text-white flex items-center gap-3">
-                        <div className={cn(
-                            "p-2 rounded-xl",
-                            type === 'expense' ? 'bg-red-500/20' :
-                                type === 'income' ? 'bg-green-500/20' :
-                                    'bg-blue-500/20'
-                        )}>
-                            <TypeIcon className={cn(
-                                "h-5 w-5",
-                                type === 'expense' ? 'text-red-400' :
-                                    type === 'income' ? 'text-green-400' :
-                                        'text-blue-400'
-                            )} />
+            <DialogContent className={cn(
+                "sm:max-w-[420px] bg-zinc-900/95 backdrop-blur-xl border-white/10 p-0 overflow-hidden",
+                "shadow-2xl shadow-black/50"
+            )}>
+                {/* Gradient Header */}
+                <div className={cn("bg-gradient-to-b p-4 pb-3", colors.gradient)}>
+                    <DialogHeader className="space-y-1">
+                        <div className="flex items-center gap-2">
+                            <div className={cn("p-1.5 rounded-lg", colors.bg, colors.border, "border")}>
+                                <TypeIcon className={cn("h-4 w-4", colors.accent)} />
+                            </div>
+                            <DialogTitle className="text-base font-semibold text-white">{title}</DialogTitle>
                         </div>
-                        {title}
-                    </DialogTitle>
-                    <DialogDescription className="text-gray-500">
-                        {mode === 'add' ? 'Enter the details of your new transaction below.' : 'Modify the details of this transaction.'}
-                    </DialogDescription>
-                </DialogHeader>
+                        <DialogDescription className="sr-only">
+                            {mode === 'add' ? 'Enter the details of your new transaction below.' : 'Modify the details of this transaction.'}
+                        </DialogDescription>
+                    </DialogHeader>
 
-                <Tabs value={type} onValueChange={(v) => handleTypeChange(v as any)} className="w-full">
-                    <TabsList className="grid w-full grid-cols-3 mb-4 bg-zinc-800 p-1 rounded-xl">
-                        <TabsTrigger
-                            value="expense"
-                            className="rounded-lg data-[state=active]:bg-red-500 data-[state=active]:text-white text-gray-400"
-                        >
-                            Expense
-                        </TabsTrigger>
-                        <TabsTrigger
-                            value="income"
-                            className="rounded-lg data-[state=active]:bg-green-500 data-[state=active]:text-white text-gray-400"
-                        >
-                            Income
-                        </TabsTrigger>
-                        <TabsTrigger
-                            value="transfer"
-                            className="rounded-lg data-[state=active]:bg-blue-500 data-[state=active]:text-white text-gray-400"
-                        >
-                            Transfer
-                        </TabsTrigger>
-                    </TabsList>
+                    {/* Type Toggle */}
+                    <Tabs value={type} onValueChange={(v) => handleTypeChange(v as any)} className="w-full mt-3">
+                        <TabsList className="grid w-full grid-cols-3 bg-black/30 backdrop-blur p-0.5 rounded-lg h-9 border border-white/5">
+                            <TabsTrigger
+                                value="expense"
+                                className={cn(
+                                    "rounded-md text-xs font-medium transition-all h-8",
+                                    "data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-rose-500",
+                                    "data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-red-500/25",
+                                    "text-gray-400 hover:text-gray-300"
+                                )}
+                            >
+                                <Receipt className="h-3 w-3 mr-1" />
+                                Expense
+                            </TabsTrigger>
+                            <TabsTrigger
+                                value="income"
+                                className={cn(
+                                    "rounded-md text-xs font-medium transition-all h-8",
+                                    "data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-green-500",
+                                    "data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-emerald-500/25",
+                                    "text-gray-400 hover:text-gray-300"
+                                )}
+                            >
+                                <TrendingUp className="h-3 w-3 mr-1" />
+                                Income
+                            </TabsTrigger>
+                            <TabsTrigger
+                                value="transfer"
+                                className={cn(
+                                    "rounded-md text-xs font-medium transition-all h-8",
+                                    "data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-500",
+                                    "data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-blue-500/25",
+                                    "text-gray-400 hover:text-gray-300"
+                                )}
+                            >
+                                <ArrowRightLeft className="h-3 w-3 mr-1" />
+                                Transfer
+                            </TabsTrigger>
+                        </TabsList>
+                    </Tabs>
+                </div>
 
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        {/* Date & Time Row */}
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="date" className="text-gray-400 h-5 flex items-center">Date</Label>
+                {/* Form Content */}
+                <form onSubmit={handleSubmit} className="p-4 pt-3 space-y-3">
+                    {/* Amount + Date + Time Row */}
+                    <div className="grid grid-cols-10 gap-2">
+                        <div className="col-span-4">
+                            <Label htmlFor="amount" className="text-gray-400 text-xs font-medium mb-1.5 block">Amount</Label>
+                            <div className="relative">
+                                <span className={cn("absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium", colors.accent)}>$</span>
                                 <Input
-                                    id="date"
-                                    type="date"
-                                    value={date}
-                                    onChange={(e) => setDate(e.target.value)}
-                                    onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
-                                    className="bg-zinc-800 border-zinc-700 rounded-xl h-11 focus:border-primary cursor-pointer"
+                                    id="amount"
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    inputMode="decimal"
+                                    placeholder="0.00"
+                                    value={actual}
+                                    onChange={(e) => setActual(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (['+', '-', 'e', 'E'].includes(e.key)) {
+                                            e.preventDefault();
+                                        }
+                                    }}
+                                    className={cn(
+                                        "bg-zinc-800/50 border-zinc-700/50 rounded-lg h-10 pl-7",
+                                        "focus:border-white/30 focus:ring-1 focus:ring-white/10",
+                                        "text-base font-medium"
+                                    )}
                                 />
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="time" className="text-gray-400 h-5 flex items-center gap-1">
-                                    <Clock className="h-3 w-3" />
-                                    Time
-                                </Label>
-                                <Input
-                                    id="time"
-                                    type="time"
-                                    value={time}
-                                    onChange={(e) => setTime(e.target.value)}
-                                    onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
-                                    className="bg-zinc-800 border-zinc-700 rounded-xl h-11 focus:border-primary cursor-pointer"
-                                />
-                            </div>
                         </div>
-
-                        {/* Amount Row */}
-                        <div className="space-y-2">
-                            <Label htmlFor="amount" className="text-gray-400">Amount</Label>
+                        <div className="col-span-3">
+                            <Label htmlFor="date" className="text-gray-400 text-xs font-medium mb-1.5 block">Date</Label>
                             <Input
-                                id="amount"
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                inputMode="decimal"
-                                placeholder="0.00"
-                                value={actual}
-                                onChange={(e) => setActual(e.target.value)}
-                                onKeyDown={(e) => {
-                                    if (['+', '-', 'e', 'E'].includes(e.key)) {
-                                        e.preventDefault();
-                                    }
-                                }}
-                                className="bg-zinc-800 border-zinc-700 rounded-xl h-11 focus:border-primary text-lg"
+                                id="date"
+                                type="date"
+                                value={date}
+                                onChange={(e) => setDate(e.target.value)}
+                                onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
+                                className="bg-zinc-800/50 border-zinc-700/50 rounded-lg h-10 focus:border-white/30 cursor-pointer text-sm"
                             />
                         </div>
-                        {type !== 'transfer' && (
-                            <div className="space-y-2">
-                                <Label htmlFor="category" className="text-gray-400">Category</Label>
+                        <div className="col-span-3">
+                            <Label htmlFor="time" className="text-gray-400 text-xs font-medium mb-1.5 block">Time</Label>
+                            <Input
+                                id="time"
+                                type="time"
+                                value={time}
+                                onChange={(e) => setTime(e.target.value)}
+                                onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
+                                className="bg-zinc-800/50 border-zinc-700/50 rounded-lg h-10 focus:border-white/30 cursor-pointer text-sm"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Description */}
+                    <div>
+                        <Label htmlFor="name" className="text-gray-400 text-xs font-medium mb-1.5 block">Description</Label>
+                        <Input
+                            id="name"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            placeholder={type === 'transfer' ? "e.g. Savings Deposit" : "e.g. Grocery shopping"}
+                            autoFocus
+                            className="bg-zinc-800/50 border-zinc-700/50 rounded-lg h-10 focus:border-white/30"
+                        />
+                    </div>
+
+                    {/* Category + Wallet for Expense/Income */}
+                    {type !== 'transfer' && (
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <Label className="text-gray-400 text-xs font-medium mb-1.5 block">Category</Label>
                                 <Select value={category} onValueChange={setCategory}>
-                                    <SelectTrigger className="bg-zinc-800 border-zinc-700 rounded-xl h-11">
-                                        <SelectValue placeholder="Category" />
+                                    <SelectTrigger className="bg-zinc-800/50 border-zinc-700/50 rounded-lg h-10">
+                                        <SelectValue placeholder="Select" />
                                     </SelectTrigger>
-                                    <SelectContent className="bg-zinc-800 border-zinc-700 max-h-[300px]">
+                                    <SelectContent className="bg-zinc-800 border-zinc-700 max-h-[260px]">
                                         {frequentCats.length > 0 && (
                                             <>
                                                 <SelectGroup>
                                                     <SelectLabel className="text-xs text-gray-500 flex items-center gap-1.5">
                                                         <Clock className="h-3 w-3" />
-                                                        Frequently Used
+                                                        Frequent
                                                     </SelectLabel>
                                                     {frequentCats.map((cat) => (
                                                         <SelectItem key={`freq-${cat.id}`} value={cat.id}>
@@ -440,7 +512,7 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
                                                 </SelectGroup>
                                                 <SelectSeparator className="bg-white/10" />
                                                 <SelectGroup>
-                                                    <SelectLabel className="text-xs text-gray-500">All Categories</SelectLabel>
+                                                    <SelectLabel className="text-xs text-gray-500">All</SelectLabel>
                                                     {remainingCats.map((cat) => (
                                                         <SelectItem key={cat.id} value={cat.id}>{cat.label}</SelectItem>
                                                     ))}
@@ -455,83 +527,13 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
                                     </SelectContent>
                                 </Select>
                             </div>
-                        )}
-
-                        <div className="space-y-2">
-                            <Label htmlFor="name" className="text-gray-400">Description</Label>
-                            <Input
-                                id="name"
-                                value={name}
-                                onChange={(e) => setName(e.target.value)}
-                                placeholder={type === 'transfer' ? "e.g. Savings Deposit" : "e.g. Grocery"}
-                                autoFocus
-                                className="bg-zinc-800 border-zinc-700 rounded-xl h-11 focus:border-primary"
-                            />
-                        </div>
-
-                        {type === 'transfer' ? (
-                            <div className="bg-white/5 p-3 rounded-xl border border-white/10">
-                                <div className="space-y-1">
-                                    <Label className="text-gray-500 text-[10px] uppercase tracking-wider font-semibold">From Account</Label>
-                                    <Select value={walletId} onValueChange={setWalletId}>
-                                        <SelectTrigger className="bg-zinc-800 border-zinc-700 rounded-xl h-10">
-                                            <SelectValue placeholder="Select Source Wallet" />
-                                        </SelectTrigger>
-                                        <SelectContent className="bg-zinc-800 border-zinc-700">
-                                            {wallets.map(w => (
-                                                <SelectItem key={w.id} value={w.id} disabled={w.id === toWalletId}>
-                                                    <span className="font-medium">{w.name}</span>
-                                                    <span className="ml-2 text-xs text-gray-500">({getWalletLabel(w.type)})</span>
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                {/* Swap Button */}
-                                <div className="flex justify-center my-2">
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => {
-                                            const temp = walletId;
-                                            setWalletId(toWalletId);
-                                            setToWalletId(temp);
-                                        }}
-                                        disabled={!walletId || !toWalletId}
-                                        className="h-8 px-3 text-xs text-gray-400 hover:text-primary hover:bg-primary/10 rounded-lg gap-1.5"
-                                    >
-                                        <ArrowLeftRight className="h-3.5 w-3.5" />
-                                        Swap
-                                    </Button>
-                                </div>
-
-                                <div className="space-y-1">
-                                    <Label className="text-gray-500 text-[10px] uppercase tracking-wider font-semibold">
-                                        To Account
-                                    </Label>
-                                    <Select value={toWalletId} onValueChange={setToWalletId}>
-                                        <SelectTrigger className="bg-zinc-800 border-zinc-700 rounded-xl h-10">
-                                            <SelectValue placeholder="Select Target Wallet" />
-                                        </SelectTrigger>
-                                        <SelectContent className="bg-zinc-800 border-zinc-700">
-                                            {wallets.map(w => (
-                                                <SelectItem key={w.id} value={w.id} disabled={w.id === walletId}>
-                                                    <span className="font-medium">{w.name}</span>
-                                                    <span className="ml-2 text-xs text-gray-500">({getWalletLabel(w.type)})</span>
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="space-y-2">
-                                <Label className="text-gray-400">{type === 'income' ? 'Deposit to' : 'Pay with'}</Label>
+                            <div>
+                                <Label className="text-gray-400 text-xs font-medium mb-1.5 block">
+                                    {type === 'income' ? 'Deposit to' : 'Pay with'}
+                                </Label>
                                 <Select value={walletId} onValueChange={setWalletId}>
-                                    <SelectTrigger className="bg-zinc-800 border-zinc-700 rounded-xl h-11">
-                                        <SelectValue placeholder="Select Wallet" />
+                                    <SelectTrigger className="bg-zinc-800/50 border-zinc-700/50 rounded-lg h-10">
+                                        <SelectValue placeholder="Wallet" />
                                     </SelectTrigger>
                                     <SelectContent className="bg-zinc-800 border-zinc-700">
                                         {wallets.map(w => (
@@ -540,98 +542,160 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
                                     </SelectContent>
                                 </Select>
                             </div>
-                        )}
+                        </div>
+                    )}
 
-                        {/* Link to Goal - Only show when depositing to the savings wallet */}
-                        {(() => {
-                            // Check if the target wallet (destination for transfers, wallet for income) is the savings wallet
-                            const targetWalletId = type === 'transfer' ? toWalletId : walletId;
-                            const targetWallet = wallets.find(w => w.id === targetWalletId);
-                            const isSavingsWallet = targetWallet?.isSavingsWallet === true;
-
-                            // Only show goal linking for income/transfer when depositing to savings wallet
-                            // Never show for expense (goals auto-create expenses when fulfilled via Hall of Fame)
-                            if (type === 'expense' || !isSavingsWallet) {
-                                return null;
-                            }
-
-                            return (
-                                <div className="space-y-2">
-                                    <Label className="text-gray-400">Link to Goal (Optional)</Label>
-                                    <Select value={goalId} onValueChange={setGoalId}>
-                                        <SelectTrigger className="bg-zinc-800 border-zinc-700 rounded-xl h-11">
-                                            <SelectValue placeholder="None" />
+                    {/* Transfer Section */}
+                    {type === 'transfer' && (
+                        <div className={cn(
+                            "relative p-3 rounded-xl overflow-hidden",
+                            "bg-gradient-to-br from-blue-500/10 via-indigo-500/5 to-transparent",
+                            "border border-blue-500/20"
+                        )}>
+                            <div className="flex items-end gap-2">
+                                <div className="flex-1">
+                                    <Label className="text-gray-400 text-xs font-medium mb-1.5 block">From</Label>
+                                    <Select value={walletId} onValueChange={setWalletId}>
+                                        <SelectTrigger className="bg-zinc-800/70 border-zinc-700/50 rounded-lg h-10">
+                                            <SelectValue placeholder="Source" />
                                         </SelectTrigger>
                                         <SelectContent className="bg-zinc-800 border-zinc-700">
-                                            <SelectItem value="unassigned">None</SelectItem>
-                                            {goals.filter(g => g.status === 'active' || !g.status).map(g => (
-                                                <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                                            {wallets.map(w => (
+                                                <SelectItem key={w.id} value={w.id} disabled={w.id === toWalletId}>
+                                                    <span className="font-medium">{w.name}</span>
+                                                    <span className="ml-1.5 text-[10px] text-gray-500">({getWalletLabel(w.type)})</span>
+                                                </SelectItem>
                                             ))}
                                         </SelectContent>
                                     </Select>
                                 </div>
-                            );
-                        })()}
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                        const temp = walletId;
+                                        setWalletId(toWalletId);
+                                        setToWalletId(temp);
+                                    }}
+                                    disabled={!walletId || !toWalletId}
+                                    className={cn(
+                                        "h-10 w-10 p-0 rounded-full",
+                                        "bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30",
+                                        "text-blue-400 hover:text-blue-300",
+                                        "transition-all hover:scale-105 active:scale-95",
+                                        "disabled:opacity-50 disabled:hover:scale-100"
+                                    )}
+                                >
+                                    <ArrowLeftRight className="h-4 w-4" />
+                                </Button>
+                                <div className="flex-1">
+                                    <Label className="text-gray-400 text-xs font-medium mb-1.5 block">To</Label>
+                                    <Select value={toWalletId} onValueChange={setToWalletId}>
+                                        <SelectTrigger className="bg-zinc-800/70 border-zinc-700/50 rounded-lg h-10">
+                                            <SelectValue placeholder="Target" />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-zinc-800 border-zinc-700">
+                                            {wallets.map(w => (
+                                                <SelectItem key={w.id} value={w.id} disabled={w.id === walletId}>
+                                                    <span className="font-medium">{w.name}</span>
+                                                    <span className="ml-1.5 text-[10px] text-gray-500">({getWalletLabel(w.type)})</span>
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
-                        {/* Goal Deduction Selector - Show when withdrawing FROM savings wallet */}
-                        {(() => {
-                            // Check if source wallet is the savings wallet
-                            const sourceWallet = wallets.find(w => w.id === walletId);
-                            const isWithdrawingFromSavings = sourceWallet?.isSavingsWallet === true;
+                    {/* Link to Goal */}
+                    {(() => {
+                        const targetWalletId = type === 'transfer' ? toWalletId : walletId;
+                        const targetWallet = wallets.find(w => w.id === targetWalletId);
+                        const isSavingsWallet = targetWallet?.isSavingsWallet === true;
 
-                            // For transfers, only show if destination is NOT the savings wallet (i.e., money is leaving savings)
-                            // For expenses, always show if source is savings wallet
-                            const isTransferOut = type === 'transfer' && !wallets.find(w => w.id === toWalletId)?.isSavingsWallet;
-                            const shouldShowDeduction = isWithdrawingFromSavings && (type === 'expense' || isTransferOut);
+                        if (type === 'expense' || !isSavingsWallet) {
+                            return null;
+                        }
 
-                            if (!shouldShowDeduction) {
-                                return null;
-                            }
+                        return (
+                            <div>
+                                <Label className="text-gray-400 text-xs font-medium mb-1.5 block">Link to Goal (Optional)</Label>
+                                <Select value={goalId} onValueChange={setGoalId}>
+                                    <SelectTrigger className="bg-zinc-800/50 border-zinc-700/50 rounded-lg h-10">
+                                        <SelectValue placeholder="None" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-zinc-800 border-zinc-700">
+                                        <SelectItem value="unassigned">None</SelectItem>
+                                        {goals.filter(g => g.status === 'active' || !g.status).map(g => (
+                                            <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        );
+                    })()}
 
-                            const amount = parseFloat(actual) || 0;
-                            const activeGoals = goals.filter(g => g.status === 'active');
+                    {/* Goal Deduction Selector */}
+                    {(() => {
+                        const sourceWallet = wallets.find(w => w.id === walletId);
+                        const isWithdrawingFromSavings = sourceWallet?.isSavingsWallet === true;
+                        const isTransferOut = type === 'transfer' && !wallets.find(w => w.id === toWalletId)?.isSavingsWallet;
+                        const shouldShowDeduction = isWithdrawingFromSavings && (type === 'expense' || isTransferOut);
 
-                            if (amount <= 0 || activeGoals.length === 0) {
-                                return null;
-                            }
+                        if (!shouldShowDeduction) return null;
 
-                            return (
-                                <GoalDeductionSelector
-                                    goals={activeGoals}
-                                    totalAmount={amount}
-                                    onDeductionsChange={setGoalDeductions}
-                                    currency="$"
-                                />
-                            );
-                        })()}
+                        const amount = parseFloat(actual) || 0;
+                        const activeGoals = goals.filter(g => g.status === 'active');
 
-                        <DialogFooter className="mt-6 gap-2 sm:gap-0 pt-4">
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                onClick={() => onOpenChange(false)}
-                                className="text-gray-400 hover:text-white"
-                            >
-                                Cancel
-                            </Button>
-                            <Button
-                                type="submit"
-                                disabled={isSubmitting}
-                                className="bg-primary text-black hover:bg-primary/90 font-bold rounded-xl px-6 gap-2 disabled:opacity-50"
-                            >
-                                {isSubmitting ? (
-                                    <>
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                        Saving...
-                                    </>
-                                ) : (
-                                    mode === 'add' ? 'Save Transaction' : 'Update'
-                                )}
-                            </Button>
-                        </DialogFooter>
-                    </form>
-                </Tabs>
+                        if (amount <= 0 || activeGoals.length === 0) return null;
+
+                        return (
+                            <GoalDeductionSelector
+                                goals={activeGoals}
+                                totalAmount={amount}
+                                onDeductionsChange={setGoalDeductions}
+                                currency="$"
+                            />
+                        );
+                    })()}
+
+                    {/* Footer */}
+                    <DialogFooter className="pt-2 gap-2 sm:gap-2">
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => onOpenChange(false)}
+                            className="text-gray-400 hover:text-white hover:bg-white/5 h-9 px-4"
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            type="submit"
+                            disabled={isSubmitting}
+                            className={cn(
+                                "h-9 px-5 font-semibold rounded-lg gap-2",
+                                "bg-gradient-to-r shadow-lg transition-all",
+                                "hover:opacity-90 active:scale-[0.98]",
+                                "disabled:opacity-50 disabled:cursor-not-allowed",
+                                type === 'expense' && "from-red-500 to-rose-500 shadow-red-500/25 text-white",
+                                type === 'income' && "from-emerald-500 to-green-500 shadow-emerald-500/25 text-white",
+                                type === 'transfer' && "from-blue-500 to-indigo-500 shadow-blue-500/25 text-white"
+                            )}
+                        >
+                            {isSubmitting ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    Saving...
+                                </>
+                            ) : (
+                                mode === 'add' ? 'Add Transaction' : 'Update'
+                            )}
+                        </Button>
+                    </DialogFooter>
+                </form>
             </DialogContent>
-        </Dialog >
+        </Dialog>
     );
 }

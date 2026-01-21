@@ -690,10 +690,12 @@ export default function GoalsPage() {
                                                     </div>
                                                 </div>
 
-                                                {/* Description */}
-                                                {goal.description && (
-                                                    <p className="text-xs text-gray-400 mb-4 line-clamp-2">{goal.description}</p>
-                                                )}
+                                                {/* Description - fixed height container for consistent alignment */}
+                                                <div className="h-5 mb-3">
+                                                    {goal.description && (
+                                                        <p className="text-xs text-gray-400 line-clamp-1">{goal.description}</p>
+                                                    )}
+                                                </div>
 
                                                 {/* Amount saved with golden styling */}
                                                 <div className="flex items-center justify-between mb-4 p-3 rounded-xl bg-gradient-to-r from-yellow-500/10 to-amber-500/5 border border-yellow-500/20">
@@ -752,35 +754,52 @@ export default function GoalsPage() {
 
             {/* Quick Add Dialog */}
             <Dialog open={!!quickAddGoal} onOpenChange={(open) => !open && setQuickAddGoal(null)}>
-                <DialogContent className="sm:max-w-sm bg-zinc-900 border-white/10">
-                    <DialogHeader>
-                        <DialogTitle className="text-xl font-serif flex items-center gap-2">
-                            <Zap className="h-5 w-5 text-primary" />
-                            Quick Add
-                        </DialogTitle>
-                        <DialogDescription className="text-gray-400">
+                <DialogContent className="sm:max-w-[380px] bg-zinc-900/95 backdrop-blur-xl border-white/10 p-0 overflow-hidden shadow-2xl shadow-black/50">
+                    {/* Gradient Header */}
+                    <div className="bg-gradient-to-b from-violet-500/20 via-purple-500/10 to-transparent p-4 pb-3">
+                        <DialogHeader className="space-y-1">
+                            <div className="flex items-center gap-2">
+                                <div className="p-1.5 rounded-lg bg-violet-500/10 border border-violet-500/30">
+                                    <Zap className="h-4 w-4 text-violet-400" />
+                                </div>
+                                <DialogTitle className="text-base font-semibold text-white">Quick Add</DialogTitle>
+                            </div>
+                            <DialogDescription className="sr-only">
+                                Add savings to your goal
+                            </DialogDescription>
+                        </DialogHeader>
+
+                        <p className="text-xs text-gray-400 mt-2">
                             Add savings to <strong className="text-white">{quickAddGoal?.name}</strong>
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="py-4 space-y-4">
+                        </p>
+                    </div>
+
+                    {/* Form Content */}
+                    <div className="p-4 pt-3 space-y-3">
+                        {/* Amount */}
                         <div>
-                            <Label className="text-gray-400">Amount to add</Label>
-                            <Input
-                                type="number"
-                                step="0.01"
-                                value={quickAddAmount}
-                                onChange={(e) => setQuickAddAmount(e.target.value)}
-                                placeholder="0.00"
-                                autoFocus
-                                className="mt-2 h-12 bg-zinc-800 border-zinc-700 rounded-xl text-lg"
-                            />
+                            <Label className="text-gray-400 text-xs font-medium mb-1.5 block">Amount to add</Label>
+                            <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-violet-400">$</span>
+                                <Input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={quickAddAmount}
+                                    onChange={(e) => setQuickAddAmount(e.target.value)}
+                                    placeholder="0.00"
+                                    autoFocus
+                                    className="bg-zinc-800/50 border-zinc-700/50 rounded-lg h-10 pl-7 focus:border-white/30 text-base font-medium"
+                                />
+                            </div>
                         </div>
 
+                        {/* Wallet Selection */}
                         {wallets.length > 0 && (
                             <div>
-                                <Label className="text-gray-400">Take from Wallet</Label>
+                                <Label className="text-gray-400 text-xs font-medium mb-1.5 block">Take from</Label>
                                 <Select value={quickAddWalletId} onValueChange={setQuickAddWalletId}>
-                                    <SelectTrigger className="mt-2 h-11 bg-zinc-800 border-zinc-700 rounded-xl">
+                                    <SelectTrigger className="bg-zinc-800/50 border-zinc-700/50 rounded-lg h-10">
                                         <SelectValue placeholder="Select wallet" />
                                     </SelectTrigger>
                                     <SelectContent className="bg-zinc-800 border-zinc-700">
@@ -799,35 +818,47 @@ export default function GoalsPage() {
                                     const selected = wallets.find(w => w.id === quickAddWalletId);
                                     const amount = parseFloat(quickAddAmount) || 0;
                                     if (selected && amount > 0 && selected.balance < amount) {
-                                        return <p className="text-xs text-yellow-400 mt-1">⚠️ Insufficient balance in this wallet</p>;
+                                        return <p className="text-[10px] text-amber-400 mt-1.5">⚠️ Insufficient balance in this wallet</p>;
                                     }
                                     return null;
                                 })()}
                             </div>
                         )}
 
-                        <p className="text-xs text-gray-500 pt-2 border-t border-white/5">
-                            Goal: ${quickAddGoal?.currentAmount.toLocaleString()} → ${((quickAddGoal?.currentAmount || 0) + (parseFloat(quickAddAmount) || 0)).toLocaleString()}
-                        </p>
+                        {/* Progress Indicator */}
+                        <div className="pt-2 border-t border-white/5">
+                            <p className="text-[10px] text-gray-500">
+                                Goal: ${quickAddGoal?.currentAmount.toLocaleString()} → <span className="text-violet-400">${((quickAddGoal?.currentAmount || 0) + (parseFloat(quickAddAmount) || 0)).toLocaleString()}</span>
+                            </p>
+                        </div>
+
+                        {/* Footer */}
+                        <DialogFooter className="pt-1 gap-2 sm:gap-2">
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                onClick={() => setQuickAddGoal(null)}
+                                className="text-gray-400 hover:text-white hover:bg-white/5 h-9 px-4"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                onClick={confirmQuickAdd}
+                                disabled={
+                                    !quickAddAmount ||
+                                    parseFloat(quickAddAmount) <= 0 ||
+                                    !quickAddWalletId ||
+                                    (() => {
+                                        const selected = wallets.find(w => w.id === quickAddWalletId);
+                                        return selected ? selected.balance < parseFloat(quickAddAmount || '0') : false;
+                                    })()
+                                }
+                                className="h-9 px-4 font-semibold rounded-lg gap-1.5 bg-gradient-to-r from-violet-500 to-purple-500 shadow-lg shadow-violet-500/25 text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
+                            >
+                                Add ${quickAddAmount || '0'}
+                            </Button>
+                        </DialogFooter>
                     </div>
-                    <DialogFooter>
-                        <Button variant="ghost" onClick={() => setQuickAddGoal(null)}>Cancel</Button>
-                        <Button
-                            onClick={confirmQuickAdd}
-                            disabled={
-                                !quickAddAmount ||
-                                parseFloat(quickAddAmount) <= 0 ||
-                                !quickAddWalletId ||
-                                (() => {
-                                    const selected = wallets.find(w => w.id === quickAddWalletId);
-                                    return selected ? selected.balance < parseFloat(quickAddAmount || '0') : false;
-                                })()
-                            }
-                            className="bg-primary text-black hover:bg-primary/90 font-bold rounded-xl"
-                        >
-                            Add ${quickAddAmount || '0'}
-                        </Button>
-                    </DialogFooter>
                 </DialogContent>
             </Dialog>
 
@@ -840,40 +871,53 @@ export default function GoalsPage() {
                     setQuickPayWalletId('');
                 }
             }}>
-                <DialogContent className="sm:max-w-md bg-zinc-900 border-white/10 overflow-hidden">
+                <DialogContent className="sm:max-w-[420px] bg-zinc-900/95 backdrop-blur-xl border-white/10 p-0 overflow-hidden shadow-2xl shadow-black/50">
                     <div className="relative">
                         {/* Step 1: Pay Remaining */}
                         <div className={`transition-all duration-500 ease-out ${quickPayStep === 'pay' ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-full absolute inset-0 pointer-events-none'}`}>
-                            <DialogHeader>
-                                <DialogTitle className="text-xl font-serif flex items-center gap-2">
-                                    <Banknote className="h-5 w-5 text-green-400" />
-                                    Pay Remaining
-                                </DialogTitle>
-                                <DialogDescription className="text-gray-400">
+                            {/* Green Gradient Header */}
+                            <div className="bg-gradient-to-b from-emerald-500/20 via-green-500/10 to-transparent p-4 pb-3">
+                                <DialogHeader className="space-y-1">
+                                    <div className="flex items-center gap-2">
+                                        <div className="p-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30">
+                                            <Banknote className="h-4 w-4 text-emerald-400" />
+                                        </div>
+                                        <DialogTitle className="text-base font-semibold text-white">Pay Remaining</DialogTitle>
+                                    </div>
+                                    <DialogDescription className="sr-only">
+                                        Complete your goal by paying the remaining amount
+                                    </DialogDescription>
+                                </DialogHeader>
+
+                                <p className="text-xs text-gray-400 mt-2">
                                     Complete <strong className="text-white">{quickPayGoal?.name}</strong> by paying the remaining amount
-                                </DialogDescription>
-                            </DialogHeader>
-                            <div className="py-4 space-y-4">
-                                <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20">
-                                    <p className="text-sm text-gray-400 mb-1">Amount to pay</p>
-                                    <p className="text-3xl font-bold text-green-400">
+                                </p>
+                            </div>
+
+                            {/* Form Content */}
+                            <div className="p-4 pt-3 space-y-3">
+                                {/* Amount Box */}
+                                <div className="p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/20">
+                                    <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Amount to pay</p>
+                                    <p className="text-2xl font-bold text-emerald-400">
                                         ${((quickPayGoal?.targetAmount || 0) - (quickPayGoal?.currentAmount || 0)).toLocaleString()}
                                     </p>
-                                    <p className="text-xs text-gray-500 mt-1">
+                                    <p className="text-[10px] text-gray-500 mt-1">
                                         This will complete your goal 100%
                                     </p>
                                 </div>
 
+                                {/* Wallet Selection */}
                                 {walletsLoading ? (
-                                    <div className="flex items-center justify-center py-6 gap-3">
-                                        <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                                    <div className="flex items-center justify-center py-4 gap-3">
+                                        <Loader2 className="h-4 w-4 animate-spin text-emerald-400" />
                                         <span className="text-gray-400 text-sm">Loading wallets...</span>
                                     </div>
                                 ) : wallets.length > 0 ? (
                                     <div>
-                                        <Label className="text-gray-400">Pay from Wallet</Label>
+                                        <Label className="text-gray-400 text-xs font-medium mb-1.5 block">Pay from</Label>
                                         <Select value={quickPayWalletId} onValueChange={setQuickPayWalletId}>
-                                            <SelectTrigger className="mt-2 h-11 bg-zinc-800 border-zinc-700 rounded-xl">
+                                            <SelectTrigger className="bg-zinc-800/50 border-zinc-700/50 rounded-lg h-10">
                                                 <SelectValue placeholder="Select wallet" />
                                             </SelectTrigger>
                                             <SelectContent className="bg-zinc-800 border-zinc-700">
@@ -893,7 +937,7 @@ export default function GoalsPage() {
                                             const selected = wallets.find(w => w.id === quickPayWalletId);
                                             const remaining = (quickPayGoal?.targetAmount || 0) - (quickPayGoal?.currentAmount || 0);
                                             if (selected && remaining > 0 && selected.balance < remaining) {
-                                                return <p className="text-xs text-yellow-400 mt-1">⚠️ Insufficient balance in this wallet</p>;
+                                                return <p className="text-[10px] text-amber-400 mt-1.5">⚠️ Insufficient balance in this wallet</p>;
                                             }
                                             return null;
                                         })()}
@@ -901,63 +945,80 @@ export default function GoalsPage() {
                                 ) : (
                                     <p className="text-gray-500 text-sm text-center py-4">No wallets available</p>
                                 )}
+
+                                {/* Footer */}
+                                <DialogFooter className="pt-2 gap-2 sm:gap-2">
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        onClick={() => setQuickPayGoal(null)}
+                                        className="text-gray-400 hover:text-white hover:bg-white/5 h-9 px-4"
+                                    >
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        onClick={confirmQuickPay}
+                                        disabled={
+                                            walletsLoading ||
+                                            !quickPayWalletId ||
+                                            isProcessing ||
+                                            (() => {
+                                                const selected = wallets.find(w => w.id === quickPayWalletId);
+                                                const remaining = (quickPayGoal?.targetAmount || 0) - (quickPayGoal?.currentAmount || 0);
+                                                return selected ? selected.balance < remaining : false;
+                                            })()
+                                        }
+                                        className="h-9 px-4 font-semibold rounded-lg gap-1.5 bg-gradient-to-r from-emerald-500 to-green-500 shadow-lg shadow-emerald-500/25 text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
+                                    >
+                                        {isProcessing ? 'Processing...' : 'Pay & Complete Goal'}
+                                    </Button>
+                                </DialogFooter>
                             </div>
-                            <DialogFooter>
-                                <Button variant="ghost" onClick={() => setQuickPayGoal(null)}>Cancel</Button>
-                                <Button
-                                    onClick={confirmQuickPay}
-                                    disabled={
-                                        walletsLoading ||
-                                        !quickPayWalletId ||
-                                        isProcessing ||
-                                        (() => {
-                                            const selected = wallets.find(w => w.id === quickPayWalletId);
-                                            const remaining = (quickPayGoal?.targetAmount || 0) - (quickPayGoal?.currentAmount || 0);
-                                            return selected ? selected.balance < remaining : false;
-                                        })()
-                                    }
-                                    className="bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    {isProcessing ? 'Processing...' : 'Pay & Complete Goal'}
-                                </Button>
-                            </DialogFooter>
                         </div>
 
                         {/* Step 2: Goal Completed - Record Purchase */}
                         <div className={`transition-all duration-500 ease-out ${quickPayStep === 'complete' ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-full absolute inset-0 pointer-events-none'}`}>
-                            <DialogHeader>
-                                <DialogTitle className="text-xl font-serif flex items-center gap-2">
-                                    <Trophy className="h-5 w-5 text-yellow-500" />
-                                    Goal Completed! 🎉
-                                </DialogTitle>
-                                <DialogDescription className="text-gray-400">
-                                    Congratulations on reaching your goal <strong className="text-white">{quickPayCompletedGoal?.name}</strong>!
-                                    <br /><br />
-                                    You're about to record the purchase of this item for <strong className="text-primary">${quickPayCompletedGoal?.targetAmount.toLocaleString()}</strong>.
-                                    <br /><br />
-                                    This will create an expense transaction and deduct from your <strong className="text-primary">Savings Wallet</strong>.
-                                </DialogDescription>
-                            </DialogHeader>
+                            {/* Golden Gradient Header */}
+                            <div className="bg-gradient-to-b from-amber-500/20 via-yellow-500/10 to-transparent p-4 pb-3">
+                                <DialogHeader className="space-y-1">
+                                    <div className="flex items-center gap-2">
+                                        <div className="p-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                                            <Trophy className="h-4 w-4 text-amber-400" />
+                                        </div>
+                                        <DialogTitle className="text-base font-semibold text-white">Goal Completed! 🎉</DialogTitle>
+                                    </div>
+                                    <DialogDescription className="sr-only">
+                                        Record purchase and move to Hall of Fame
+                                    </DialogDescription>
+                                </DialogHeader>
 
-                            <div className="py-4 space-y-4">
-                                <div className="p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/20">
-                                    <p className="text-sm text-gray-400 mb-1">Purchase Amount</p>
-                                    <p className="text-3xl font-bold text-yellow-400">
+                                <p className="text-xs text-gray-400 mt-2">
+                                    Congratulations on <strong className="text-white">{quickPayCompletedGoal?.name}</strong>! Record the purchase to move to Hall of Fame.
+                                </p>
+                            </div>
+
+                            {/* Form Content */}
+                            <div className="p-4 pt-3 space-y-3">
+                                {/* Purchase Amount Box */}
+                                <div className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/20">
+                                    <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Purchase Amount</p>
+                                    <p className="text-2xl font-bold text-amber-400">
                                         ${quickPayCompletedGoal?.targetAmount.toLocaleString()}
                                     </p>
                                 </div>
 
+                                {/* Wallet Selection */}
                                 {walletsLoading ? (
-                                    <div className="flex items-center justify-center py-6 gap-3">
-                                        <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                                    <div className="flex items-center justify-center py-4 gap-3">
+                                        <Loader2 className="h-4 w-4 animate-spin text-amber-400" />
                                         <span className="text-gray-400 text-sm">Loading wallets...</span>
                                     </div>
                                 ) : wallets.length > 0 ? (
                                     <div>
-                                        <Label className="text-gray-400">Spend from Wallet</Label>
+                                        <Label className="text-gray-400 text-xs font-medium mb-1.5 block">Spend from</Label>
                                         <Select value={fulfillWalletId} onValueChange={setFulfillWalletId}>
-                                            <SelectTrigger className="mt-2 h-11 bg-zinc-800 border-zinc-700 rounded-xl">
-                                                <SelectValue placeholder="Select wallet" />
+                                            <SelectTrigger className="bg-zinc-800/50 border-zinc-700/50 rounded-lg h-10">
+                                                <SelectValue placeholder="Select savings wallet" />
                                             </SelectTrigger>
                                             <SelectContent className="bg-zinc-800 border-zinc-700">
                                                 {wallets.filter(w => w.isSavingsWallet).map(w => {
@@ -975,7 +1036,7 @@ export default function GoalsPage() {
                                             const selected = wallets.find(w => w.id === fulfillWalletId);
                                             const amount = quickPayCompletedGoal?.targetAmount || 0;
                                             if (selected && amount > 0 && selected.balance < amount) {
-                                                return <p className="text-xs text-yellow-400 mt-1">⚠️ Insufficient balance in this wallet</p>;
+                                                return <p className="text-[10px] text-amber-400 mt-1.5">⚠️ Insufficient balance in this wallet</p>;
                                             }
                                             return null;
                                         })()}
@@ -983,59 +1044,67 @@ export default function GoalsPage() {
                                 ) : (
                                     <p className="text-gray-500 text-sm text-center py-4">No wallets available</p>
                                 )}
-                            </div>
 
-                            <DialogFooter>
-                                <Button variant="ghost" onClick={() => {
-                                    setQuickPayGoal(null);
-                                    setQuickPayStep('pay');
-                                    setQuickPayCompletedGoal(null);
-                                    setQuickPayWalletId('');
-                                }}>Cancel</Button>
-                                <Button
-                                    onClick={async () => {
-                                        if (quickPayCompletedGoal && fulfillWalletId && !isProcessing) {
-                                            setIsProcessing(true);
-                                            try {
-                                                const categoryConfig = getCategoryConfig(quickPayCompletedGoal.category);
+                                {/* Footer */}
+                                <DialogFooter className="pt-2 gap-2 sm:gap-2">
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        onClick={() => {
+                                            setQuickPayGoal(null);
+                                            setQuickPayStep('pay');
+                                            setQuickPayCompletedGoal(null);
+                                            setQuickPayWalletId('');
+                                        }}
+                                        className="text-gray-400 hover:text-white hover:bg-white/5 h-9 px-4"
+                                    >
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        onClick={async () => {
+                                            if (quickPayCompletedGoal && fulfillWalletId && !isProcessing) {
+                                                setIsProcessing(true);
+                                                try {
+                                                    const categoryConfig = getCategoryConfig(quickPayCompletedGoal.category);
 
-                                                // Create expense transaction
-                                                await createTransaction({
-                                                    name: `Bought: ${quickPayCompletedGoal.name}`,
-                                                    category: categoryConfig.label,
-                                                    type: 'expense',
-                                                    planned: quickPayCompletedGoal.targetAmount,
-                                                    actual: quickPayCompletedGoal.targetAmount,
-                                                    date: new Date().toISOString().split('T')[0],
-                                                    walletId: fulfillWalletId,
-                                                    goalId: quickPayCompletedGoal.id,
-                                                });
+                                                    // Create expense transaction
+                                                    await createTransaction({
+                                                        name: `Bought: ${quickPayCompletedGoal.name}`,
+                                                        category: categoryConfig.label,
+                                                        type: 'expense',
+                                                        planned: quickPayCompletedGoal.targetAmount,
+                                                        actual: quickPayCompletedGoal.targetAmount,
+                                                        date: new Date().toISOString().split('T')[0],
+                                                        walletId: fulfillWalletId,
+                                                        goalId: quickPayCompletedGoal.id,
+                                                    });
 
-                                                // Mark goal as fulfilled
-                                                updateGoal({
-                                                    ...quickPayCompletedGoal,
-                                                    status: 'fulfilled',
-                                                    completedAt: new Date().toISOString()
-                                                });
+                                                    // Mark goal as fulfilled
+                                                    updateGoal({
+                                                        ...quickPayCompletedGoal,
+                                                        status: 'fulfilled',
+                                                        completedAt: new Date().toISOString()
+                                                    });
 
-                                                // Close dialog and reset state
-                                                setQuickPayGoal(null);
-                                                setQuickPayStep('pay');
-                                                setQuickPayCompletedGoal(null);
-                                                setQuickPayWalletId('');
-                                                setFulfillWalletId('');
-                                            } finally {
-                                                setIsProcessing(false);
+                                                    // Close dialog and reset state
+                                                    setQuickPayGoal(null);
+                                                    setQuickPayStep('pay');
+                                                    setQuickPayCompletedGoal(null);
+                                                    setQuickPayWalletId('');
+                                                    setFulfillWalletId('');
+                                                } finally {
+                                                    setIsProcessing(false);
+                                                }
                                             }
-                                        }
-                                    }}
-                                    disabled={!fulfillWalletId || isProcessing}
-                                    className="bg-yellow-600 hover:bg-yellow-700 text-white font-bold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    <Trophy className="h-4 w-4 mr-2" />
-                                    {isProcessing ? 'Processing...' : 'Record Purchase & Move to Hall of Fame'}
-                                </Button>
-                            </DialogFooter>
+                                        }}
+                                        disabled={!fulfillWalletId || isProcessing}
+                                        className="h-9 px-4 font-semibold rounded-lg gap-1.5 bg-gradient-to-r from-amber-500 to-yellow-500 shadow-lg shadow-amber-500/25 text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
+                                    >
+                                        <Trophy className="h-3.5 w-3.5" />
+                                        {isProcessing ? 'Processing...' : 'Record & Hall of Fame'}
+                                    </Button>
+                                </DialogFooter>
+                            </div>
                         </div>
                     </div>
                 </DialogContent>
@@ -1043,40 +1112,49 @@ export default function GoalsPage() {
 
             {/* Fulfillment Dialog */}
             <Dialog open={!!fulfillGoal} onOpenChange={(open) => !open && setFulfillGoal(null)}>
-                <DialogContent className="sm:max-w-md bg-zinc-900 border-white/10">
-                    <DialogHeader>
-                        <DialogTitle className="text-xl font-serif flex items-center gap-2">
-                            <Trophy className="h-5 w-5 text-yellow-500" />
-                            Goal Completed! 🎉
-                        </DialogTitle>
-                        <DialogDescription className="text-gray-400">
-                            Congratulations on reaching your goal <strong className="text-white">{fulfillGoal?.name}</strong>!
-                            <br /><br />
-                            You're about to record the purchase of this item for <strong className="text-primary">${fulfillGoal?.targetAmount.toLocaleString()}</strong>.
-                            <br /><br />
-                            This will create an expense transaction and deduct from your <strong className="text-primary">Savings Wallet</strong> (where your goal savings have been accumulating).
-                        </DialogDescription>
-                    </DialogHeader>
+                <DialogContent className="sm:max-w-[420px] bg-zinc-900/95 backdrop-blur-xl border-white/10 p-0 overflow-hidden shadow-2xl shadow-black/50">
+                    {/* Golden Gradient Header */}
+                    <div className="bg-gradient-to-b from-amber-500/20 via-yellow-500/10 to-transparent p-4 pb-3">
+                        <DialogHeader className="space-y-1">
+                            <div className="flex items-center gap-2">
+                                <div className="p-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                                    <Trophy className="h-4 w-4 text-amber-400" />
+                                </div>
+                                <DialogTitle className="text-base font-semibold text-white">Goal Completed! 🎉</DialogTitle>
+                            </div>
+                            <DialogDescription className="sr-only">
+                                Record your purchase and move to Hall of Fame
+                            </DialogDescription>
+                        </DialogHeader>
 
-                    <div className="py-4 space-y-4">
-                        <div className="p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/20">
-                            <p className="text-sm text-gray-400 mb-1">Purchase Amount</p>
-                            <p className="text-3xl font-bold text-yellow-400">
+                        {/* Goal Info */}
+                        <p className="text-xs text-gray-400 mt-2">
+                            Congratulations on <strong className="text-white">{fulfillGoal?.name}</strong>! Record the purchase to move to Hall of Fame.
+                        </p>
+                    </div>
+
+                    {/* Form Content */}
+                    <div className="p-4 pt-3 space-y-3">
+                        {/* Purchase Amount Box */}
+                        <div className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/20">
+                            <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Purchase Amount</p>
+                            <p className="text-2xl font-bold text-amber-400">
                                 ${fulfillGoal?.targetAmount.toLocaleString()}
                             </p>
                         </div>
 
+                        {/* Wallet Selection */}
                         {walletsLoading ? (
-                            <div className="flex items-center justify-center py-6 gap-3">
-                                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                            <div className="flex items-center justify-center py-4 gap-3">
+                                <Loader2 className="h-4 w-4 animate-spin text-amber-400" />
                                 <span className="text-gray-400 text-sm">Loading wallets...</span>
                             </div>
                         ) : wallets.length > 0 ? (
                             <div>
-                                <Label className="text-gray-400">Spend from Wallet</Label>
+                                <Label className="text-gray-400 text-xs font-medium mb-1.5 block">Spend from</Label>
                                 <Select value={fulfillWalletId} onValueChange={setFulfillWalletId}>
-                                    <SelectTrigger className="mt-2 h-11 bg-zinc-800 border-zinc-700 rounded-xl">
-                                        <SelectValue placeholder="Select wallet" />
+                                    <SelectTrigger className="bg-zinc-800/50 border-zinc-700/50 rounded-lg h-10">
+                                        <SelectValue placeholder="Select savings wallet" />
                                     </SelectTrigger>
                                     <SelectContent className="bg-zinc-800 border-zinc-700">
                                         {wallets.filter(w => w.isSavingsWallet).map(w => {
@@ -1094,7 +1172,7 @@ export default function GoalsPage() {
                                     const selected = wallets.find(w => w.id === fulfillWalletId);
                                     const amount = fulfillGoal?.targetAmount || 0;
                                     if (selected && amount > 0 && selected.balance < amount) {
-                                        return <p className="text-xs text-yellow-400 mt-1">⚠️ Insufficient balance in this wallet</p>;
+                                        return <p className="text-[10px] text-amber-400 mt-1.5">⚠️ Insufficient balance in this wallet</p>;
                                     }
                                     return null;
                                 })()}
@@ -1102,50 +1180,58 @@ export default function GoalsPage() {
                         ) : (
                             <p className="text-gray-500 text-sm text-center py-4">No wallets available</p>
                         )}
-                    </div>
 
-                    <DialogFooter>
-                        <Button variant="ghost" onClick={() => { setFulfillGoal(null); setFulfillWalletId(''); }}>Cancel</Button>
-                        <Button
-                            onClick={async () => {
-                                if (fulfillGoal && fulfillWalletId && !isProcessing) {
-                                    setIsProcessing(true);
-                                    try {
-                                        const categoryConfig = getCategoryConfig(fulfillGoal.category);
+                        {/* Footer */}
+                        <DialogFooter className="pt-2 gap-2 sm:gap-2">
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                onClick={() => { setFulfillGoal(null); setFulfillWalletId(''); }}
+                                className="text-gray-400 hover:text-white hover:bg-white/5 h-9 px-4"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                onClick={async () => {
+                                    if (fulfillGoal && fulfillWalletId && !isProcessing) {
+                                        setIsProcessing(true);
+                                        try {
+                                            const categoryConfig = getCategoryConfig(fulfillGoal.category);
 
-                                        // Create expense transaction
-                                        await createTransaction({
-                                            name: `Bought: ${fulfillGoal.name}`,
-                                            category: categoryConfig.label,
-                                            type: 'expense',
-                                            planned: fulfillGoal.targetAmount,
-                                            actual: fulfillGoal.targetAmount,
-                                            date: new Date().toISOString().split('T')[0],
-                                            walletId: fulfillWalletId,
-                                            goalId: fulfillGoal.id,
-                                        });
+                                            // Create expense transaction
+                                            await createTransaction({
+                                                name: `Bought: ${fulfillGoal.name}`,
+                                                category: categoryConfig.label,
+                                                type: 'expense',
+                                                planned: fulfillGoal.targetAmount,
+                                                actual: fulfillGoal.targetAmount,
+                                                date: new Date().toISOString().split('T')[0],
+                                                walletId: fulfillWalletId,
+                                                goalId: fulfillGoal.id,
+                                            });
 
-                                        // Mark goal as fulfilled
-                                        updateGoal({
-                                            ...fulfillGoal,
-                                            status: 'fulfilled',
-                                            completedAt: new Date().toISOString()
-                                        });
+                                            // Mark goal as fulfilled
+                                            updateGoal({
+                                                ...fulfillGoal,
+                                                status: 'fulfilled',
+                                                completedAt: new Date().toISOString()
+                                            });
 
-                                        setFulfillGoal(null);
-                                        setFulfillWalletId('');
-                                    } finally {
-                                        setIsProcessing(false);
+                                            setFulfillGoal(null);
+                                            setFulfillWalletId('');
+                                        } finally {
+                                            setIsProcessing(false);
+                                        }
                                     }
-                                }
-                            }}
-                            disabled={!fulfillWalletId || isProcessing}
-                            className="bg-yellow-600 hover:bg-yellow-700 text-white font-bold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            <Trophy className="h-4 w-4 mr-2" />
-                            {isProcessing ? 'Processing...' : 'Record Purchase & Move to Hall of Fame'}
-                        </Button>
-                    </DialogFooter>
+                                }}
+                                disabled={!fulfillWalletId || isProcessing}
+                                className="h-9 px-4 font-semibold rounded-lg gap-1.5 bg-gradient-to-r from-amber-500 to-yellow-500 shadow-lg shadow-amber-500/25 text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
+                            >
+                                <Trophy className="h-3.5 w-3.5" />
+                                {isProcessing ? 'Processing...' : 'Record & Hall of Fame'}
+                            </Button>
+                        </DialogFooter>
+                    </div>
                 </DialogContent>
             </Dialog>
 
