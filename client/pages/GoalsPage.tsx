@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { useGoals } from "@/hooks/use-goals";
 import { useWallets } from "@/hooks/use-wallets";
 import { useTransactions } from "@/hooks/use-transactions";
@@ -25,6 +24,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format, differenceInDays, formatDistanceToNow } from "date-fns";
+import { LoadingScreen } from "@/components/ui/LoadingScreen";
 
 export default function GoalsPage() {
     const { goals, isLoading, createGoal, updateGoal, deleteGoal } = useGoals();
@@ -350,18 +350,10 @@ export default function GoalsPage() {
         }
     };
 
-    if (isLoading) {
-        return (
-            <div className="min-h-screen bg-black text-white p-8">
-                <div className="text-center py-12">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                </div>
-            </div>
-        );
-    }
+    if (isLoading) return <LoadingScreen size="lg" />;
 
     return (
-        <div className="min-h-screen bg-black text-white p-4 md:p-6 lg:p-8 relative overflow-hidden">
+        <div className="min-h-screen bg-background text-white p-4 md:p-6 lg:p-8 relative overflow-hidden">
             {/* Animated background decorations */}
             <div className="hidden md:block absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-to-br from-violet-500/10 via-purple-500/10 to-transparent rounded-full blur-3xl pointer-events-none animate-pulse" style={{ animationDuration: '4s' }} />
             <div className="hidden md:block absolute bottom-1/3 left-0 w-[500px] h-[500px] bg-gradient-to-tr from-amber-500/10 via-yellow-500/5 to-transparent rounded-full blur-3xl pointer-events-none animate-pulse" style={{ animationDuration: '5s' }} />
@@ -570,7 +562,7 @@ export default function GoalsPage() {
                                                                     title="Move to Hall of Fame"
                                                                 >
                                                                     <Trophy className="h-3.5 w-3.5" />
-                                                                    <span className="hidden md:inline">Hall of Fame</span>
+                                🏆 <span className="hidden sm:inline">Hall of Fame</span><span className="sm:hidden">HoF</span>
                                                                 </Button>
                                                             </>
                                                         )}
@@ -586,10 +578,14 @@ export default function GoalsPage() {
                                                     </div>
                                                 </div>
 
-                                                {/* Description */}
-                                                {goal.description && (
-                                                    <p className="text-xs text-gray-500 mb-3 line-clamp-2">{goal.description}</p>
-                                                )}
+                                                {/* Description - Fixed height for alignment */}
+                                                <div className="h-9 mb-3">
+                                                    {goal.description ? (
+                                                        <p className="text-xs text-gray-500 line-clamp-2">{goal.description}</p>
+                                                    ) : (
+                                                        <span /> 
+                                                    )}
+                                                </div>
 
                                                 <div className="flex justify-between items-end mb-3 md:mb-4">
                                                     <div>
@@ -808,7 +804,7 @@ export default function GoalsPage() {
                                             return (
                                                 <SelectItem key={w.id} value={w.id}>
                                                     {w.name} (${w.balance.toLocaleString()})
-                                                    {!hasEnough && quickAddAmount && ' ⚠️'}
+                                                    {!hasEnough && quickAddAmount && ' ⚠️'}
                                                 </SelectItem>
                                             );
                                         })}
@@ -927,7 +923,7 @@ export default function GoalsPage() {
                                                     return (
                                                         <SelectItem key={w.id} value={w.id}>
                                                             {w.name} (${w.balance.toLocaleString()})
-                                                            {!hasEnough && ' ⚠️'}
+                                                            {!hasEnough && ' ⚠️'}
                                                         </SelectItem>
                                                     );
                                                 })}
@@ -976,7 +972,7 @@ export default function GoalsPage() {
                             </div>
                         </div>
 
-                        {/* Step 2: Goal Completed - Record Purchase */}
+                        {/* Step 🏆 Goal Completed - Record Purchase */}
                         <div className={`transition-all duration-500 ease-out ${quickPayStep === 'complete' ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-full absolute inset-0 pointer-events-none'}`}>
                             {/* Golden Gradient Header */}
                             <div className="bg-gradient-to-b from-amber-500/20 via-yellow-500/10 to-transparent p-4 pb-3">
@@ -1026,7 +1022,7 @@ export default function GoalsPage() {
                                                     return (
                                                         <SelectItem key={w.id} value={w.id}>
                                                             {w.name} (${w.balance.toLocaleString()})
-                                                            {!hasEnough && ' ⚠️'}
+                                                            {!hasEnough && ' ⚠️'}
                                                         </SelectItem>
                                                     );
                                                 })}
@@ -1162,7 +1158,7 @@ export default function GoalsPage() {
                                             return (
                                                 <SelectItem key={w.id} value={w.id}>
                                                     {w.name} (${w.balance.toLocaleString()})
-                                                    {!hasEnough && ' ⚠️'}
+                                                    {!hasEnough && ' ⚠️'}
                                                 </SelectItem>
                                             );
                                         })}

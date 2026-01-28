@@ -14,6 +14,7 @@ const mapToWallet = (doc: any): Wallet => ({
     color: doc.color,
     isDefault: doc.isDefault,
     isSavingsWallet: doc.isSavingsWallet,
+    order: doc.order,
     createdAt: doc.createdAt
 });
 
@@ -37,7 +38,7 @@ export const getWallets: RequestHandler = async (req, res) => {
     if (!userId) return res.status(401).json({ success: false, message: "Not authenticated" });
 
     try {
-        const wallets = await WalletModel.find({ userId });
+        const wallets = await WalletModel.find({ userId }).sort({ order: 1, createdAt: -1 });
         res.json({ success: true, data: wallets.map(mapToWallet) });
     } catch (error) {
         res.status(500).json({ success: false, message: "Server error" });
@@ -56,8 +57,13 @@ export const createWallet: RequestHandler = async (req, res) => {
             await WalletModel.updateMany({ userId }, { isSavingsWallet: false });
         }
 
+        // Get max order (highest order + 1)
+        const lastWallet = await WalletModel.findOne({ userId }).sort({ order: -1 });
+        const newOrder = (lastWallet?.order || 0) + 1;
+
         const wallet = await WalletModel.create({
             userId,
+            order: newOrder,
             name,
             type,
             balance: balance || 0,
@@ -231,15 +237,27 @@ export const getUserAuditLogs: RequestHandler = async (req, res) => {
     const userId = req.session?.user?.id;
     const entityType = req.query.entityType as string;
     const entityId = req.query.entityId as string;
-    const limit = parseInt(req.query.limit as string) || 50;
+    const changeType = req.query.changeType as string;
+    const startDate = req.query.startDate as string;
+    const endDate = req.query.endDate as string;
+    const limit = parseInt(req.query.limit as string) || 100; // Increased default limit
     const offset = parseInt(req.query.offset as string) || 0;
 
     if (!userId) return res.status(401).json({ success: false, message: "Not authenticated" });
 
     try {
         const filter: any = { userId };
-        if (entityType) filter.entityType = entityType;
+
+        if (entityType && entityType !== 'all') filter.entityType = entityType;
         if (entityId) filter.entityId = entityId;
+        if (changeType && changeType !== 'all') filter.changeType = changeType;
+
+        // Date range filtering
+        if (startDate || endDate) {
+            filter.timestamp = {};
+            if (startDate) filter.timestamp.$gte = new Date(startDate);
+            if (endDate) filter.timestamp.$lte = new Date(endDate);
+        }
 
         const logs = await AuditLogModel.find(filter)
             .sort({ timestamp: -1 })
@@ -273,6 +291,36 @@ export const logDataExport: RequestHandler = async (req, res) => {
         res.json({ success: true, message: "Export logged" });
     } catch (error) {
         console.error("Log export error:", error);
+        res.status(500).json({ success: false, message: "Server error" });
+    }
+};
+
+export const reorderWallets: RequestHandler = async (req, res) => {
+    const userId = req.session?.user?.id;
+    if (!userId) return res.status(401).json({ success: false, message: "Not authenticated" });
+
+    try {
+        const { orderedIds } = req.body; // Array of wallet IDs in new order
+
+        if (!Array.isArray(orderedIds)) {
+            return res.status(400).json({ success: false, message: "Invalid data format" });
+        }
+
+        // Bulk update for performance
+        const updates = orderedIds.map((id, index) => ({
+            updateOne: {
+                filter: { _id: id, userId },
+                update: { $set: { order: index } }
+            }
+        }));
+
+        if (updates.length > 0) {
+            await WalletModel.bulkWrite(updates);
+        }
+
+        res.json({ success: true, message: "Wallets reordered successfully" });
+    } catch (error) {
+        console.error("Reorder wallets error:", error);
         res.status(500).json({ success: false, message: "Server error" });
     }
 };

@@ -6,59 +6,73 @@
 
 @layer base {
   :root {
-    --background: 220 14% 4%;
-    --foreground: 210 40% 98%;
+    /* Shades of Purple Theme - VS Code inspired */
+    --background: 240 33% 18%;
+    /* Deep violet #1E1E3F */
+    --foreground: 220 20% 95%;
+    /* Light text */
 
-    --card: 222 47% 11%;
-    --card-foreground: 210 40% 98%;
+    --card: 249 30% 22%;
+    /* Card purple #2D2B55 */
+    --card-foreground: 220 20% 95%;
 
-    --popover: 222 47% 11%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 249 30% 22%;
+    /* Popover purple */
+    --popover-foreground: 220 20% 95%;
 
-    /* Neon Green / Budget Boost Palette */
-    --primary: 84 81% 65%;
-    /* Neon Green */
-    --primary-foreground: 144 65% 5%;
+    /* Golden Yellow Accent - Shades of Purple signature */
+    --primary: 48 100% 50%;
+    /* Bright Gold #FAD000 */
+    --primary-foreground: 240 33% 12%;
     /* Dark for contrast */
 
-    --secondary: 217 19% 27%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 260 25% 30%;
+    /* Muted purple */
+    --secondary-foreground: 220 20% 95%;
 
-    --muted: 217 19% 27%;
-    --muted-foreground: 215 20% 65%;
+    --muted: 260 25% 30%;
+    /* Muted purple */
+    --muted-foreground: 260 20% 65%;
+    /* Lighter purple text */
 
-    --accent: 84 81% 65%;
-    --accent-foreground: 144 65% 5%;
+    --accent: 48 100% 50%;
+    /* Golden accent */
+    --accent-foreground: 240 33% 12%;
 
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 217 19% 27%;
-    --input: 217 19% 27%;
-    --ring: 84 81% 65%;
+    --border: 260 30% 35%;
+    /* Purple border */
+    --input: 260 25% 28%;
+    /* Input purple */
+    --ring: 48 100% 50%;
+    /* Gold ring */
 
     --radius: 1rem;
 
-    --sidebar-background: 0 0% 0%;
-    /* Black */
-    --sidebar-foreground: 215 20% 65%;
-    --sidebar-primary: 84 81% 65%;
-    --sidebar-primary-foreground: 144 65% 5%;
-    --sidebar-accent: 217 19% 27%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 217 19% 27%;
+    /* Sidebar - Deeper purple */
+    --sidebar-background: 249 35% 16%;
+    /* Even deeper #1A1A2E */
+    --sidebar-foreground: 260 20% 70%;
+    --sidebar-primary: 48 100% 50%;
+    /* Gold */
+    --sidebar-primary-foreground: 240 33% 12%;
+    --sidebar-accent: 260 30% 35%;
+    --sidebar-accent-foreground: 220 20% 95%;
+    --sidebar-border: 260 30% 30%;
 
-    /* Chart Colors */
-    --chart-1: 84 81% 65%;
-    /* Neon Green */
-    --chart-2: 170 50% 50%;
-    /* Teal/Cyan */
-    --chart-3: 280 50% 50%;
+    /* Chart Colors - Vibrant Shades of Purple palette */
+    --chart-1: 48 100% 50%;
+    /* Gold */
+    --chart-2: 180 70% 50%;
+    /* Cyan */
+    --chart-3: 300 70% 60%;
+    /* Pink/Magenta */
+    --chart-4: 260 70% 65%;
     /* Purple */
-    --chart-4: 340 60% 60%;
-    /* Pink */
-    --chart-5: 40 80% 60%;
-    /* Orange */
+    --chart-5: 120 60% 50%;
+    /* Green */
   }
 
   /* No explicit .dark class needed if we default to dark variables above or use :root, 
@@ -183,17 +197,22 @@
 
 /* Sidebar breathing animation - highlighting glow effect */
 @keyframes breathe {
+  0% {
+    filter: brightness(1);
+    box-shadow: 0 0 0px transparent;
+    background-color: rgba(250, 208, 0, 0);
+  }
 
-  0%,
+  15% {
+    filter: brightness(1.5);
+    box-shadow: 0 0 15px rgba(250, 208, 0, 0.6), 0 0 30px rgba(250, 208, 0, 0.3);
+    background-color: rgba(250, 208, 0, 0.15);
+  }
+
+  30%,
   100% {
     filter: brightness(1);
     box-shadow: 0 0 0px transparent;
-    background-color: rgba(163, 230, 53, 0);
-  }
-
-  50% {
-    filter: brightness(1.5);
-    box-shadow: 0 0 15px rgba(163, 230, 53, 0.6), 0 0 30px rgba(163, 230, 53, 0.3);
-    background-color: rgba(163, 230, 53, 0.15);
+    background-color: rgba(250, 208, 0, 0);
   }
 }

@@ -13,6 +13,7 @@ export interface Wallet {
   color?: string;
   isDefault?: boolean;
   isSavingsWallet?: boolean;
+  order?: number;
   createdAt?: string;
 }
 

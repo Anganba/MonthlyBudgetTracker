@@ -15,7 +15,7 @@ export function Layout({ children }: LayoutProps) {
     const netWorth = wallets.reduce((sum, w) => sum + w.balance, 0);
 
     // Sidebar widths: expanded = 16rem (256px), collapsed = 5rem (80px)
-    const sidebarWidth = isCollapsed ? '5rem' : '16rem';
+    const sidebarWidth = isCollapsed ? '6rem' : '18rem';
 
     return (
         <div className="flex min-h-screen bg-background text-foreground font-sans">
@@ -27,13 +27,11 @@ export function Layout({ children }: LayoutProps) {
             {/* Mobile Header & Content */}
             <div className="flex-1 flex flex-col min-h-screen">
                 {/* Mobile Header */}
-                <div className="md:hidden sticky top-0 z-40 flex items-center justify-between p-3 bg-black/95 backdrop-blur-sm border-b border-white/10">
+                <div className="md:hidden sticky top-0 z-40 flex items-center justify-between p-3 bg-[hsl(var(--sidebar-background))]/95 backdrop-blur-sm border-b border-white/10">
                     <div className="flex items-center gap-3">
                         <MobileNav />
                         <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-                                <Wallet className="w-4 h-4 text-black" />
-                            </div>
+                            <img src="/logo.png" alt="Amar Taka Koi" className="w-8 h-8 object-contain" />
                             <span className="font-bold font-serif text-white">Amar Taka Koi</span>
                         </div>
                     </div>

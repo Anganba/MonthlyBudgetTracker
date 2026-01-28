@@ -334,7 +334,7 @@ export function PrintDialog({ open, onOpenChange, month, year, transactions: pro
 <body>
     <div class="header">
         <div class="logo">
-            <div class="logo-icon">৳</div>
+            <img src="${window.location.origin}/logo.png" alt="Logo" style="width: 40px; height: 40px; object-fit: contain;" />
             <span class="logo-text">Amar Taka Koi</span>
         </div>
         <div class="report-info">
@@ -526,8 +526,8 @@ export function PrintDialog({ open, onOpenChange, month, year, transactions: pro
                                     key={option.value}
                                     onClick={() => setDateRange(option.value)}
                                     className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${dateRange === option.value
-                                            ? 'bg-primary text-black'
-                                            : 'bg-zinc-800 text-gray-400 hover:bg-zinc-700 hover:text-white'
+                                        ? 'bg-primary text-black'
+                                        : 'bg-zinc-800 text-gray-400 hover:bg-zinc-700 hover:text-white'
                                         }`}
                                 >
                                     {option.label}

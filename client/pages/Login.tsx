@@ -45,7 +45,7 @@ export default function Login() {
     ];
 
     return (
-        <div className="min-h-screen w-full bg-black">
+        <div className="min-h-screen w-full bg-background">
             {/* Desktop Layout */}
             <div className="hidden lg:grid lg:grid-cols-2 min-h-screen">
                 {/* Left Panel - Premium Branding */}
@@ -67,9 +67,7 @@ export default function Login() {
                     {/* Logo */}
                     <div className="z-10">
                         <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center shadow-lg shadow-primary/30">
-                                <Wallet className="w-6 h-6 text-black" />
-                            </div>
+                            <img src="/logo.png" alt="Amar Taka Koi" className="w-12 h-12 object-contain" />
                             <span className="text-2xl font-bold font-serif text-white">Amar Taka Koi</span>
                         </div>
                     </div>
@@ -203,9 +201,7 @@ export default function Login() {
                     <div className="relative z-10">
                         {/* Logo */}
                         <div className="flex items-center justify-center gap-2 mb-4">
-                            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shadow-lg shadow-primary/30">
-                                <Wallet className="w-4 h-4 text-black" />
-                            </div>
+                            <img src="/logo.png" alt="Amar Taka Koi" className="w-8 h-8 object-contain" />
                             <span className="text-lg font-bold font-serif text-white">Amar Taka Koi</span>
                         </div>
 

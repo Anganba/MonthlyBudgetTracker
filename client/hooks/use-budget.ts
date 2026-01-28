@@ -54,13 +54,14 @@ export function useBudget(selectedMonth?: string, selectedYear?: number) {
 
         const transactions = b.transactions || [];
         const incomeCategories = ['income', 'Paycheck', 'Bonus', 'Debt Added', 'Side Hustle', 'Freelance', 'Gifts Received', 'Refund', 'Loan Repaid'];
+        const savingsCategories = ['Investments']; // Treat these expenses as savings
 
         // Income: type='income' OR income categories
         const income = transactions
             .filter(t => t.type === 'income' || incomeCategories.includes(t.category))
             .reduce((sum, t) => sum + t.actual, 0);
 
-        // Expenses: type='expense' AND not Savings/Transfer categories AND not transfer/savings types
+        // Expenses: type='expense' AND not Savings/Transfer categories AND not transfer/savings types AND not savings categories
         const expenses = transactions
             .filter(t => {
                 // Exclude transfers and savings types
@@ -69,15 +70,17 @@ export function useBudget(selectedMonth?: string, selectedYear?: number) {
                 if (t.category === 'Transfer' || t.category === 'Savings') return false;
                 // Exclude income
                 if (t.type === 'income' || incomeCategories.includes(t.category)) return false;
+                // Exclude savings categories (Investments)
+                if (savingsCategories.includes(t.category)) return false;
                 return true;
             })
             .reduce((sum, t) => sum + t.actual, 0);
 
-        // Savings: type='savings' OR category='Savings'
-        // Savings: type='savings' OR category='Savings' OR (type='transfer' AND toWallet is Savings)
+        // Savings: type='savings' OR category='Savings' OR (type='transfer' AND toWallet is Savings) OR savings categories
         const savings = transactions
             .filter(t => {
                 if (t.type === 'savings' || t.category === 'Savings') return true;
+                if (savingsCategories.includes(t.category)) return true;
                 if ((t.type === 'transfer' || t.category === 'Transfer') && t.toWalletId) {
                     const targetWallet = wallets.find(w => w.id === t.toWalletId);
                     return targetWallet?.isSavingsWallet === true;
@@ -98,7 +101,7 @@ export function useBudget(selectedMonth?: string, selectedYear?: number) {
 
     const calculateTrend = (current: number, previous: number) => {
         if (previous === 0) return current > 0 ? 100 : 0;
-        return Math.round(((current - previous) / previous) * 100);
+        return Math.round(((current - previous) / Math.abs(previous)) * 100);
     };
 
     const trends = {
@@ -127,6 +130,7 @@ export function useBudget(selectedMonth?: string, selectedYear?: number) {
             });
 
             const incomeCategories = ['income', 'Paycheck', 'Bonus', 'Debt Added', 'Side Hustle', 'Freelance', 'Gifts Received', 'Refund', 'Loan Repaid'];
+            const savingsCategories = ['Investments'];
 
             if (type === 'balance') {
                 // Income: type='income' OR income categories
@@ -140,6 +144,7 @@ export function useBudget(selectedMonth?: string, selectedYear?: number) {
                         if (t.type === 'transfer' || t.type === 'savings') return false;
                         if (t.category === 'Transfer' || t.category === 'Savings') return false;
                         if (t.type === 'income' || incomeCategories.includes(t.category)) return false;
+                        if (savingsCategories.includes(t.category)) return false;
                         return true;
                     })
                     .reduce((sum, t) => sum + t.actual, 0);
@@ -149,6 +154,7 @@ export function useBudget(selectedMonth?: string, selectedYear?: number) {
                 const daySavings = dailyTransactions
                     .filter(t => {
                         if (t.type === 'savings' || t.category === 'Savings') return true;
+                        if (savingsCategories.includes(t.category)) return true;
                         if ((t.type === 'transfer' || t.category === 'Transfer') && t.toWalletId) {
                             const targetWallet = wallets.find(w => w.id === t.toWalletId);
                             return targetWallet?.isSavingsWallet === true;
@@ -174,6 +180,7 @@ export function useBudget(selectedMonth?: string, selectedYear?: number) {
                             if (t.type === 'transfer' || t.type === 'savings') return false;
                             if (t.category === 'Transfer' || t.category === 'Savings') return false;
                             if (t.type === 'income' || incomeCategories.includes(t.category)) return false;
+                            if (savingsCategories.includes(t.category)) return false;
                             return true;
                         })
                         .reduce((sum, t) => sum + t.actual, 0);
@@ -183,6 +190,7 @@ export function useBudget(selectedMonth?: string, selectedYear?: number) {
                     value = dailyTransactions
                         .filter(t => {
                             if (t.type === 'savings' || t.category === 'Savings') return true;
+                            if (savingsCategories.includes(t.category)) return true;
                             if ((t.type === 'transfer' || t.category === 'Transfer') && t.toWalletId) {
                                 const targetWallet = wallets.find(w => w.id === t.toWalletId);
                                 return targetWallet?.isSavingsWallet === true;

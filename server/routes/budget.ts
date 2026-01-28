@@ -877,7 +877,29 @@ export const updateTransaction: RequestHandler = async (req, res) => {
     if (actual !== undefined && actual !== oldAmount) changesList.push(`amount: $${oldAmount} → $${actual}`);
     if (req.body.category !== undefined && req.body.category !== oldCategory) changesList.push(`category: ${oldCategory} → ${req.body.category}`);
     if (req.body.date !== undefined && req.body.date !== oldDate) changesList.push(`date changed`);
-    if (req.body.walletId !== undefined && req.body.walletId !== oldWalletId) changesList.push(`wallet changed`);
+    if (req.body.date !== undefined && req.body.date !== oldDate) changesList.push(`date changed`);
+
+    // Check for wallet change and resolve names
+    if (req.body.walletId !== undefined && req.body.walletId !== oldWalletId) {
+      const { WalletModel } = await import("../models/Wallet");
+      let oldWalletName = "Unknown";
+      let newWalletName = "Unknown";
+
+      if (oldWalletId) {
+        const oldW = await WalletModel.findById(oldWalletId);
+        if (oldW) oldWalletName = oldW.name;
+      }
+
+      if (req.body.walletId) {
+        const newW = await WalletModel.findById(req.body.walletId);
+        if (newW) newWalletName = newW.name;
+      }
+
+      changesList.push(`wallet changed: "${oldWalletName}" → "${newWalletName}"`);
+    } else if (req.body.walletId !== undefined && req.body.walletId !== oldWalletId) {
+      // Fallback for logic consistency (though the block above handles it)
+      changesList.push(`wallet changed`);
+    }
     if (req.body.type !== undefined && req.body.type !== oldType) changesList.push(`type: ${oldType} → ${req.body.type}`);
 
     // Only create audit log if there were actual changes
@@ -1411,6 +1433,27 @@ export const getFrequentCategories: RequestHandler = async (req, res) => {
     res.json({ success: true, data: frequentCategories });
   } catch (error) {
     console.error("Error fetching frequent categories:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+export const getAllUsedCategories: RequestHandler = async (req, res) => {
+  const userId = req.session?.user?.id;
+
+  if (!userId) {
+    return res.status(401).json({ success: false, message: "Not authenticated" });
+  }
+
+  try {
+    // Distinct categories across all budgets
+    const categories = await Budget.distinct("transactions.category", { userId });
+
+    // Sort logically
+    categories.sort((a, b) => a.localeCompare(b));
+
+    res.json({ success: true, data: categories });
+  } catch (error) {
+    console.error("Error fetching used categories:", error);
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 };

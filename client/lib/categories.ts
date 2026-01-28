@@ -89,6 +89,7 @@ export const TRANSACTION_CATEGORIES: CategoryDef[] = [
     // ═══════════════════════════════════════════════════════════════
     { id: "Baby & Kids", label: "Baby & Kids", type: 'expense' },
     { id: "Education", label: "Education", type: 'expense' },
+    { id: "Family", label: "Family", type: 'expense' },
     { id: "Pets", label: "Pets", type: 'expense' },
 
     // ═══════════════════════════════════════════════════════════════

@@ -18,6 +18,7 @@ import {
   getAllTransactions,
   revertGoalFulfillment,
   getFrequentCategories,
+  getAllUsedCategories,
 } from "./routes/budget";
 import {
   getGoals,
@@ -39,7 +40,8 @@ import {
   deleteWallet,
   getWalletAuditLogs,
   getUserAuditLogs,
-  logDataExport
+  logDataExport,
+  reorderWallets
 } from "./routes/wallets";
 
 import { connectDB } from "./db";
@@ -106,6 +108,7 @@ export function createServer() {
   // Budget API routes - Protected
   app.get("/api/budget/all", requireAuth, getAllTransactions);
   app.get("/api/budget/frequent-categories", requireAuth, getFrequentCategories);
+  app.get("/api/budget/used-categories", requireAuth, getAllUsedCategories);
   app.get("/api/budget", requireAuth, getBudget);
   app.get("/api/budget/year", requireAuth, getYearlyStats);
   app.get("/api/budget/month-stats", requireAuth, getMonthlyStats);
@@ -131,6 +134,7 @@ export function createServer() {
   // Wallets API routes
   app.get("/api/wallets", requireAuth, getWallets);
   app.post("/api/wallets", requireAuth, createWallet);
+  app.put("/api/wallets/reorder", requireAuth, reorderWallets);
   app.put("/api/wallets/:id", requireAuth, updateWallet);
   app.delete("/api/wallets/:id", requireAuth, deleteWallet);
 

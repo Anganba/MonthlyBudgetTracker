@@ -264,6 +264,43 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
             return;
         }
 
+        // Require wallet for expense/income transactions
+        const selectedWallet = wallets.find(w => w.id === walletId);
+        if ((type === 'expense' || type === 'income') && (!walletId || !selectedWallet)) {
+            toast({
+                title: "Wallet Required",
+                description: "Please select a valid wallet for this transaction.",
+                variant: "destructive",
+            });
+            return;
+        }
+
+        // Validate sufficient funds for expenses and transfers
+        if ((type === 'expense' || type === 'transfer') && walletId) {
+            const sourceWallet = wallets.find(w => w.id === walletId);
+            // Check if wallet exists and balance is insufficient
+            // If editing, we need to consider the original amount if it was from the same wallet
+            let availableBalance = sourceWallet?.balance || 0;
+
+            // If editing and using the same wallet, add back the original actual amount to checks
+            if (mode === 'edit' && initialData && initialData.walletId === walletId) {
+                // Determine if the original transaction deducted from this wallet
+                const initialType = initialData.type || 'expense';
+                if (initialType === 'expense' || initialType === 'transfer' || initialType === 'savings') {
+                    availableBalance += (initialData.actual || 0);
+                }
+            }
+
+            if (sourceWallet && amount > availableBalance) {
+                toast({
+                    title: "Insufficient Funds",
+                    description: `Wallet "${sourceWallet.name}" has insufficient funds ($${availableBalance.toLocaleString()}) for this transaction.`,
+                    variant: "destructive",
+                });
+                return;
+            }
+        }
+
         // Check for no changes in edit mode
         if (mode === 'edit' && initialData) {
             // Compare dates by extracting just the YYYY-MM-DD part
@@ -432,7 +469,7 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
                                     id="amount"
                                     type="number"
                                     step="0.01"
-                                    min="0"
+                                    min="0.01"
                                     inputMode="decimal"
                                     placeholder="0.00"
                                     value={actual}
@@ -449,6 +486,27 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
                                     )}
                                 />
                             </div>
+                            {(() => {
+                                const sourceWallet = wallets.find(w => w.id === walletId);
+                                const currentAmount = parseFloat(actual) || 0;
+                                // Calculate available balance considering edits
+                                let availableBalance = sourceWallet?.balance || 0;
+                                if (mode === 'edit' && initialData && initialData.walletId === walletId) {
+                                    const initialType = initialData.type || 'expense';
+                                    if (initialType === 'expense' || initialType === 'transfer' || initialType === 'savings') {
+                                        availableBalance += (initialData.actual || 0);
+                                    }
+                                }
+
+                                if ((type === 'expense' || type === 'transfer') && sourceWallet && currentAmount > availableBalance) {
+                                    return (
+                                        <div className="absolute top-full left-0 mt-1 text-[10px] text-red-400 flex items-center gap-1 font-medium animate-in fade-in slide-in-from-top-1">
+                                            <span>⚠️ Insufficient funds (${availableBalance.toLocaleString()})</span>
+                                        </div>
+                                    );
+                                }
+                                return null;
+                            })()}
                         </div>
                         <div className="col-span-3">
                             <Label htmlFor="date" className="text-gray-400 text-xs font-medium mb-1.5 block">Date</Label>
@@ -533,7 +591,7 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
                                 </Label>
                                 <Select value={walletId} onValueChange={setWalletId}>
                                     <SelectTrigger className="bg-zinc-800/50 border-zinc-700/50 rounded-lg h-10">
-                                        <SelectValue placeholder="Wallet" />
+                                        <SelectValue placeholder="Select Wallet" />
                                     </SelectTrigger>
                                     <SelectContent className="bg-zinc-800 border-zinc-700">
                                         {wallets.map(w => (

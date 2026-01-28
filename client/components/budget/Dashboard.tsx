@@ -12,17 +12,25 @@ import { TransactionsList } from "./TransactionsList";
 import { TransactionDialog } from "./TransactionDialog";
 import { useBudget } from "@/hooks/use-budget";
 import { useWallets } from "@/hooks/use-wallets";
+import { OnboardingBanner } from "./OnboardingBanner";
+import { AccountsSection } from "./AccountsSection";
 import { useAuth } from "@/lib/auth";
 import { UserProfile } from "./UserProfile";
+import { useDate } from "@/context/DateContext";
 
 export function Dashboard() {
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const {
+    currentDate,
+    setCurrentDate,
+    month,
+    year,
+    handlePrevMonth,
+    handleNextMonth
+  } = useDate();
 
   const monthNames = ["January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December"
   ];
-  const month = monthNames[currentDate.getMonth()];
-  const year = currentDate.getFullYear();
 
   // Pass selected month/year to hook
   const { budget, isLoading, stats, trends, graphs, refreshBudget } = useBudget(month, year);
@@ -35,22 +43,6 @@ export function Dashboard() {
   const currency = "$";
 
   const queryClient = useQueryClient();
-
-  const handlePrevMonth = () => {
-    setCurrentDate(prev => {
-      const d = new Date(prev);
-      d.setMonth(d.getMonth() - 1);
-      return d;
-    });
-  };
-
-  const handleNextMonth = () => {
-    setCurrentDate(prev => {
-      const d = new Date(prev);
-      d.setMonth(d.getMonth() + 1);
-      return d;
-    });
-  };
 
   const { toast } = useToast();
 
@@ -153,7 +145,7 @@ export function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white p-4 md:p-6 lg:p-8 relative overflow-hidden">
+    <div className="min-h-screen bg-background text-white p-4 md:p-6 lg:p-8 relative overflow-hidden">
       {/* Animated background decorations - hidden on mobile for performance */}
       <div className="hidden md:block absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-to-br from-cyan-500/10 via-primary/10 to-transparent rounded-full blur-3xl pointer-events-none animate-pulse" style={{ animationDuration: '4s' }} />
       <div className="hidden md:block absolute bottom-1/3 left-0 w-[500px] h-[500px] bg-gradient-to-tr from-violet-500/10 via-purple-500/5 to-transparent rounded-full blur-3xl pointer-events-none animate-pulse" style={{ animationDuration: '5s' }} />
@@ -181,7 +173,7 @@ export function Dashboard() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <div className="hidden lg:flex items-center gap-3 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-violet-500/10 via-purple-500/10 to-cyan-500/10 border border-violet-500/30 shadow-lg shadow-violet-500/5 backdrop-blur-sm">
+            <a href="/profile" className="hidden lg:flex items-center gap-3 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-violet-500/10 via-purple-500/10 to-cyan-500/10 border border-violet-500/30 shadow-lg shadow-violet-500/5 backdrop-blur-sm hover:border-violet-500/50 hover:shadow-violet-500/10 transition-all cursor-pointer">
               <div className="flex flex-col">
                 <span className="text-[10px] uppercase tracking-wider text-violet-400/80 font-medium">Welcome back</span>
                 <span className="text-sm font-bold bg-gradient-to-r from-white via-violet-200 to-cyan-200 bg-clip-text text-transparent">{user?.displayName || user?.username || 'User'}</span>
@@ -189,7 +181,7 @@ export function Dashboard() {
               <div className="h-8 w-8 rounded-full bg-gradient-to-br from-violet-500/20 to-cyan-500/20 flex items-center justify-center border border-violet-500/30">
                 <span className="text-base animate-pulse">✨</span>
               </div>
-            </div>
+            </a>
           </div>
 
           {/* Right: Date Nav + Actions */}
@@ -236,7 +228,7 @@ export function Dashboard() {
       </div>
 
       {/* Metric Cards Row */}
-      <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
+      <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-3">
         <MetricCard
           title="Monthly Leftover"
           value={`${currency}${balance.toLocaleString()}`}
@@ -275,59 +267,15 @@ export function Dashboard() {
         />
       </div>
 
-      {/* Wallets Row */}
-      {wallets.length > 0 && (
-        <div className="relative z-10 mb-3 md:mb-4">
-          <div className="flex items-center justify-between gap-3 mb-3 md:mb-4">
-            <div className="flex items-center gap-2 md:gap-3">
-              <div className="p-1.5 md:p-2 rounded-lg md:rounded-xl bg-primary/20">
-                <Wallet className="w-4 h-4 md:w-5 md:h-5 text-primary" />
-              </div>
-              <h2 className="text-base md:text-xl font-bold font-serif text-white">My Accounts</h2>
-            </div>
-            <a href="/wallets" className="px-2 md:px-4 py-1 md:py-1.5 rounded-full bg-gradient-to-r from-primary/20 to-primary/5 border border-primary/30 hover:border-primary/50 transition-colors cursor-pointer">
-              <span className="text-xs md:text-sm text-primary font-bold flex items-center gap-1 md:gap-1.5">
-                <Sparkles className="h-3 w-3 md:h-3.5 md:w-3.5" />
-                <span className="hidden sm:inline">Net Worth:</span> ${wallets.reduce((acc, w) => acc + w.balance, 0).toLocaleString()}
-              </span>
-            </a>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 md:gap-3">
-            {wallets.map(w => {
-              const Icon = getWalletIcon(w.type);
-              const colorClass = getWalletColor(w.type);
-              const isLowBalance = w.balance < 100;
-              return (
-                <a
-                  key={w.id}
-                  href="/wallets"
-                  className={`group bg-gradient-to-br ${colorClass} rounded-xl md:rounded-2xl p-2.5 md:p-4 flex flex-col justify-between hover:scale-[1.03] hover:shadow-lg transition-all border backdrop-blur-sm cursor-pointer`}
-                >
-                  <div className="flex items-center gap-1.5 md:gap-2 mb-2 md:mb-3">
-                    <div className="p-1 md:p-1.5 rounded-md md:rounded-lg bg-white/10 group-hover:bg-white/20 transition-colors">
-                      <Icon className="w-3 h-3 md:w-4 md:h-4 text-white" />
-                    </div>
-                    <span className="text-[10px] md:text-xs font-medium text-white/70 truncate group-hover:text-white/90 transition-colors">{w.name}</span>
-                    {isLowBalance && (
-                      <span className="ml-auto text-[8px] text-yellow-400">Low</span>
-                    )}
-                  </div>
-                  <div className="text-sm md:text-xl font-bold text-white">${w.balance.toLocaleString()}</div>
-                </a>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      {/* Accounts Section */}
+      <AccountsSection />
 
       {/* Lower Section - Both columns stretch to equal height */}
       <div className="relative z-10 grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-3 lg:gap-4 lg:items-stretch">
-        {/* Left Column (Goals + Budget) takes up 1/3 */}
-        <div className="lg:col-span-1 flex flex-col gap-4 md:gap-6 order-2 lg:order-1">
+        {/* Left Column (Budget + Goals) takes up 1/3 */}
+        <div className="lg:col-span-1 flex flex-col gap-2 md:gap-3 order-2 lg:order-1">
+          <BudgetStatus currency={currency} budget={budget} refreshBudget={refreshBudget} showAllCategories={showAllCategories} onToggleCategories={setShowAllCategories} />
           <GoalsSection />
-          <div className="flex-1">
-            <BudgetStatus currency={currency} budget={budget} refreshBudget={refreshBudget} showAllCategories={showAllCategories} onToggleCategories={setShowAllCategories} />
-          </div>
         </div>
 
         {/* Right Column - Transactions matches left column height */}

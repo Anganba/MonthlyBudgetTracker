@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { useBudget } from "@/hooks/use-budget";
 import { useGoals } from "@/hooks/use-goals";
 import {
@@ -253,14 +254,20 @@ export default function StatisticsPage() {
 
     // Colors for Pie Chart - Using Theme Variables
     const pieColors = [
-        'hsl(var(--chart-1))', // Neon Green
-        'hsl(var(--chart-2))', // Teal
-        'hsl(var(--chart-3))', // Purple
-        'hsl(var(--chart-4))', // Pink
-        'hsl(var(--chart-5))', // Orange
-        '#3b82f6', // Blue
-        '#6366f1', // Indigo
-        '#a855f7', // Purple-600
+        '#2DD4BF', // Teal (Rent)
+        '#FACC15', // Yellow (Food)
+        '#F472B6', // Pink (Snacks)
+        '#A78BFA', // Purple (Loans)
+        '#4ADE80', // Green (Utilities)
+        '#38BDF8', // Sky Blue (Transportation)
+        '#FB923C', // Orange
+        '#818CF8', // Indigo
+        '#F87171', // Red
+        '#A3E635', // Lime
+        '#E879F9', // Fuchsia
+        '#60A5FA', // Blue
+        '#C084FC', // Violet
+        '#FB7185', // Rose
     ];
 
     // 3. Prepare Goals Data - Only show active goals (exclude fulfilled/completed)
@@ -489,15 +496,11 @@ export default function StatisticsPage() {
     }, [chartData]);
 
     if ((isLoadingBudget || isLoadingMonthlyStats) && !monthlyStats) {
-        return (
-            <div className="min-h-screen bg-black flex items-center justify-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
-        );
+        return <LoadingScreen size="lg" />;
     }
 
     return (
-        <div className="min-h-screen bg-black text-white p-6 md:p-8 relative overflow-hidden">
+        <div className="min-h-screen bg-background text-white p-6 md:p-8 relative overflow-hidden">
             {/* Animated background decorations */}
             <div className="hidden md:block absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-to-br from-emerald-500/10 via-green-500/10 to-transparent rounded-full blur-3xl pointer-events-none animate-pulse" style={{ animationDuration: '4s' }} />
             <div className="hidden md:block absolute bottom-1/3 left-0 w-[500px] h-[500px] bg-gradient-to-tr from-violet-500/10 via-purple-500/5 to-transparent rounded-full blur-3xl pointer-events-none animate-pulse" style={{ animationDuration: '5s' }} />

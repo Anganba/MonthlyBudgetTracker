@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useWallets } from "@/hooks/use-wallets";
 import { useBudget } from "@/hooks/use-budget";
@@ -42,6 +42,23 @@ import {
 import { Wallet } from "@shared/api";
 import { useTransactions } from "@/hooks/use-transactions";
 import { Link } from "react-router-dom";
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent,
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    rectSortingStrategy,
+    useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 const getWalletIcon = (type: string) => {
     switch (type) {
@@ -102,8 +119,147 @@ const getWalletLabel = (type: string) => {
     }
 };
 
+interface SortableWalletCardProps {
+    wallet: Wallet;
+    recentTransactions: any[];
+    onEdit: (wallet: Wallet) => void;
+    onTransfer: (walletId: string) => void;
+    onDelete: (wallet: Wallet) => void;
+}
+
+const SortableWalletCard = ({ wallet, recentTransactions, onEdit, onTransfer, onDelete }: SortableWalletCardProps) => {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging
+    } = useSortable({ id: wallet.id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        zIndex: isDragging ? 50 : "auto",
+        position: isDragging ? "relative" as "relative" : "relative" as "relative",
+    };
+
+    const Icon = getWalletIcon(wallet.type);
+    const gradientClass = getWalletGradient(wallet.type);
+    const iconColorClass = getWalletIconColor(wallet.type);
+
+    return (
+        <div
+            ref={setNodeRef}
+            style={style}
+            {...attributes}
+            className={`group relative overflow-hidden rounded-xl md:rounded-2xl bg-gradient-to-br ${gradientClass} border p-4 md:p-5 transition-all hover:scale-[1.02] hover:shadow-xl ${isDragging ? 'shadow-2xl scale-105 opacity-80' : ''}`}
+        >
+            {/* Background glow */}
+            <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity" />
+
+            <div className="relative z-10">
+                <div className="flex items-center justify-between mb-3 md:mb-4">
+                    <div
+                        className="flex items-center gap-2 md:gap-3 cursor-grab active:cursor-grabbing"
+                        {...listeners}
+                    >
+                        <div className={`p-2 md:p-2.5 rounded-lg md:rounded-xl ${iconColorClass}`}>
+                            <Icon className="h-4 w-4 md:h-5 md:w-5" />
+                        </div>
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <h3 className="font-semibold text-white text-base md:text-lg">{wallet.name}</h3>
+                                {wallet.isSavingsWallet && (
+                                    <span className="px-1.5 py-0.5 text-[10px] bg-emerald-500/20 text-emerald-400 rounded-md font-medium">
+                                        Savings
+                                    </span>
+                                )}
+                            </div>
+                            <p className="text-[10px] md:text-xs text-gray-400">{getWalletLabel(wallet.type)}</p>
+                        </div>
+                    </div>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-gray-400 md:opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white/10"
+                            >
+                                <MoreVertical className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="bg-zinc-900 border-white/10">
+                            <DropdownMenuItem onClick={() => onTransfer(wallet.id)} className="hover:bg-white/10">
+                                <ArrowRightLeft className="mr-2 h-4 w-4" /> Transfer
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator className="bg-white/10" />
+                            <DropdownMenuItem onClick={() => onEdit(wallet)} className="hover:bg-white/10">
+                                <Pencil className="mr-2 h-4 w-4" /> Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="text-red-400 hover:bg-red-500/10 hover:text-red-400" onClick={() => onDelete(wallet)}>
+                                <Trash2 className="mr-2 h-4 w-4" /> Delete
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
+
+                <div className="mb-2 cursor-grab active:cursor-grabbing" {...listeners}>
+                    <p className="text-2xl md:text-3xl font-bold text-white">${wallet.balance.toLocaleString()}</p>
+                    <p className="text-[10px] md:text-xs text-gray-400 mt-0.5 md:mt-1">Available Balance</p>
+                </div>
+
+                {/* Recent Transactions & Description Section */}
+                {(recentTransactions.length > 0 || wallet.description) && (
+                    <div className="mt-3 md:mt-4 pt-3 md:pt-4 border-t border-white/10">
+                        <div className={`grid gap-3 ${wallet.description && recentTransactions.length > 0 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                            {/* Recent Activity - Left Side */}
+                            {recentTransactions.length > 0 && (
+                                <div>
+                                    <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-2">Recent Activity</p>
+                                    <div className="space-y-1.5">
+                                        {recentTransactions.slice(0, 2).map(t => {
+                                            const isIncoming =
+                                                t.type === 'income' ||
+                                                t.toWalletId === wallet.id;
+                                            const isOutgoing =
+                                                t.type === 'expense' ||
+                                                (t.type === 'transfer' && t.walletId === wallet.id) ||
+                                                (t.type === 'savings' && t.walletId === wallet.id);
+
+                                            return (
+                                                <div key={t.id} className="flex items-center justify-between">
+                                                    <span className="text-xs text-gray-400 truncate flex-1 mr-2">{t.name}</span>
+                                                    <span className={`text-xs font-medium ${isOutgoing ? 'text-orange-400' : 'text-green-400'}`}>
+                                                        {isOutgoing ? '-' : '+'}${t.actual.toLocaleString()}
+                                                    </span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                    <Link to={`/transactions?wallet=${wallet.id}`} className="flex items-center gap-1 text-[10px] text-gray-500 hover:text-primary mt-2 transition-colors">
+                                        View all <ArrowRight className="h-2.5 w-2.5" />
+                                    </Link>
+                                </div>
+                            )}
+
+                            {/* Description/Notes - Right Side */}
+                            {wallet.description && (
+                                <div className={recentTransactions.length > 0 ? 'border-l border-white/10 pl-3' : ''}>
+                                    <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-2">Notes</p>
+                                    <p className="text-xs text-gray-400 italic line-clamp-3">{wallet.description}</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
 export default function WalletsPage() {
-    const { wallets, createWallet, updateWallet, deleteWallet } = useWallets();
+    const { wallets, createWallet, updateWallet, deleteWallet, reorderWallets } = useWallets();
     const { createTransaction } = useTransactions();
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [isTransferOpen, setIsTransferOpen] = useState(false);
@@ -112,6 +268,60 @@ export default function WalletsPage() {
     const [walletToEdit, setWalletToEdit] = useState<Wallet | null>(null);
     const [walletToDelete, setWalletToDelete] = useState<Wallet | null>(null);
     const [editingWallet, setEditingWallet] = useState<Wallet | null>(null);
+
+    // DnD State
+    const [items, setItems] = useState<Wallet[]>([]);
+    const [activeId, setActiveId] = useState<string | null>(null);
+
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8,
+            },
+        }),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
+
+    useEffect(() => {
+        if (wallets.length > 0) {
+            // Apply consistent sorting logic matching AccountsSection
+            const sortedWallets = [...wallets].sort((a, b) => {
+                const orderA = a.order !== undefined ? a.order : 9999;
+                const orderB = b.order !== undefined ? b.order : 9999;
+
+                if (orderA !== orderB) return orderA - orderB;
+
+                // Fallback: sort by createdAt desc if order is same (both missing/9999)
+                return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+            });
+            setItems(sortedWallets);
+        }
+    }, [wallets]);
+
+    const handleDragStart = (event: any) => {
+        setActiveId(event.active.id);
+    };
+
+    const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+        setActiveId(null);
+
+        if (over && active.id !== over.id) {
+            setItems((items) => {
+                const oldIndex = items.findIndex((item) => item.id === active.id);
+                const newIndex = items.findIndex((item) => item.id === over.id);
+
+                const newItems = arrayMove(items, oldIndex, newIndex);
+
+                // Trigger mutation
+                reorderWallets.mutate(newItems.map(w => w.id));
+
+                return newItems;
+            });
+        }
+    };
     const [formData, setFormData] = useState({
         name: "",
         type: "mfs",
@@ -234,7 +444,14 @@ export default function WalletsPage() {
     const handleTransfer = async (e: React.FormEvent) => {
         e.preventDefault();
         const amount = parseFloat(transferData.amount);
-        if (!amount || amount <= 0) return;
+        if (!amount || amount <= 0) {
+            toast({
+                title: "Invalid Amount",
+                description: "Please enter an amount greater than 0.",
+                variant: "destructive"
+            });
+            return;
+        }
 
         const fromWallet = wallets.find(w => w.id === transferData.fromWalletId);
         const toWallet = wallets.find(w => w.id === transferData.toWalletId);
@@ -270,7 +487,7 @@ export default function WalletsPage() {
     const totalBalance = wallets.reduce((sum, w) => sum + w.balance, 0);
 
     return (
-        <div className="min-h-screen bg-black text-white p-4 md:p-6 lg:p-8 relative overflow-hidden">
+        <div className="min-h-screen bg-background text-white p-4 md:p-6 lg:p-8 relative overflow-hidden">
             {/* Background decorations - hidden on mobile */}
             <div className="hidden md:block absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-3xl pointer-events-none" />
             <div className="hidden md:block absolute bottom-0 left-0 w-[400px] h-[400px] bg-blue-500/5 rounded-full blur-3xl pointer-events-none" />
@@ -303,7 +520,7 @@ export default function WalletsPage() {
                 </div>
 
                 {/* Stats Row */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4">
                     {/* Net Worth Card */}
                     <div className="relative overflow-hidden rounded-2xl md:rounded-3xl bg-gradient-to-br from-zinc-900 via-zinc-900 to-zinc-800 border border-white/10 p-4 md:p-5">
                         <div className="hidden md:block absolute top-0 right-0 w-48 h-48 bg-primary/10 rounded-full blur-3xl" />
@@ -325,9 +542,9 @@ export default function WalletsPage() {
                     </div>
 
                     {/* Distribution Card */}
-                    <div className="rounded-2xl md:rounded-3xl bg-zinc-900/50 border border-white/10 p-4 md:p-5">
+                    <div className="lg:col-span-2 rounded-2xl md:rounded-3xl bg-zinc-900/50 border border-white/10 p-4 md:p-5">
                         <p className="text-xs text-gray-400 uppercase tracking-wider mb-3">Distribution</p>
-                        <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-2">
                             {wallets
                                 .sort((a, b) => b.balance - a.balance)
                                 .slice(0, showAllDistribution ? wallets.length : 6)
@@ -379,120 +596,32 @@ export default function WalletsPage() {
                 )}
 
                 {/* Wallet Cards Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-                    {wallets.map((wallet) => {
-                        const Icon = getWalletIcon(wallet.type);
-                        const gradientClass = getWalletGradient(wallet.type);
-                        const iconColorClass = getWalletIconColor(wallet.type);
-                        const recentTransactions = getWalletTransactions(wallet.id);
-
-                        return (
-                            <div
-                                key={wallet.id}
-                                className={`group relative overflow-hidden rounded-xl md:rounded-2xl bg-gradient-to-br ${gradientClass} border p-4 md:p-5 transition-all hover:scale-[1.02] hover:shadow-xl`}
-                            >
-                                {/* Background glow */}
-                                <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity" />
-
-                                <div className="relative z-10">
-                                    <div className="flex items-center justify-between mb-3 md:mb-4">
-                                        <div className="flex items-center gap-2 md:gap-3">
-                                            <div className={`p-2 md:p-2.5 rounded-lg md:rounded-xl ${iconColorClass}`}>
-                                                <Icon className="h-4 w-4 md:h-5 md:w-5" />
-                                            </div>
-                                            <div>
-                                                <div className="flex items-center gap-2">
-                                                    <h3 className="font-semibold text-white text-base md:text-lg">{wallet.name}</h3>
-                                                    {wallet.isSavingsWallet && (
-                                                        <span className="px-1.5 py-0.5 text-[10px] bg-emerald-500/20 text-emerald-400 rounded-md font-medium">
-                                                            Savings
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                <p className="text-[10px] md:text-xs text-gray-400">{getWalletLabel(wallet.type)}</p>
-                                            </div>
-                                        </div>
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-8 w-8 text-gray-400 md:opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white/10"
-                                                >
-                                                    <MoreVertical className="h-4 w-4" />
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end" className="bg-zinc-900 border-white/10">
-                                                <DropdownMenuItem onClick={() => handleOpenTransfer(wallet.id)} className="hover:bg-white/10">
-                                                    <ArrowRightLeft className="mr-2 h-4 w-4" /> Transfer
-                                                </DropdownMenuItem>
-                                                <DropdownMenuSeparator className="bg-white/10" />
-                                                <DropdownMenuItem onClick={() => handleOpen(wallet)} className="hover:bg-white/10">
-                                                    <Pencil className="mr-2 h-4 w-4" /> Edit
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem className="text-red-400 hover:bg-red-500/10 hover:text-red-400" onClick={() => handleDelete(wallet)}>
-                                                    <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                                </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </div>
-
-                                    <div className="mb-2">
-                                        <p className="text-2xl md:text-3xl font-bold text-white">${wallet.balance.toLocaleString()}</p>
-                                        <p className="text-[10px] md:text-xs text-gray-400 mt-0.5 md:mt-1">Available Balance</p>
-                                    </div>
-
-                                    {/* Recent Transactions & Description Section */}
-                                    {(recentTransactions.length > 0 || wallet.description) && (
-                                        <div className="mt-3 md:mt-4 pt-3 md:pt-4 border-t border-white/10">
-                                            <div className={`grid gap-3 ${wallet.description && recentTransactions.length > 0 ? 'grid-cols-2' : 'grid-cols-1'}`}>
-                                                {/* Recent Activity - Left Side */}
-                                                {recentTransactions.length > 0 && (
-                                                    <div>
-                                                        <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-2">Recent Activity</p>
-                                                        <div className="space-y-1.5">
-                                                            {recentTransactions.slice(0, 2).map(t => {
-                                                                // Determine if transaction is incoming or outgoing for THIS wallet
-                                                                const isIncoming =
-                                                                    t.type === 'income' || // Income is always incoming
-                                                                    t.toWalletId === wallet.id; // Transfers TO this wallet
-                                                                const isOutgoing =
-                                                                    t.type === 'expense' || // Expense is always outgoing
-                                                                    (t.type === 'transfer' && t.walletId === wallet.id) || // Transfers FROM this wallet
-                                                                    (t.type === 'savings' && t.walletId === wallet.id); // Savings FROM this wallet
-
-                                                                return (
-                                                                    <div key={t.id} className="flex items-center justify-between">
-                                                                        <span className="text-xs text-gray-400 truncate flex-1 mr-2">{t.name}</span>
-                                                                        <span className={`text-xs font-medium ${isOutgoing ? 'text-orange-400' : 'text-green-400'}`}>
-                                                                            {isOutgoing ? '-' : '+'}${t.actual.toLocaleString()}
-                                                                        </span>
-                                                                    </div>
-                                                                );
-                                                            })}
-                                                        </div>
-                                                        <Link to={`/transactions?wallet=${wallet.id}`} className="flex items-center gap-1 text-[10px] text-gray-500 hover:text-primary mt-2 transition-colors">
-                                                            View all <ArrowRight className="h-2.5 w-2.5" />
-                                                        </Link>
-                                                    </div>
-                                                )}
-
-                                                {/* Description/Notes - Right Side */}
-                                                {wallet.description && (
-                                                    <div className={recentTransactions.length > 0 ? 'border-l border-white/10 pl-3' : ''}>
-                                                        <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-2">Notes</p>
-                                                        <p className="text-xs text-gray-400 italic line-clamp-3">{wallet.description}</p>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
+                <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragStart={handleDragStart}
+                    onDragEnd={handleDragEnd}
+                >
+                    <SortableContext items={items.map(w => w.id)} strategy={rectSortingStrategy}>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+                            {items.map((wallet) => (
+                                <SortableWalletCard
+                                    key={wallet.id}
+                                    wallet={wallet}
+                                    recentTransactions={getWalletTransactions(wallet.id)}
+                                    onEdit={handleOpen}
+                                    onTransfer={handleOpenTransfer}
+                                    onDelete={handleDelete}
+                                />
+                            ))}
+                        </div>
+                    </SortableContext>
+                    {/* Drag Overlay for smooth preview */}
+                    {/* We can implement DragOverlay if needed for better visuals, but basic sorting works without it if opaque.
+                        For a polished look, DragOverlay is recommended. */}
+                </DndContext>
             </div>
+
 
             {/* Add/Edit Dialog */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -657,57 +786,68 @@ export default function WalletsPage() {
 
                     {/* Form Content */}
                     <form onSubmit={handleTransfer} className="p-4 pt-3 space-y-3">
-                        {/* From Wallet */}
-                        <div>
-                            <Label className="text-gray-400 text-xs font-medium mb-1.5 block">From</Label>
-                            <Select
-                                value={transferData.fromWalletId}
-                                onValueChange={(v) => setTransferData({ ...transferData, fromWalletId: v })}
-                            >
-                                <SelectTrigger className="bg-zinc-800/50 border-zinc-700/50 rounded-lg h-10">
-                                    <SelectValue placeholder="Select wallet" />
-                                </SelectTrigger>
-                                <SelectContent className="bg-zinc-800 border-zinc-700">
-                                    {wallets.map(w => (
-                                        <SelectItem key={w.id} value={w.id} disabled={w.id === transferData.toWalletId}>
-                                            <div className="flex items-center justify-between w-full">
-                                                <span>{w.name}</span>
-                                                <span className="text-gray-500 ml-2">${w.balance.toLocaleString()}</span>
-                                            </div>
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        {/* Arrow Icon */}
-                        <div className="flex justify-center">
-                            <div className="p-2 rounded-full bg-purple-500/10 border border-purple-500/20">
-                                <ArrowRightLeft className="h-4 w-4 text-purple-400 rotate-90" />
+                        <div className="flex flex-col">
+                            {/* From Wallet */}
+                            <div>
+                                <Label className="text-gray-400 text-xs font-medium mb-1.5 block">From</Label>
+                                <Select
+                                    value={transferData.fromWalletId}
+                                    onValueChange={(v) => setTransferData({ ...transferData, fromWalletId: v })}
+                                >
+                                    <SelectTrigger className="bg-zinc-800/50 border-zinc-700/50 rounded-lg h-10">
+                                        <SelectValue placeholder="Select wallet" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-zinc-800 border-zinc-700">
+                                        {wallets.map(w => (
+                                            <SelectItem key={w.id} value={w.id} disabled={w.id === transferData.toWalletId}>
+                                                <div className="flex items-center justify-between w-full">
+                                                    <span>{w.name}</span>
+                                                    <span className="text-gray-500 ml-2">${w.balance.toLocaleString()}</span>
+                                                </div>
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
-                        </div>
 
-                        {/* To Wallet */}
-                        <div>
-                            <Label className="text-gray-400 text-xs font-medium mb-1.5 block">To</Label>
-                            <Select
-                                value={transferData.toWalletId}
-                                onValueChange={(v) => setTransferData({ ...transferData, toWalletId: v })}
-                            >
-                                <SelectTrigger className="bg-zinc-800/50 border-zinc-700/50 rounded-lg h-10">
-                                    <SelectValue placeholder="Select wallet" />
-                                </SelectTrigger>
-                                <SelectContent className="bg-zinc-800 border-zinc-700">
-                                    {wallets.map(w => (
-                                        <SelectItem key={w.id} value={w.id} disabled={w.id === transferData.fromWalletId}>
-                                            <div className="flex items-center justify-between w-full">
-                                                <span>{w.name}</span>
-                                                <span className="text-gray-500 ml-2">${w.balance.toLocaleString()}</span>
-                                            </div>
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            {/* Swap Button - Static Flow with Spacing */}
+                            <div className="flex justify-center my-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setTransferData({
+                                        ...transferData,
+                                        fromWalletId: transferData.toWalletId,
+                                        toWalletId: transferData.fromWalletId
+                                    })}
+                                    className="p-2 rounded-full bg-zinc-900 border border-purple-500/30 hover:border-purple-500/60 shadow-lg shadow-black/50 transition-all cursor-pointer active:scale-95 group translate-y-3"
+                                    title="Swap wallets"
+                                >
+                                    <ArrowRightLeft className="h-4 w-4 text-purple-400 rotate-90 group-hover:text-purple-300" />
+                                </button>
+                            </div>
+
+                            {/* To Wallet */}
+                            <div>
+                                <Label className="text-gray-400 text-xs font-medium mb-1.5 block">To</Label>
+                                <Select
+                                    value={transferData.toWalletId}
+                                    onValueChange={(v) => setTransferData({ ...transferData, toWalletId: v })}
+                                >
+                                    <SelectTrigger className="bg-zinc-800/50 border-zinc-700/50 rounded-lg h-10">
+                                        <SelectValue placeholder="Select wallet" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-zinc-800 border-zinc-700">
+                                        {wallets.map(w => (
+                                            <SelectItem key={w.id} value={w.id} disabled={w.id === transferData.fromWalletId}>
+                                                <div className="flex items-center justify-between w-full">
+                                                    <span>{w.name}</span>
+                                                    <span className="text-gray-500 ml-2">${w.balance.toLocaleString()}</span>
+                                                </div>
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
 
                         {/* Amount */}
@@ -718,7 +858,7 @@ export default function WalletsPage() {
                                 <Input
                                     type="number"
                                     step="0.01"
-                                    min="0"
+                                    min="0.01"
                                     placeholder="0.00"
                                     value={transferData.amount}
                                     onChange={(e) => setTransferData({ ...transferData, amount: e.target.value })}
@@ -733,6 +873,20 @@ export default function WalletsPage() {
                             )}
                         </div>
 
+                        {/* Insufficient balance warning */}
+                        {(() => {
+                            const fromWallet = wallets.find(w => w.id === transferData.fromWalletId);
+                            const amount = parseFloat(transferData.amount) || 0;
+                            if (fromWallet && (fromWallet.balance === 0 || (amount > 0 && fromWallet.balance < amount))) {
+                                return (
+                                    <p className="text-[10px] text-amber-400 flex items-center gap-1">
+                                        ⚠️ Insufficient balance in source wallet
+                                    </p>
+                                );
+                            }
+                            return null;
+                        })()}
+
                         {/* Footer */}
                         <DialogFooter className="pt-2 gap-2 sm:gap-2">
                             <Button
@@ -745,7 +899,12 @@ export default function WalletsPage() {
                             </Button>
                             <Button
                                 type="submit"
-                                disabled={!transferData.fromWalletId || !transferData.toWalletId || !transferData.amount || transferData.fromWalletId === transferData.toWalletId}
+                                disabled={
+                                    !transferData.fromWalletId ||
+                                    !transferData.toWalletId ||
+                                    transferData.fromWalletId === transferData.toWalletId ||
+                                    (wallets.find(w => w.id === transferData.fromWalletId)?.balance || 0) < (parseFloat(transferData.amount) || 0)
+                                }
                                 className="h-9 px-5 font-semibold rounded-lg gap-2 bg-gradient-to-r from-purple-500 to-violet-500 shadow-lg shadow-purple-500/25 text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
                             >
                                 Transfer
@@ -817,6 +976,6 @@ export default function WalletsPage() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-        </div>
+        </div >
     );
 }

@@ -44,16 +44,22 @@ export function BudgetCharts({ budget, currency }: ChartsProps) {
 
   // Generate colors dynamically based on number of items
   const generateColors = (count: number) => {
-    // Pink/Mauve/Purple palette
+    // Distinct palette for better contrast
     const baseColors = [
-      '#ec4899', // Pink 500
-      '#d946ef', // Fuchsia 500
-      '#8b5cf6', // Violet 500
-      '#fb7185', // Rose 400
-      '#c084fc', // Purple 400
-      '#f472b6', // Pink 400
-      '#a855f7', // Purple 500
-      '#e879f9', // Fuchsia 400
+      '#2DD4BF', // Teal
+      '#FACC15', // Yellow
+      '#F472B6', // Pink
+      '#A78BFA', // Purple
+      '#4ADE80', // Green
+      '#38BDF8', // Sky Blue
+      '#FB923C', // Orange
+      '#818CF8', // Indigo
+      '#F87171', // Red
+      '#A3E635', // Lime
+      '#E879F9', // Fuchsia
+      '#60A5FA', // Blue
+      '#C084FC', // Violet
+      '#FB7185', // Rose
     ];
     const colors = [];
     for (let i = 0; i < count; i++) {

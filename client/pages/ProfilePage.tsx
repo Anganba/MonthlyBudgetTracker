@@ -122,7 +122,7 @@ export default function ProfilePage() {
     ];
 
     return (
-        <div className="min-h-screen bg-black text-white p-6 md:p-8 relative overflow-hidden">
+        <div className="min-h-screen bg-background text-white p-6 md:p-8 relative overflow-hidden">
             {/* Animated Background Orbs */}
             <div className="hidden md:block absolute top-20 right-20 w-[500px] h-[500px] bg-gradient-to-br from-violet-500/10 via-purple-500/5 to-transparent rounded-full blur-3xl pointer-events-none animate-pulse" style={{ animationDuration: '4s' }} />
             <div className="hidden md:block absolute bottom-20 left-20 w-[400px] h-[400px] bg-gradient-to-tr from-cyan-500/10 via-blue-500/5 to-transparent rounded-full blur-3xl pointer-events-none animate-pulse" style={{ animationDuration: '5s' }} />

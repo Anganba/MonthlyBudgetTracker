@@ -107,74 +107,84 @@ export function GoalsSection() {
                             </div>
                         )}
 
-                        {activeGoals.slice(0, 4).map((goal) => {
-                            const progress = goal.targetAmount > 0
-                                ? Math.min((goal.currentAmount / goal.targetAmount) * 100, 100)
-                                : 0;
-                            const isComplete = progress >= 100;
-                            const isAlmostComplete = progress >= 90 && progress < 100;
-                            const categoryConfig = getCategoryConfig(goal.category);
-                            const CategoryIcon = categoryConfig.icon;
-                            const daysInfo = getDaysRemaining(goal.targetDate);
+                        {/* Sort by completion progress (highest first) and show top 3 */}
+                        {[...activeGoals]
+                            .sort((a, b) => {
+                                const progressA = a.targetAmount > 0 ? (a.currentAmount / a.targetAmount) * 100 : 0;
+                                const progressB = b.targetAmount > 0 ? (b.currentAmount / b.targetAmount) * 100 : 0;
+                                return progressB - progressA;
+                            })
+                            .slice(0, 3).map((goal) => {
+                                const progress = goal.targetAmount > 0
+                                    ? Math.min((goal.currentAmount / goal.targetAmount) * 100, 100)
+                                    : 0;
+                                const isComplete = progress >= 100;
+                                const isAlmostComplete = progress >= 90 && progress < 100;
+                                const categoryConfig = getCategoryConfig(goal.category);
+                                const CategoryIcon = categoryConfig.icon;
+                                const daysInfo = getDaysRemaining(goal.targetDate);
 
-                            return (
-                                <Link to="/goals" key={goal.id}>
-                                    <div
-                                        className={`group p-2.5 md:p-3 rounded-xl transition-all border ${isComplete
-                                            ? 'bg-gradient-to-r from-green-500/15 to-green-500/5 border-green-500/40 hover:border-green-500/60 shadow-lg shadow-green-500/10'
-                                            : isAlmostComplete
-                                                ? 'bg-gradient-to-r from-yellow-500/15 to-yellow-500/5 border-yellow-500/40 hover:border-yellow-500/60 shadow-lg shadow-yellow-500/10'
-                                                : 'bg-gradient-to-br from-violet-500/10 to-purple-500/5 border-violet-500/20 hover:border-violet-500/40 hover:shadow-lg hover:shadow-violet-500/10'
-                                            }`}
-                                    >
-                                        <div className="flex items-center gap-2 md:gap-3 mb-2 md:mb-3">
-                                            <div className={`p-1.5 md:p-2 rounded-lg ${isComplete ? 'bg-green-500/20' : isAlmostComplete ? 'bg-yellow-500/20' : categoryConfig.color.split(' ')[1] || 'bg-primary/20'}`}>
-                                                {isComplete ? (
-                                                    <Trophy className="h-3.5 w-3.5 md:h-4 md:w-4 text-green-400" />
-                                                ) : (
-                                                    <CategoryIcon className={`h-3.5 w-3.5 md:h-4 md:w-4 ${isAlmostComplete ? 'text-yellow-400' : categoryConfig.color.split(' ')[0] || 'text-primary'}`} />
-                                                )}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center justify-between mb-0.5">
-                                                    <h4 className="text-xs md:text-sm font-semibold text-white truncate">
-                                                        {goal.name}
-                                                    </h4>
-                                                    <span className={`text-[10px] md:text-xs font-bold ${isComplete ? 'text-green-400' : isAlmostComplete ? 'text-yellow-400' : 'text-primary'}`}>
-                                                        {Math.round(progress)}%
-                                                    </span>
+                                return (
+                                    <Link to="/goals" key={goal.id}>
+                                        <div
+                                            className={`group p-2.5 md:p-3 rounded-xl transition-all border ${isComplete
+                                                ? 'bg-gradient-to-r from-green-500/15 to-green-500/5 border-green-500/40 hover:border-green-500/60 shadow-lg shadow-green-500/10'
+                                                : isAlmostComplete
+                                                    ? 'bg-gradient-to-r from-yellow-500/15 to-yellow-500/5 border-yellow-500/40 hover:border-yellow-500/60 shadow-lg shadow-yellow-500/10'
+                                                    : 'bg-gradient-to-br from-violet-500/10 to-purple-500/5 border-violet-500/20 hover:border-violet-500/40 hover:shadow-lg hover:shadow-violet-500/10'
+                                                }`}
+                                        >
+                                            <div className="flex items-center gap-2 md:gap-3 mb-2 md:mb-3">
+                                                <div className={`p-1.5 md:p-2 rounded-lg ${isComplete ? 'bg-green-500/20' : isAlmostComplete ? 'bg-yellow-500/20' : categoryConfig.color.split(' ')[1] || 'bg-primary/20'}`}>
+                                                    {isComplete ? (
+                                                        <Trophy className="h-3.5 w-3.5 md:h-4 md:w-4 text-green-400" />
+                                                    ) : (
+                                                        <CategoryIcon className={`h-3.5 w-3.5 md:h-4 md:w-4 ${isAlmostComplete ? 'text-yellow-400' : categoryConfig.color.split(' ')[0] || 'text-primary'}`} />
+                                                    )}
                                                 </div>
-                                                <div className="flex items-center justify-between text-[10px] md:text-xs text-gray-500">
-                                                    <span>Target: ${goal.targetAmount.toLocaleString()}</span>
-                                                    <div className="flex items-center gap-2">
-                                                        {daysInfo && (
-                                                            <span className={`flex items-center gap-0.5 ${daysInfo.color}`}>
-                                                                <Clock className="h-2.5 w-2.5" />
-                                                                {daysInfo.text}
-                                                            </span>
-                                                        )}
-                                                        <span className="text-white font-medium">${goal.currentAmount.toLocaleString()}</span>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center justify-between mb-0.5">
+                                                        <h4 className="text-xs md:text-sm font-semibold text-white truncate">
+                                                            {goal.name}
+                                                        </h4>
+                                                        <span className={`text-[10px] md:text-xs font-bold ${isComplete ? 'text-green-400' : isAlmostComplete ? 'text-yellow-400' : 'text-primary'}`}>
+                                                            {Math.round(progress)}%
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-center justify-between text-[10px] md:text-xs text-gray-500">
+                                                        <span>Target: ${goal.targetAmount.toLocaleString()}</span>
+                                                        <div className="flex items-center gap-2">
+                                                            {daysInfo && (
+                                                                <span className={`flex items-center gap-0.5 ${daysInfo.color}`}>
+                                                                    <Clock className="h-2.5 w-2.5" />
+                                                                    {daysInfo.text}
+                                                                </span>
+                                                            )}
+                                                            <span className="text-white font-medium">${goal.currentAmount.toLocaleString()}</span>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
+                                            <Progress
+                                                value={progress}
+                                                className={`h-1 md:h-1.5 ${isComplete ? 'bg-green-500/20' : isAlmostComplete ? 'bg-yellow-500/20' : 'bg-white/10'}`}
+                                                indicatorClassName={`${isComplete ? 'bg-green-500' : isAlmostComplete ? 'bg-yellow-500' : 'bg-primary'} transition-all duration-500`}
+                                            />
                                         </div>
-                                        <Progress
-                                            value={progress}
-                                            className={`h-1 md:h-1.5 ${isComplete ? 'bg-green-500/20' : isAlmostComplete ? 'bg-yellow-500/20' : 'bg-white/10'}`}
-                                            indicatorClassName={`${isComplete ? 'bg-green-500' : isAlmostComplete ? 'bg-yellow-500' : 'bg-primary'} transition-all duration-500`}
-                                        />
-                                    </div>
-                                </Link>
-                            );
-                        })}
+                                    </Link>
+                                );
+                            })}
 
-                        {/* View All Link */}
-                        {activeGoals.length > 4 && (
+                        {/* Show More Goals Link */}
+                        {activeGoals.length > 3 && (
                             <Link to="/goals" className="block">
-                                <div className="flex items-center justify-center gap-1 p-2 text-xs text-gray-400 hover:text-primary transition-colors">
-                                    <span>View all {activeGoals.length} goals</span>
-                                    <ArrowRight className="h-3 w-3" />
-                                </div>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="w-full h-8 text-xs text-gray-400 hover:text-white hover:bg-white/5 rounded-xl"
+                                >
+                                    Show {activeGoals.length - 3} more goals
+                                </Button>
                             </Link>
                         )}
                     </>

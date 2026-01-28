@@ -45,6 +45,7 @@ import {
     GlassWater,
     Popcorn,
     UtensilsCrossed,
+    Users,
     type LucideIcon
 } from "lucide-react";
 
@@ -115,6 +116,7 @@ const CATEGORY_ICON_MAP: Record<string, LucideIcon> = {
     // Family & Pets
     "baby & kids": Baby,
     "education": GraduationCap,
+    "family": Users,
     "pets": Dog,
 
     // Shopping & Gadgets

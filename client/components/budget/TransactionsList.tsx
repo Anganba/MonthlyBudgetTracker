@@ -64,7 +64,7 @@ export function TransactionsList({ transactions, wallets, currency, showMoreItem
         });
     };
 
-    const incomeCategories = ['Paycheck', 'Bonus', 'Debt Added', 'income'];
+    const incomeCategories = ['Paycheck', 'Bonus', 'Debt Added', 'income', 'Freelance', 'Gifts Received', 'Refund', 'Side Hustle', 'Loan Repaid'];
 
     // Mobile card view for a transaction
     const MobileTransactionCard = ({ item }: { item: Transaction }) => {

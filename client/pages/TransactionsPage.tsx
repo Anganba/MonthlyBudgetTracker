@@ -125,7 +125,8 @@ export function TransactionsPage() {
 
         const result = source.filter(t => {
             const matchesSearch = t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                t.category.toLowerCase().includes(searchTerm.toLowerCase());
+                t.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                t.actual.toString().includes(searchTerm);
             const matchesCategory = categoryFilter === 'all' || t.category === categoryFilter;
             const type = getTransactionType(t);
             const matchesType = typeFilter === 'all' || type === typeFilter;
@@ -334,7 +335,7 @@ export function TransactionsPage() {
     const totalExpenses = filteredTransactions.filter(t => getTransactionType(t) === 'expense').reduce((sum, t) => sum + t.actual, 0);
 
     return (
-        <div className="min-h-screen bg-black text-white relative overflow-hidden">
+        <div className="min-h-screen bg-background text-white relative overflow-hidden">
             {/* Animated background decorations */}
             <div className="hidden md:block absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-to-br from-amber-500/10 via-orange-500/10 to-transparent rounded-full blur-3xl pointer-events-none animate-pulse" style={{ animationDuration: '4s' }} />
             <div className="hidden md:block absolute bottom-1/3 left-0 w-[500px] h-[500px] bg-gradient-to-tr from-cyan-500/10 via-blue-500/5 to-transparent rounded-full blur-3xl pointer-events-none animate-pulse" style={{ animationDuration: '5s' }} />

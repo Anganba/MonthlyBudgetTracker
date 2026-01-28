@@ -25,15 +25,15 @@ const WalletsPage = lazy(() => import("./pages/WalletsPage"));
 
 const queryClient = new QueryClient();
 
+import { LoadingScreen } from "@/components/ui/LoadingScreen";
+
+// ... (other imports remain the same, but handled by replace tool targeting)
+
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-budget-header"></div>
-      </div>
-    );
+    return <LoadingScreen size="lg" />;
   }
 
   if (!user) {
@@ -45,6 +45,8 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
+import { DateProvider } from "@/context/DateContext";
+
 const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
@@ -52,84 +54,82 @@ const App = () => (
         <Toaster />
         <Sonner />
         <AuthProvider>
-          <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-            <Suspense fallback={
-              <div className="flex items-center justify-center h-screen">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-              </div>
-            }>
-              <Routes>
-                <Route path="/login" element={<Login />} />
-                <Route path="/register" element={<Register />} />
-                <Route
-                  path="/"
-                  element={
-                    <ProtectedRoute>
-                      <Index />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/transactions"
-                  element={
-                    <ProtectedRoute>
-                      <TransactionsPage />
-                    </ProtectedRoute>
-                  }
-                />
+          <DateProvider>
+            <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+              <Suspense fallback={<LoadingScreen size="lg" />}>
+                <Routes>
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/register" element={<Register />} />
+                  <Route
+                    path="/"
+                    element={
+                      <ProtectedRoute>
+                        <Index />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/transactions"
+                    element={
+                      <ProtectedRoute>
+                        <TransactionsPage />
+                      </ProtectedRoute>
+                    }
+                  />
 
-                <Route
-                  path="/goals"
-                  element={
-                    <ProtectedRoute>
-                      <GoalsPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/statistics"
-                  element={
-                    <ProtectedRoute>
-                      <StatisticsPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/audit-trail"
-                  element={
-                    <ProtectedRoute>
-                      <AuditTrailPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/profile"
-                  element={
-                    <ProtectedRoute>
-                      <ProfilePage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/recurring"
-                  element={
-                    <ProtectedRoute>
-                      <RecurringPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/wallets"
-                  element={
-                    <ProtectedRoute>
-                      <WalletsPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </Suspense>
-          </BrowserRouter>
+                  <Route
+                    path="/goals"
+                    element={
+                      <ProtectedRoute>
+                        <GoalsPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/statistics"
+                    element={
+                      <ProtectedRoute>
+                        <StatisticsPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/audit-trail"
+                    element={
+                      <ProtectedRoute>
+                        <AuditTrailPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/profile"
+                    element={
+                      <ProtectedRoute>
+                        <ProfilePage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/recurring"
+                    element={
+                      <ProtectedRoute>
+                        <RecurringPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/wallets"
+                    element={
+                      <ProtectedRoute>
+                        <WalletsPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </Suspense>
+            </BrowserRouter>
+          </DateProvider>
         </AuthProvider>
       </TooltipProvider>
     </QueryClientProvider>

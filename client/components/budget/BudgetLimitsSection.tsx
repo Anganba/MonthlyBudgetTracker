@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,6 +27,27 @@ export function BudgetLimitsSection({ month, year }: BudgetLimitsSectionProps) {
     const [visibleCategories, setVisibleCategories] = useState<Set<string>>(new Set());
     const [addCategoryOpen, setAddCategoryOpen] = useState(false);
 
+    const { data: usedCategories = [] } = useQuery<string[]>({
+        queryKey: ['used-categories'],
+        queryFn: async () => {
+            const res = await fetch('/api/budget/used-categories');
+            if (!res.ok) return [];
+            const json = await res.json();
+            return json.data || [];
+        },
+        staleTime: 60 * 1000,
+    });
+
+    // Merge static expense categories with dynamic ones
+    const allAvailableCategories = useMemo(() => {
+        const staticIds = new Set(EXPENSE_CATEGORIES.map(c => c.id));
+        const customCategories = usedCategories
+            .filter(id => !staticIds.has(id))
+            .map(id => ({ id, label: id, type: 'expense' })); // Treat unknown as expense for limits context
+
+        return [...EXPENSE_CATEGORIES, ...customCategories].sort((a, b) => a.label.localeCompare(b.label));
+    }, [usedCategories]);
+
     useEffect(() => {
         if (budget) {
             const budgetLimits = (budget.categoryLimits as Record<string, number>) || {};
@@ -33,32 +55,21 @@ export function BudgetLimitsSection({ month, year }: BudgetLimitsSectionProps) {
 
             const initialVisible = new Set<string>();
             // All income/special categories that should NOT appear in budget limits
-            const incomeCategories = ['Paycheck', 'Bonus', 'Savings', 'Debt Added', 'income', 'Transfer', 'Side Hustle', 'Freelance', 'Gifts Received', 'Refund'];
+            const incomeCategories = ['Paycheck', 'Bonus', 'Savings', 'Debt Added', 'income', 'Transfer', 'Side Hustle', 'Freelance', 'Gifts Received', 'Refund', 'Loan Repaid'];
 
-            // First, add categories from EXPENSE_CATEGORIES that have limits or spending
-            EXPENSE_CATEGORIES.forEach(cat => {
-                const limit = budgetLimits[cat.id] || 0;
-                const spent = budget?.transactions
-                    ?.filter(t => t.category === cat.id)
-                    .reduce((sum, t) => sum + t.actual, 0) || 0;
-
-                if (limit > 0 || spent > 0) {
-                    initialVisible.add(cat.id);
-                }
-            });
-
-            // Add categories that have explicit limits set
+            // 1. Add all categories that have active limits
             Object.keys(budgetLimits).forEach(catId => {
                 if (budgetLimits[catId] > 0) {
                     initialVisible.add(catId);
                 }
             });
 
-            // Auto-add ALL transaction categories that have spending (even if not in EXPENSE_CATEGORIES)
-            // This ensures new transaction categories automatically appear with "unlimited" limit
-            budget?.transactions?.forEach(t => {
-                if (!incomeCategories.includes(t.category) && t.actual > 0) {
-                    initialVisible.add(t.category);
+            // 2. Add all categories present in transactions (excluding income)
+            // This ensures any category with activity shows up, regardless of whether it's in the static list
+            const transactionCategories = new Set(budget?.transactions?.map(t => t.category) || []);
+            transactionCategories.forEach(cat => {
+                if (!incomeCategories.includes(cat)) {
+                    initialVisible.add(cat);
                 }
             });
 
@@ -126,12 +137,16 @@ export function BudgetLimitsSection({ month, year }: BudgetLimitsSectionProps) {
         );
     }
 
-    const hiddenCategories = EXPENSE_CATEGORIES.filter(cat => !visibleCategories.has(cat.id));
 
-    // Build category data from ALL visible categories (including those not in EXPENSE_CATEGORIES)
+
+
+
+    const hiddenCategories = allAvailableCategories.filter(cat => !visibleCategories.has(cat.id));
+
+    // Build category data from ALL visible categories
     const categoryData = Array.from(visibleCategories).map(catId => {
-        const expenseCat = EXPENSE_CATEGORIES.find(c => c.id === catId);
-        const label = expenseCat?.label || catId; // Use category ID as label if not in predefined list
+        const catDef = allAvailableCategories.find(c => c.id === catId);
+        const label = catDef?.label || catId;
 
         const limit = limits[catId] || 0;
         const spent = budget?.transactions

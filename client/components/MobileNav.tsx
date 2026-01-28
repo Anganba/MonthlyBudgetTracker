@@ -23,7 +23,7 @@ export function MobileNav() {
             </SheetTrigger>
             <SheetContent
                 side="left"
-                className="p-0 bg-black w-[280px] border-r border-white/10"
+                className="p-0 bg-[hsl(var(--sidebar-background))] w-[300px] border-r border-white/10"
                 onInteractOutside={() => setOpen(false)}
             >
                 <div onClick={handleNavClick}>

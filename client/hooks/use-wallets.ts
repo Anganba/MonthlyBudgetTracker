@@ -70,11 +70,32 @@ export function useWallets() {
         },
     });
 
+    const reorderWallets = useMutation({
+        mutationFn: async (orderedIds: string[]) => {
+            const res = await fetch("/api/wallets/reorder", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ orderedIds }),
+            });
+            if (!res.ok) throw new Error("Failed to reorder wallets");
+            return res.json();
+        },
+        onSuccess: () => {
+            // Invalidate to ensure other components (like AccountsSection) get the new order
+            queryClient.invalidateQueries({ queryKey: ["wallets"] });
+        },
+        onError: () => {
+            toast({ title: "Error", description: "Failed to save wallet order", variant: "destructive" });
+            queryClient.invalidateQueries({ queryKey: ["wallets"] }); // Revert on error
+        },
+    });
+
     return {
         wallets,
         isLoading,
         createWallet,
         updateWallet,
-        deleteWallet
+        deleteWallet,
+        reorderWallets
     };
 }

@@ -1,9 +1,12 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, Plus, BarChart3, List, Edit, PieChart, ChevronDown, ChevronUp, TrendingUp, TrendingDown, AlertTriangle, Zap } from "lucide-react";
+import { MoreHorizontal, Plus, BarChart3, List, Edit, PieChart, ChevronDown, ChevronUp, TrendingUp, TrendingDown, AlertTriangle, Zap, Settings2, CheckSquare } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { BudgetMonth, Transaction } from "@shared/api";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { Link } from "react-router-dom";
 import { getCategoryIcon } from "@/lib/category-icons";
 
@@ -50,19 +53,99 @@ export function BudgetStatus({ currency = '$', budget, refreshBudget, showAllCat
     const topCategory = categoryData.length > 0 ? categoryData[0] : null;
     const overBudgetCount = categoryData.filter(c => c.total > 0 && c.spent > c.total).length;
     const remaining = totalBudget - totalSpent;
-    const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
-    const currentDay = new Date().getDate();
-    const daysRemaining = daysInMonth - currentDay;
-    const dailyBudget = daysRemaining > 0 ? remaining / daysRemaining : 0;
-    const avgDailySpending = currentDay > 0 ? totalSpent / currentDay : 0;
+    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const budgetMonthIndex = budget ? monthNames.indexOf(budget.month) : new Date().getMonth();
+    const budgetYear = budget?.year || new Date().getFullYear();
 
-    // Categories to display (6 by default, all when expanded)
-    const INITIAL_DISPLAY_COUNT = 6;
-    const displayedCategories = showAllCategories ? categoryData : categoryData.slice(0, INITIAL_DISPLAY_COUNT);
-    const hiddenCount = categoryData.length - INITIAL_DISPLAY_COUNT;
+    const now = new Date();
+    const isCurrentMonth = budgetMonthIndex === now.getMonth() && budgetYear === now.getFullYear();
+    const isFutureMonth = (budgetYear > now.getFullYear()) || (budgetYear === now.getFullYear() && budgetMonthIndex > now.getMonth());
+
+    const daysInBudgetMonth = new Date(budgetYear, budgetMonthIndex + 1, 0).getDate();
+
+    /* 
+       Calculate days remaining:
+       - If current month: Days in month - current day
+       - If future month: All days in month
+       - If past month: 0 (or technically N/A, so daily budget is 0)
+    */
+    let daysRemaining = 0;
+    if (isCurrentMonth) {
+        daysRemaining = daysInBudgetMonth - now.getDate();
+    } else if (isFutureMonth) {
+        daysRemaining = daysInBudgetMonth;
+    }
+
+    const dailyBudget = daysRemaining > 0 ? remaining / daysRemaining : 0;
+    const avgDailySpending = (isCurrentMonth && now.getDate() > 0) ? totalSpent / now.getDate() : 0;
+
+    const [isCustomizeOpen, setIsCustomizeOpen] = useState(false);
+    const [pinnedCategories, setPinnedCategories] = useState<string[]>(() => {
+        try {
+            const saved = localStorage.getItem('pinned_categories');
+            return saved ? JSON.parse(saved) : [];
+        } catch {
+            return [];
+        }
+    });
+
+    // Temporary state for the dialog
+    const [tempPinned, setTempPinned] = useState<string[]>([]);
+
+    const openCustomize = () => {
+        setTempPinned([...pinnedCategories]);
+        setIsCustomizeOpen(true);
+    };
+
+    const togglePin = (catName: string) => {
+        setTempPinned(prev => {
+            if (prev.includes(catName)) {
+                return prev.filter(c => c !== catName);
+            } else {
+                if (prev.length >= 4) return prev; // Max 4
+                return [...prev, catName];
+            }
+        });
+    };
+
+    const savePins = () => {
+        setPinnedCategories(tempPinned);
+        localStorage.setItem('pinned_categories', JSON.stringify(tempPinned));
+        setIsCustomizeOpen(false);
+    };
+
+    const clearPins = () => {
+        setTempPinned([]);
+        setPinnedCategories([]);
+        localStorage.removeItem('pinned_categories');
+        setIsCustomizeOpen(false);
+    };
+
+    // Calculate display data
+    const INITIAL_DISPLAY_COUNT = 4;
+    let displayedCategories = categoryData.slice(0, INITIAL_DISPLAY_COUNT);
+
+    if (pinnedCategories.length > 0) {
+        // Collect pinned objects
+        const pinnedObjs = categoryData.filter(c => pinnedCategories.includes(c.name));
+
+        // If we found pinned categories, use them.
+        if (pinnedObjs.length > 0) {
+            displayedCategories = pinnedObjs;
+        }
+
+        // Note: usage of strictly the pinned categories if present, otherwise default to top 4.
+    }
+
+    const hiddenCount = categoryData.length - displayedCategories.length;
+
+    // Recalculate quick stats logic is separate above, but safe to keep as is.
+    // However, `percent`, `isOverBudget` etc are calculated inside the render IIFE below.
+    // We need to ensure those vars are available or logic is consistent. 
+    // They are inside the `(() => {` block so they are fine.
 
     return (
-        <div className="h-full rounded-2xl bg-gradient-to-br from-cyan-500/10 via-zinc-900/80 to-zinc-900/50 border border-cyan-500/30 overflow-hidden shadow-lg shadow-cyan-500/5 hover:shadow-cyan-500/10 transition-shadow flex flex-col">
+        <div className="rounded-2xl bg-gradient-to-br from-cyan-500/10 via-zinc-900/80 to-zinc-900/50 border border-cyan-500/30 overflow-hidden shadow-lg shadow-cyan-500/5 hover:shadow-cyan-500/10 transition-shadow flex flex-col">
             <div className="p-3 md:p-4 border-b border-cyan-500/20 flex items-center justify-between bg-gradient-to-r from-cyan-500/10 to-transparent">
                 <div className="flex items-center gap-2 md:gap-3">
                     <div className="p-1.5 md:p-2 rounded-lg md:rounded-xl bg-gradient-to-br from-cyan-500/30 to-blue-500/20 shadow-inner">
@@ -121,8 +204,9 @@ export function BudgetStatus({ currency = '$', budget, refreshBudget, showAllCat
                     (() => {
                         const percent = Math.round((totalSpent / totalBudget) * 100);
                         const isOverBudget = percent > 100;
-                        const isWarning = percent >= 80 && percent <= 100;
-                        const progressColor = isOverBudget ? "bg-red-500" : isWarning ? "bg-yellow-500" : "bg-primary";
+                        const isLimitReached = percent === 100;
+                        const isWarning = percent > 85 && percent < 100;
+                        const progressColor = (isOverBudget || isLimitReached) ? "bg-red-500" : isWarning ? "bg-yellow-500" : "bg-primary";
 
                         return (
                             <div className="space-y-4 md:space-y-5">
@@ -154,17 +238,18 @@ export function BudgetStatus({ currency = '$', budget, refreshBudget, showAllCat
                                 {/* Overall Status */}
                                 <div className="p-3 md:p-4 bg-white/5 rounded-xl border border-white/10">
                                     <div className="flex justify-between items-baseline mb-1">
-                                        <span className={`text-[10px] md:text-xs font-medium uppercase tracking-wider ${isOverBudget ? 'text-red-400' : isWarning ? 'text-yellow-400' : 'text-gray-500'}`}>
+                                        <span className={`text-[10px] md:text-xs font-medium uppercase tracking-wider ${(isOverBudget || isLimitReached) ? 'text-red-400' : isWarning ? 'text-yellow-400' : 'text-gray-500'}`}>
                                             Overall Status
                                         </span>
                                         {isOverBudget && <span className="text-[10px] md:text-xs font-bold text-red-400 animate-pulse">OVER BUDGET</span>}
-                                        {isWarning && !isOverBudget && <span className="text-[10px] md:text-xs font-bold text-yellow-400">⚠️ ALMOST AT LIMIT</span>}
+                                        {isLimitReached && <span className="text-[10px] md:text-xs font-bold text-red-400">⚠️ LIMIT REACHED</span>}
+                                        {isWarning && <span className="text-[10px] md:text-xs font-bold text-yellow-400">⚠️ ALMOST AT LIMIT</span>}
                                     </div>
                                     <div className="flex justify-between items-end mb-2 md:mb-3">
                                         <span
-                                            className={`text-2xl md:text-3xl font-bold ${isOverBudget ? 'text-red-400' : isWarning ? 'text-yellow-400' : 'text-primary'}`}
+                                            className={`text-2xl md:text-3xl font-bold ${(isOverBudget || isLimitReached) ? 'text-red-400' : isWarning ? 'text-yellow-400' : 'text-primary'}`}
                                             style={{
-                                                textShadow: isOverBudget
+                                                textShadow: (isOverBudget || isLimitReached)
                                                     ? '0 0 10px rgba(248, 113, 113, 0.6), 0 0 20px rgba(248, 113, 113, 0.4), 0 0 30px rgba(248, 113, 113, 0.2)'
                                                     : isWarning
                                                         ? '0 0 10px rgba(250, 204, 21, 0.6), 0 0 20px rgba(250, 204, 21, 0.4), 0 0 30px rgba(250, 204, 21, 0.2)'
@@ -175,8 +260,8 @@ export function BudgetStatus({ currency = '$', budget, refreshBudget, showAllCat
                                         </span>
                                         <p className="text-sm md:text-base font-semibold">
                                             <span
-                                                className={`${isOverBudget ? 'text-red-400' : 'text-cyan-400'}`}
-                                                style={{ textShadow: isOverBudget ? '0 0 8px rgba(248, 113, 113, 0.5)' : '0 0 8px rgba(34, 211, 238, 0.5)' }}
+                                                className={`${(isOverBudget || isLimitReached) ? 'text-red-400' : 'text-cyan-400'}`}
+                                                style={{ textShadow: (isOverBudget || isLimitReached) ? '0 0 8px rgba(248, 113, 113, 0.5)' : '0 0 8px rgba(34, 211, 238, 0.5)' }}
                                             >
                                                 {currency}{totalSpent.toLocaleString()}
                                             </span>
@@ -207,7 +292,18 @@ export function BudgetStatus({ currency = '$', budget, refreshBudget, showAllCat
                                 {/* Category Breakdown */}
                                 <div className="space-y-2 md:space-y-3">
                                     <div className="flex items-center justify-between">
-                                        <h4 className="text-[10px] md:text-xs text-gray-500 uppercase tracking-wider font-semibold">Category Breakdown</h4>
+                                        <div className="flex items-center gap-2">
+                                            <h4 className="text-[10px] md:text-xs text-gray-500 uppercase tracking-wider font-semibold">Category Breakdown</h4>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-5 w-5 text-gray-600 hover:text-cyan-400 hover:bg-cyan-500/10 rounded-full"
+                                                onClick={openCustomize}
+                                                title="Customize visible categories"
+                                            >
+                                                <Settings2 className="h-3 w-3" />
+                                            </Button>
+                                        </div>
                                         <span className="text-[10px] md:text-xs text-gray-600">{categoryData.length} categories</span>
                                     </div>
                                     <div className="grid grid-cols-2 gap-1.5 md:gap-2">
@@ -240,26 +336,17 @@ export function BudgetStatus({ currency = '$', budget, refreshBudget, showAllCat
                                         })}
                                     </div>
 
-                                    {/* Show More/Less Toggle */}
+                                    {/* View More Link */}
                                     {categoryData.length > INITIAL_DISPLAY_COUNT && (
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => onToggleCategories(!showAllCategories)}
-                                            className="w-full h-8 text-xs text-gray-400 hover:text-white hover:bg-white/5 rounded-xl"
-                                        >
-                                            {showAllCategories ? (
-                                                <>
-                                                    <ChevronUp className="h-3 w-3 mr-1" />
-                                                    Show less
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <ChevronDown className="h-3 w-3 mr-1" />
-                                                    Show {hiddenCount} more categories
-                                                </>
-                                            )}
-                                        </Button>
+                                        <Link to="/recurring" className="mt-2 block">
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="w-full h-8 text-xs text-gray-400 hover:text-white hover:bg-white/5 rounded-xl"
+                                            >
+                                                Show {hiddenCount} more categories
+                                            </Button>
+                                        </Link>
                                     )}
                                 </div>
                             </div>
@@ -267,6 +354,47 @@ export function BudgetStatus({ currency = '$', budget, refreshBudget, showAllCat
                     })()
                 )}
             </div>
-        </div>
+            {/* Added Dialog at the end */}
+            <Dialog open={isCustomizeOpen} onOpenChange={setIsCustomizeOpen}>
+                <DialogContent className="sm:max-w-[400px] bg-zinc-900 border-white/10">
+                    <DialogHeader>
+                        <DialogTitle>Customize Monthly Budget</DialogTitle>
+                        <DialogDescription>
+                            Select up to 4 categories to display in the monthly budget card.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-2 space-y-2 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+                        {categoryData.length === 0 && <p className="text-sm text-gray-500 text-center py-4">No categories found with transactions or limits.</p>}
+                        {categoryData.map(cat => (
+                            <div key={cat.name} className="flex items-center justify-between p-2 rounded-lg bg-white/5 border border-white/5">
+                                <Label htmlFor={`cat-${cat.name}`} className="flex items-center gap-3 flex-1 cursor-pointer">
+                                    <Checkbox
+                                        id={`cat-${cat.name}`}
+                                        checked={tempPinned.includes(cat.name)}
+                                        onCheckedChange={() => togglePin(cat.name)}
+                                        disabled={!tempPinned.includes(cat.name) && tempPinned.length >= 4}
+                                    />
+                                    <span className="text-sm font-medium">{cat.name}</span>
+                                </Label>
+                                <span className="text-xs text-gray-500">${cat.spent.toLocaleString()} / ${cat.total.toLocaleString()}</span>
+                            </div>
+                        ))}
+                    </div>
+                    <DialogFooter className="flex justify-between gap-2 sm:justify-between">
+                        <Button variant="ghost" size="sm" onClick={clearPins} className="text-red-400 hover:text-red-300 hover:bg-red-500/10">
+                            Reset to Default
+                        </Button>
+                        <div className="flex gap-2">
+                            <Button variant="outline" size="sm" onClick={() => setIsCustomizeOpen(false)} className="border-zinc-700">
+                                Cancel
+                            </Button>
+                            <Button size="sm" onClick={savePins} className="bg-cyan-500 hover:bg-cyan-600 text-black font-semibold">
+                                Save Changes
+                            </Button>
+                        </div>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </div >
     );
 }

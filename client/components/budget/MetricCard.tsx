@@ -57,7 +57,7 @@ export function MetricCard({ title, value, trend, trendUp, data, className, acce
             </CardContent>
 
             {/* Sparkline Background with enhanced opacity */}
-            <div className="absolute bottom-0 left-0 right-0 h-20 md:h-24 opacity-30 group-hover:opacity-40 transition-opacity">
+            <div className="absolute inset-0 opacity-20 group-hover:opacity-30 transition-opacity">
                 <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
                     <AreaChart data={chartData}>
                         <defs>

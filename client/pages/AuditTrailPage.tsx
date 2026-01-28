@@ -46,10 +46,23 @@ export function AuditTrailPage() {
     };
 
     // Fetch audit logs
-    const { data: auditLogs = [], isLoading } = useQuery<AuditLog[]>({
-        queryKey: ['audit-logs'],
+    const { data: auditLogs = [], isLoading, refetch } = useQuery<AuditLog[]>({
+        queryKey: ['audit-logs', month, year, entityFilter, changeTypeFilter],
         queryFn: async () => {
-            const res = await fetch('/api/audit-logs');
+            const monthIndex = MONTHS.indexOf(month);
+            const startDate = new Date(year, monthIndex, 1).toISOString();
+            const endDate = new Date(year, monthIndex + 1, 0, 23, 59, 59, 999).toISOString();
+
+            const params = new URLSearchParams({
+                startDate,
+                endDate,
+                limit: '500' // Fetch all relevant logs for the month
+            });
+
+            if (entityFilter !== 'all') params.append('entityType', entityFilter);
+            if (changeTypeFilter !== 'all') params.append('changeType', changeTypeFilter);
+
+            const res = await fetch(`/api/audit-logs?${params.toString()}`);
             if (!res.ok) throw new Error('Failed to fetch audit logs');
             const json = await res.json();
             return json.data || [];
@@ -93,23 +106,95 @@ export function AuditTrailPage() {
         return 'text-gray-400 bg-gray-500/20';
     };
 
-    // Filter logs by month and other filters
+    // Format details from JSON to human-readable text
+    const formatDetails = (log: AuditLog): string => {
+        // If it's a balance change, include the reason and balance updates if available
+        if (log.changeType === 'balance_change') {
+            const balanceInfo = (log.previousBalance !== undefined && log.newBalance !== undefined)
+                ? ` ($${log.previousBalance} ➝ $${log.newBalance})`
+                : '';
+
+            if (log.reason) {
+                return `${log.reason}${balanceInfo}`;
+            }
+        }
+
+        // If no details, return empty
+        if (!log.details) return '-';
+
+        // Try to parse JSON details
+        try {
+            const parsed = JSON.parse(log.details);
+
+            // Format based on entity type and change type
+            if (log.entityType === 'transaction') {
+                const parts: string[] = [];
+                if (parsed.type) parts.push(parsed.type.charAt(0).toUpperCase() + parsed.type.slice(1));
+                if (parsed.category) parts.push(`Category: ${parsed.category}`);
+                if (parsed.date) parts.push(`Date: ${parsed.date}`);
+                return parts.length > 0 ? parts.join(' • ') : log.details;
+            }
+
+            if (log.entityType === 'wallet') {
+                const parts: string[] = [];
+                if (parsed.type) parts.push(`Type: ${parsed.type}`);
+                if (parsed.balance !== undefined) parts.push(`Balance: $${parsed.balance}`);
+                return parts.length > 0 ? parts.join(' • ') : log.details;
+            }
+
+            if (log.entityType === 'goal') {
+                const parts: string[] = [];
+                if (parsed.targetAmount) parts.push(`Target: $${parsed.targetAmount}`);
+                if (parsed.status) parts.push(`Status: ${parsed.status}`);
+                return parts.length > 0 ? parts.join(' • ') : log.details;
+            }
+
+            if (log.entityType === 'recurring') {
+                const parts: string[] = [];
+                if (parsed.frequency) parts.push(`${parsed.frequency}`);
+                if (parsed.amount) parts.push(`$${parsed.amount}`);
+                if (parsed.type) parts.push(parsed.type);
+                return parts.length > 0 ? parts.join(' • ') : log.details;
+            }
+
+            // Generic fallback - show key info
+            const keys = Object.keys(parsed).slice(0, 3);
+            if (keys.length > 0) {
+                return keys.map(k => `${k}: ${parsed[k]}`).join(' • ');
+            }
+        } catch {
+            // Not JSON, return as-is
+            return log.details;
+        }
+
+        return log.details || '-';
+    };
+
+    // Client-side search (still useful for searching within the fetched month's data)
     const filteredLogs = React.useMemo(() => {
-        const monthIndex = MONTHS.indexOf(month);
+        if (!searchTerm) return auditLogs;
+
+        const lowerSearch = searchTerm.toLowerCase();
 
         return auditLogs.filter(log => {
-            // Filter by month/year
-            const logDate = new Date(log.timestamp);
-            const matchesMonth = logDate.getMonth() === monthIndex && logDate.getFullYear() === year;
+            // Check formatted details (what the user sees)
+            const formattedDetails = formatDetails(log).toLowerCase();
+            if (formattedDetails.includes(lowerSearch)) return true;
 
-            const matchesSearch = log.entityName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                log.details?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                log.changeType.toLowerCase().includes(searchTerm.toLowerCase());
-            const matchesEntity = entityFilter === 'all' || log.entityType === entityFilter;
-            const matchesChangeType = changeTypeFilter === 'all' || log.changeType === changeTypeFilter;
-            return matchesMonth && matchesSearch && matchesEntity && matchesChangeType;
+            // Check basic text fields
+            if (log.entityName.toLowerCase().includes(lowerSearch)) return true;
+            if (log.changeType.toLowerCase().includes(lowerSearch)) return true;
+            if (log.details?.toLowerCase().includes(lowerSearch)) return true;
+            if (log.reason?.toLowerCase().includes(lowerSearch)) return true;
+
+            // Check numeric fields
+            if (log.changeAmount !== undefined && log.changeAmount.toString().includes(searchTerm)) return true;
+            if (log.previousBalance !== undefined && log.previousBalance.toString().includes(searchTerm)) return true;
+            if (log.newBalance !== undefined && log.newBalance.toString().includes(searchTerm)) return true;
+
+            return false;
         });
-    }, [auditLogs, month, year, searchTerm, entityFilter, changeTypeFilter]);
+    }, [auditLogs, searchTerm]);
 
     // Sort logs
     const sortedLogs = [...filteredLogs].sort((a, b) => {
@@ -122,6 +207,14 @@ export function AuditTrailPage() {
             const dateB = new Date(b.timestamp).getTime();
             return sortConfig.direction === 'asc' ? dateA - dateB : dateB - dateA;
         }
+
+        // Special handling for Amount: sort by absolute value
+        if (sortConfig.key === 'changeAmount') {
+            const valA = Math.abs(a.changeAmount || 0);
+            const valB = Math.abs(b.changeAmount || 0);
+            return sortConfig.direction === 'asc' ? valA - valB : valB - valA;
+        }
+
         const aValue = a[sortConfig.key];
         const bValue = b[sortConfig.key];
         if (aValue! < bValue!) return sortConfig.direction === 'asc' ? -1 : 1;
@@ -160,7 +253,7 @@ export function AuditTrailPage() {
     };
 
     return (
-        <div className="min-h-screen bg-black text-white relative overflow-hidden">
+        <div className="min-h-screen bg-background text-white relative overflow-hidden">
             {/* Animated background decorations */}
             <div className="hidden md:block absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-to-br from-cyan-500/10 via-blue-500/10 to-transparent rounded-full blur-3xl pointer-events-none animate-pulse" style={{ animationDuration: '4s' }} />
             <div className="hidden md:block absolute bottom-1/3 left-0 w-[500px] h-[500px] bg-gradient-to-tr from-violet-500/10 via-purple-500/5 to-transparent rounded-full blur-3xl pointer-events-none animate-pulse" style={{ animationDuration: '5s' }} />
@@ -312,7 +405,9 @@ export function AuditTrailPage() {
                                         <div className="flex items-center gap-1">Event <ArrowUpDown className="h-3 w-3" /></div>
                                     </th>
                                     <th className="text-left py-4 px-4 font-medium text-gray-400 w-[250px]">Details</th>
-                                    <th className="text-right py-4 px-4 font-medium text-gray-400 w-[120px]">Amount</th>
+                                    <th className="text-right py-4 px-4 font-medium text-gray-400 cursor-pointer hover:text-white transition-colors w-[120px]" onClick={() => requestSort('changeAmount')}>
+                                        <div className="flex items-center justify-end gap-1">Amount <ArrowUpDown className="h-3 w-3" /></div>
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -344,8 +439,8 @@ export function AuditTrailPage() {
                                                         {getChangeTypeLabel(log.changeType)}
                                                     </span>
                                                 </td>
-                                                <td className="py-4 px-4 text-gray-400 text-xs truncate max-w-[250px]" title={(log.changeType === 'balance_change' && log.reason) ? log.reason : (log.details || '')}>
-                                                    {(log.changeType === 'balance_change' && log.reason) ? log.reason : (log.details || '-')}
+                                                <td className="py-4 px-4 text-gray-400 text-xs truncate max-w-[250px]" title={formatDetails(log)}>
+                                                    {formatDetails(log)}
                                                 </td>
                                                 <td className="py-4 px-4 text-right font-semibold text-white">
                                                     {log.changeAmount !== undefined ? `$${log.changeAmount.toFixed(2)}` : '-'}

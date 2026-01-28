@@ -15,7 +15,8 @@ const WalletSchema = new Schema<IWallet>(
         icon: { type: String },
         color: { type: String },
         isDefault: { type: Boolean, default: false },
-        isSavingsWallet: { type: Boolean, default: false }
+        isSavingsWallet: { type: Boolean, default: false },
+        order: { type: Number, default: 0 }
     },
     { timestamps: true }
 );

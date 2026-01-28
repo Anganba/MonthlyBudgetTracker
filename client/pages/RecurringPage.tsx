@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { RecurringTransaction } from "@shared/api";
 import { Button } from "@/components/ui/button";
-import { Trash2, Plus, Repeat, Calendar, DollarSign, Clock, Pencil, ArrowUpCircle, ArrowDownCircle } from "lucide-react";
+import { Trash2, Plus, Repeat, Calendar, DollarSign, Clock, Pencil, ArrowUpCircle, ArrowDownCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useWallets } from "@/hooks/use-wallets";
 import { useNavigate } from "react-router-dom";
@@ -24,6 +24,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BudgetLimitsSection } from "@/components/budget/BudgetLimitsSection";
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "@/lib/categories";
+import { LoadingScreen } from "@/components/ui/LoadingScreen";
 
 export default function RecurringPage() {
     const { user } = useAuth();
@@ -34,11 +35,37 @@ export default function RecurringPage() {
     const [editingItem, setEditingItem] = useState<RecurringTransaction | null>(null);
     const [deleteConfirm, setDeleteConfirm] = useState<RecurringTransaction | null>(null);
     const [date] = useState(new Date());
-    const monthNames = ["January", "February", "March", "April", "May", "June",
+    const MONTHS = [
+        "January", "February", "March", "April", "May", "June",
         "July", "August", "September", "October", "November", "December"
     ];
-    const currentMonthName = monthNames[date.getMonth()];
-    const currentYear = date.getFullYear();
+
+    // State for selected month/year
+    const [month, setMonth] = useState(MONTHS[date.getMonth()]);
+    const [year, setYear] = useState(date.getFullYear());
+
+    const handleMonthChange = (newMonth: string, newYear: number) => {
+        setMonth(newMonth);
+        setYear(newYear);
+    };
+
+    const handlePrevMonth = () => {
+        const currentMonthIndex = MONTHS.indexOf(month);
+        if (currentMonthIndex === 0) {
+            handleMonthChange(MONTHS[11], year - 1);
+        } else {
+            handleMonthChange(MONTHS[currentMonthIndex - 1], year);
+        }
+    };
+
+    const handleNextMonth = () => {
+        const currentMonthIndex = MONTHS.indexOf(month);
+        if (currentMonthIndex === 11) {
+            handleMonthChange(MONTHS[0], year + 1);
+        } else {
+            handleMonthChange(MONTHS[currentMonthIndex + 1], year);
+        }
+    };
 
     const { data: recurringList, isLoading } = useQuery({
         queryKey: ['recurring', user?.id],
@@ -109,14 +136,10 @@ export default function RecurringPage() {
         }
     };
 
-    if (isLoading) return (
-        <div className="min-h-screen bg-black text-white p-8 flex items-center justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        </div>
-    );
+    if (isLoading) return <LoadingScreen size="lg" />;
 
     return (
-        <div className="min-h-screen bg-black text-white p-4 md:p-6 lg:p-8 relative overflow-hidden">
+        <div className="min-h-screen bg-background text-white p-4 md:p-6 lg:p-8 relative overflow-hidden">
             {/* Animated background decorations */}
             <div className="hidden md:block absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-to-br from-cyan-500/10 via-blue-500/10 to-transparent rounded-full blur-3xl pointer-events-none animate-pulse" style={{ animationDuration: '4s' }} />
             <div className="hidden md:block absolute bottom-1/3 left-0 w-[500px] h-[500px] bg-gradient-to-tr from-violet-500/10 via-purple-500/5 to-transparent rounded-full blur-3xl pointer-events-none animate-pulse" style={{ animationDuration: '5s' }} />
@@ -130,13 +153,38 @@ export default function RecurringPage() {
                         <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold font-serif text-white">Recurring & Budget</h1>
                         <p className="text-gray-500 text-sm mt-0.5 md:mt-1 hidden sm:block">Manage automatic transactions and monthly limits</p>
                     </div>
-                    <Button
-                        onClick={() => setIsAddOpen(true)}
-                        className="bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:from-cyan-400 hover:to-blue-400 rounded-xl md:rounded-2xl px-4 md:px-6 h-10 md:h-11 font-bold shadow-lg shadow-cyan-500/30 gap-1.5 md:gap-2 text-sm w-full sm:w-auto transition-all hover:scale-[1.02]"
-                    >
-                        <Plus className="h-4 w-4" /> Add Recurring
-                    </Button>
+
+                    <div className="flex items-center gap-4 w-full sm:w-auto">
+                        {/* Month Selector */}
+                        <div className="flex items-center bg-zinc-900/80 backdrop-blur-sm rounded-2xl border border-white/10 p-1.5 flex-1 sm:flex-none justify-between sm:justify-start">
+                            <Button variant="ghost" size="icon" onClick={handlePrevMonth} className="h-9 w-9 hover:bg-primary hover:text-black transition-all rounded-xl">
+                                <ChevronLeft className="h-4 w-4" />
+                            </Button>
+                            <span className="font-semibold text-white min-w-[150px] text-center flex items-center justify-center gap-2 px-2">
+                                <Calendar className="h-4 w-4 text-primary" />
+                                {month} {year}
+                            </span>
+                            <Button variant="ghost" size="icon" onClick={handleNextMonth} className="h-9 w-9 hover:bg-primary hover:text-black transition-all rounded-xl">
+                                <ChevronRight className="h-4 w-4" />
+                            </Button>
+                        </div>
+
+                        <Button
+                            onClick={() => setIsAddOpen(true)}
+                            className="bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:from-cyan-400 hover:to-blue-400 rounded-xl md:rounded-2xl px-4 md:px-6 h-11 font-bold shadow-lg shadow-cyan-500/30 gap-1.5 md:gap-2 text-sm hidden sm:flex transition-all hover:scale-[1.02]"
+                        >
+                            <Plus className="h-4 w-4" /> Add Recurring
+                        </Button>
+                    </div>
                 </div>
+
+                {/* Mobile Add Button */}
+                <Button
+                    onClick={() => setIsAddOpen(true)}
+                    className="sm:hidden w-full bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:from-cyan-400 hover:to-blue-400 rounded-xl h-11 font-bold shadow-lg shadow-cyan-500/30 gap-2 text-sm"
+                >
+                    <Plus className="h-4 w-4" /> Add Recurring Rule
+                </Button>
 
                 {/* Stats */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-6">
@@ -180,7 +228,7 @@ export default function RecurringPage() {
                             </div>
                             <div>
                                 <p className="text-[10px] md:text-sm text-violet-300/70">Current Period</p>
-                                <p className="text-lg md:text-2xl font-bold text-white">{currentMonthName}</p>
+                                <p className="text-lg md:text-2xl font-bold text-white">{month}</p>
                             </div>
                         </div>
                     </div>
@@ -281,7 +329,7 @@ export default function RecurringPage() {
 
                 {/* Budget Limits Section */}
                 <div className="mt-4 md:mt-8">
-                    <BudgetLimitsSection month={currentMonthName} year={currentYear} />
+                    <BudgetLimitsSection month={month} year={year} />
                 </div>
             </div>
 
@@ -452,7 +500,37 @@ function RecurringDialog({ open, onOpenChange, onSubmit, initialData, mode, isSu
         });
     };
 
-    const categories = type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+    const { data: usedCategories = [] } = useQuery<string[]>({
+        queryKey: ['used-categories'],
+        queryFn: async () => {
+            const res = await fetch('/api/budget/used-categories');
+            if (!res.ok) return [];
+            const json = await res.json();
+            return json.data || [];
+        },
+        staleTime: 60 * 1000, // 1 minute
+    });
+
+    // Merge static and dynamic categories
+    const categories = useMemo(() => {
+        const staticList = type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+        const staticIds = new Set(staticList.map(c => c.id));
+
+        // Find which custom categories are likely relevant
+        // Since we don't know the type of custom categories from the simple string list,
+        // we'll explicitly exclude ones that are known to be OF THE OTHER TYPE
+        const otherTypeStaticIds = new Set(
+            (type === 'income' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES).map(c => c.id)
+        );
+
+        const customOptions = usedCategories
+            .filter(cat => !staticIds.has(cat)) // Not in current list
+            .filter(cat => !otherTypeStaticIds.has(cat)) // Not KNOWN to be the other type
+            .map(cat => ({ id: cat, label: cat, type: type })); // Create temporary def
+
+        // Combine and sort
+        return [...staticList, ...customOptions].sort((a, b) => a.label.localeCompare(b.label));
+    }, [type, usedCategories]);
 
     // Type-based color schemes
     const typeColors = {
@@ -491,7 +569,7 @@ function RecurringDialog({ open, onOpenChange, onSubmit, initialData, mode, isSu
                     </DialogHeader>
 
                     {/* Type Toggle */}
-                    <div className="flex gap-1 p-0.5 bg-black/30 backdrop-blur rounded-lg mt-3 border border-white/5">
+                    <div className="flex gap-1 p-0.5 bg-background/30 backdrop-blur rounded-lg mt-3 border border-white/5">
                         <button
                             type="button"
                             onClick={() => setType('expense')}
