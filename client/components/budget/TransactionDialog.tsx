@@ -314,6 +314,7 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
                 category === initialData.category &&
                 amount === initialData.actual &&
                 date === initialDatePart &&
+                time === (initialData.timestamp || '').substring(0, 5) &&
                 (walletId || '') === (initialData.walletId || '') &&
                 (toWalletId || '') === (initialData.toWalletId || '') &&
                 // Treat 'unassigned' as equivalent to undefined/empty for goalId

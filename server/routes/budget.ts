@@ -452,6 +452,30 @@ export const updateBudget: RequestHandler = async (req, res) => {
       console.log('Updating category limits:', req.body.categoryLimits);
       budget.categoryLimits = req.body.categoryLimits;
       budget.markModified('categoryLimits');
+
+      // --- Propagate limits to future budgets ---
+      const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+      const currentYear = parseInt(year as string);
+      const currentMonthIndex = months.indexOf(month as string);
+
+      // Find all future budgets (Same year & future month, OR Future year)
+      const futureBudgets = await Budget.find({
+        userId,
+        $or: [
+          { year: currentYear, month: { $in: months.slice(currentMonthIndex + 1) } },
+          { year: { $gt: currentYear } }
+        ]
+      });
+
+      if (futureBudgets.length > 0) {
+        console.log(`[Budget] Propagating new limits to ${futureBudgets.length} future budgets.`);
+        const updates = futureBudgets.map(b => {
+          b.categoryLimits = req.body.categoryLimits;
+          b.markModified('categoryLimits');
+          return b.save();
+        });
+        await Promise.all(updates);
+      }
     }
 
     await budget.save();

@@ -3,7 +3,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useWallets } from "@/hooks/use-wallets";
 import { useBudget } from "@/hooks/use-budget";
 import { Button } from "@/components/ui/button";
-import { Plus, Wallet as WalletIcon, Smartphone, Landmark, CreditCard, Banknote, MoreVertical, Pencil, Trash2, Globe, Sparkles, TrendingUp, ArrowRightLeft, ArrowRight } from "lucide-react";
+import { Plus, Wallet as WalletIcon, Smartphone, Landmark, CreditCard, Banknote, MoreVertical, Pencil, Trash2, Globe, Sparkles, TrendingUp, ArrowRightLeft, ArrowRight, X } from "lucide-react";
 import {
     Dialog,
     DialogContent,
@@ -336,6 +336,7 @@ export default function WalletsPage() {
         amount: ""
     });
     const [showAllDistribution, setShowAllDistribution] = useState(false);
+    const [showSavingsGuide, setShowSavingsGuide] = useState(true);
 
     // Get current month's budget for recent transactions
     const currentDate = new Date();
@@ -358,7 +359,7 @@ export default function WalletsPage() {
             .slice(0, 3);
     };
 
-    const handleOpen = (wallet?: Wallet, defaultType?: string) => {
+    const handleOpen = (wallet?: Wallet, defaultType?: string, defaultIsSavings: boolean = false) => {
         if (wallet) {
             // Show confirmation dialog first when editing
             setWalletToEdit(wallet);
@@ -372,7 +373,7 @@ export default function WalletsPage() {
                 balance: "0",
                 description: "",
                 color: "#ffffff",
-                isSavingsWallet: false
+                isSavingsWallet: defaultIsSavings
             });
             setIsDialogOpen(true);
         }
@@ -616,10 +617,54 @@ export default function WalletsPage() {
                             ))}
                         </div>
                     </SortableContext>
-                    {/* Drag Overlay for smooth preview */}
-                    {/* We can implement DragOverlay if needed for better visuals, but basic sorting works without it if opaque.
-                        For a polished look, DragOverlay is recommended. */}
                 </DndContext>
+
+                {/* Savings Guide Notification */}
+                {showSavingsGuide && (
+                    <div className="mt-6 flex flex-col md:flex-row items-center gap-4 p-4 rounded-xl bg-emerald-900/10 border border-emerald-500/10 backdrop-blur-sm">
+                        <div className="p-2 rounded-full bg-emerald-500/10 shrink-0">
+                            <Banknote className="h-5 w-5 text-emerald-400" />
+                        </div>
+
+                        <div className="flex-1 text-center md:text-left">
+                            <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-3">
+                                <h3 className="text-base font-bold text-white shrink-0">
+                                    {wallets.some(w => w.isSavingsWallet) ? "Savings Tips" : "Track Your Savings Goals"}
+                                </h3>
+                                <p className="text-sm text-gray-400">
+                                    💡 To add savings, create a <span className="text-emerald-400 font-medium">Transfer</span> transaction to your Savings Wallet.
+                                </p>
+                            </div>
+                            {!wallets.some(w => w.isSavingsWallet) && (
+                                <p className="text-xs text-gray-500 mt-1">
+                                    Create a dedicated wallet for your savings, or <b>edit an existing wallet</b> and enable 'Use as Savings Wallet' to track goals.
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="flex items-center gap-3 shrink-0">
+                            {!wallets.some(w => w.isSavingsWallet) && (
+                                <Button
+                                    onClick={() => handleOpen(undefined, 'bank', true)}
+                                    size="sm"
+                                    className="bg-emerald-500/90 text-black hover:bg-emerald-400 font-bold shadow-sm shadow-emerald-500/20 h-9 rounded-lg"
+                                >
+                                    <Plus className="mr-1.5 h-3.5 w-3.5" />
+                                    Add Savings Wallet
+                                </Button>
+                            )}
+
+                            {!wallets.some(w => w.isSavingsWallet) && showSavingsGuide && (
+                                <button
+                                    onClick={() => setShowSavingsGuide(false)}
+                                    className="p-1.5 rounded-full hover:bg-white/5 text-gray-500 hover:text-white transition-colors"
+                                >
+                                    <X className="h-4 w-4" />
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                )}
             </div>
 
 

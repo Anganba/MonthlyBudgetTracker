@@ -724,7 +724,7 @@ export default function StatisticsPage() {
                                                 }
                                                 return label;
                                             }}
-                                            formatter={(value: number) => [`${currency}${value.toFixed(2)}`, '']}
+                                            formatter={(value: number, name: string) => [`${currency}${value.toFixed(2)}`, name]}
                                         />
                                         <Legend />
                                         {showIncome && (

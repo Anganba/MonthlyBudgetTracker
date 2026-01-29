@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Trash2, Plus, Repeat, Calendar, DollarSign, Clock, Pencil, ArrowUpCircle, ArrowDownCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useWallets } from "@/hooks/use-wallets";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import {
     AlertDialog,
@@ -40,9 +40,13 @@ export default function RecurringPage() {
         "July", "August", "September", "October", "November", "December"
     ];
 
+    const [searchParams] = useSearchParams();
+    const paramMonth = searchParams.get('month');
+    const paramYear = searchParams.get('year');
+
     // State for selected month/year
-    const [month, setMonth] = useState(MONTHS[date.getMonth()]);
-    const [year, setYear] = useState(date.getFullYear());
+    const [month, setMonth] = useState(paramMonth || MONTHS[date.getMonth()]);
+    const [year, setYear] = useState(paramYear ? parseInt(paramYear) : date.getFullYear());
 
     const handleMonthChange = (newMonth: string, newYear: number) => {
         setMonth(newMonth);

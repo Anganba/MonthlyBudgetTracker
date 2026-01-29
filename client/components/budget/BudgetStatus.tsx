@@ -93,7 +93,11 @@ export function BudgetStatus({ currency = '$', budget, refreshBudget, showAllCat
     const [tempPinned, setTempPinned] = useState<string[]>([]);
 
     const openCustomize = () => {
-        setTempPinned([...pinnedCategories]);
+        // Filter out any pinned categories that no longer exist in the data
+        const validCategoryNames = new Set(categoryData.map(c => c.name));
+        const validPins = pinnedCategories.filter(name => validCategoryNames.has(name));
+
+        setTempPinned(validPins);
         setIsCustomizeOpen(true);
     };
 
@@ -338,7 +342,7 @@ export function BudgetStatus({ currency = '$', budget, refreshBudget, showAllCat
 
                                     {/* View More Link */}
                                     {categoryData.length > INITIAL_DISPLAY_COUNT && (
-                                        <Link to="/recurring" className="mt-2 block">
+                                        <Link to={`/recurring?month=${budget?.month}&year=${budgetYear}`} className="mt-2 block">
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
