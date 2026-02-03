@@ -1,5 +1,6 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { Goal } from "@shared/api";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/lib/auth";
@@ -17,11 +18,31 @@ export function useGoals() {
         return json.data as Goal[];
     };
 
+    const getCachedData = (key: string) => {
+        try {
+            const item = localStorage.getItem(key);
+            return item ? JSON.parse(item) : undefined;
+        } catch { return undefined; }
+    };
+    const setCachedData = (key: string, data: any) => {
+        try {
+            if (data) localStorage.setItem(key, JSON.stringify(data));
+        } catch { }
+    };
+
+    const goalsKey = `goals-${userId}`;
+
     const { data: goals, isLoading, error } = useQuery({
         queryKey: ['goals', userId],
         queryFn: fetchGoals,
+        staleTime: 0,
+        initialData: () => getCachedData(goalsKey),
         enabled: !!userId,
     });
+
+    useEffect(() => {
+        if (goals && goals.length > 0) setCachedData(goalsKey, goals);
+    }, [goals, goalsKey]);
 
     const createGoalMutation = useMutation({
         mutationFn: async (goal: Partial<Goal>) => {

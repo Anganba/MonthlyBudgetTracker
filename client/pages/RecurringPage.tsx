@@ -71,6 +71,21 @@ export default function RecurringPage() {
         }
     };
 
+    // Cache helpers
+    const getCachedData = (key: string) => {
+        try {
+            const item = localStorage.getItem(key);
+            return item ? JSON.parse(item) : undefined;
+        } catch { return undefined; }
+    };
+    const setCachedData = (key: string, data: any) => {
+        try {
+            if (data) localStorage.setItem(key, JSON.stringify(data));
+        } catch { }
+    };
+
+    const recurringKey = `recurring-${user?.id}`;
+
     const { data: recurringList, isLoading } = useQuery({
         queryKey: ['recurring', user?.id],
         queryFn: async () => {
@@ -78,8 +93,14 @@ export default function RecurringPage() {
             const json = await res.json();
             return json.data as RecurringTransaction[];
         },
+        staleTime: 0,
+        initialData: () => getCachedData(recurringKey),
         enabled: !!user,
     });
+
+    useEffect(() => {
+        if (recurringList && recurringList.length > 0) setCachedData(recurringKey, recurringList);
+    }, [recurringList, recurringKey]);
 
     const deleteMutation = useMutation({
         mutationFn: async (id: string) => {

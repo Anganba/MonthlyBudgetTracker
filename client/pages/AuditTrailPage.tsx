@@ -45,6 +45,22 @@ export function AuditTrailPage() {
         setYear(nextDate.getFullYear());
     };
 
+    // Cache helpers
+    const getCachedData = (key: string) => {
+        try {
+            const item = localStorage.getItem(key);
+            return item ? JSON.parse(item) : undefined;
+        } catch { return undefined; }
+    };
+    const setCachedData = (key: string, data: any) => {
+        try {
+            if (data) localStorage.setItem(key, JSON.stringify(data));
+        } catch { }
+    };
+
+    // We cache the main view (all entities/types) for the current month/year
+    const auditKey = `audit-${month}-${year}-${entityFilter}-${changeTypeFilter}`;
+
     // Fetch audit logs
     const { data: auditLogs = [], isLoading, refetch } = useQuery<AuditLog[]>({
         queryKey: ['audit-logs', month, year, entityFilter, changeTypeFilter],
@@ -67,7 +83,13 @@ export function AuditTrailPage() {
             const json = await res.json();
             return json.data || [];
         },
+        staleTime: 0,
+        initialData: () => getCachedData(auditKey),
     });
+
+    useEffect(() => {
+        if (auditLogs && auditLogs.length > 0) setCachedData(auditKey, auditLogs);
+    }, [auditLogs, auditKey]);
 
     const getEntityIcon = (entityType: string) => {
         switch (entityType) {

@@ -24,8 +24,18 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-    const [user, setUser] = useState<User | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
+    const [user, setUser] = useState<User | null>(() => {
+        try {
+            const cachedUser = localStorage.getItem("user_session");
+            return cachedUser ? JSON.parse(cachedUser) : null;
+        } catch {
+            return null;
+        }
+    });
+
+    // If we have a cached user, we can start as "already loaded" to show UI immediately
+    // The fetch check will happen in background and redirect if actually invalid
+    const [isLoading, setIsLoading] = useState(!user);
     const { toast } = useToast();
 
     useEffect(() => {
@@ -35,6 +45,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 const data = await res.json();
                 if (data.success) {
                     setUser(data.user);
+                    localStorage.setItem("user_session", JSON.stringify(data.user));
+                } else {
+                    // If session check fails but we had a cached user, clear it
+                    if (user) {
+                        setUser(null);
+                        localStorage.removeItem("user_session");
+                    }
                 }
             } catch (error) {
                 console.error("Session check failed", error);
@@ -70,6 +87,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const logout = async () => {
         try {
             await fetch("/api/logout", { method: "POST" });
+
+            // Clear user-specific cached data from localStorage
+            if (user?.id) {
+                const keysToRemove: string[] = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    // Check if key contains the user ID (matches our cache key pattern)
+                    if (key && key.includes(user.id)) {
+                        keysToRemove.push(key);
+                    }
+                }
+                keysToRemove.forEach(key => localStorage.removeItem(key));
+            }
+
+            localStorage.removeItem("user_session");
             setUser(null);
         } catch (error) {
             console.error("Logout failed", error);

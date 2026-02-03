@@ -1,19 +1,44 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { Wallet } from "@shared/api";
 import { toast } from "@/components/ui/use-toast";
+import { useAuth } from "@/lib/auth";
 
 export function useWallets() {
     const queryClient = useQueryClient();
+    const { user } = useAuth();
+    const userId = user?.id;
+
+    const getCachedData = (key: string) => {
+        try {
+            const item = localStorage.getItem(key);
+            return item ? JSON.parse(item) : undefined;
+        } catch { return undefined; }
+    };
+    const setCachedData = (key: string, data: any) => {
+        try {
+            if (data) localStorage.setItem(key, JSON.stringify(data));
+        } catch { }
+    };
+
+    const walletsKey = `wallets-${userId}`;
 
     const { data: wallets = [], isLoading } = useQuery<Wallet[]>({
-        queryKey: ["wallets"],
+        queryKey: ["wallets", userId],
         queryFn: async () => {
             const res = await fetch("/api/wallets");
             if (!res.ok) throw new Error("Failed to fetch wallets");
             const json = await res.json();
             return json.data;
         },
+        staleTime: 0,
+        initialData: () => getCachedData(walletsKey),
+        enabled: !!userId,
     });
+
+    useEffect(() => {
+        if (wallets && wallets.length > 0) setCachedData(walletsKey, wallets);
+    }, [wallets, walletsKey]);
 
     const createWallet = useMutation({
         mutationFn: async (wallet: Partial<Wallet>) => {

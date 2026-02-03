@@ -7,7 +7,7 @@ import { OnboardingBanner } from "./OnboardingBanner";
 import { cn } from "@/lib/utils";
 
 export function AccountsSection() {
-    const { wallets } = useWallets();
+    const { wallets, isLoading } = useWallets();
 
     // Sort wallets by order
     const sortedWallets = [...wallets].sort((a, b) => {
@@ -17,6 +17,32 @@ export function AccountsSection() {
         // If mixed, items with order come first? Or last? Let's put ordered items first.
         return (a.order || 9999) - (b.order || 9999);
     });
+
+    if (isLoading) {
+        return (
+            <div className="relative z-10 mb-3">
+                <div className="flex items-center gap-4 p-3 rounded-2xl bg-zinc-900/50 backdrop-blur-sm border border-white/5">
+                    {/* Left: Title Skeleton */}
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                        <div className="h-8 w-8 rounded-lg bg-white/10 animate-pulse" />
+                        <div className="h-4 w-24 bg-white/10 rounded animate-pulse hidden sm:block" />
+                    </div>
+
+                    {/* Divider */}
+                    <div className="w-px h-8 bg-white/10 flex-shrink-0 hidden sm:block" />
+
+                    {/* Center: Wallet Skeletons */}
+                    <div className="flex-1 overflow-x-auto scrollbar-hide">
+                        <div className="flex items-center gap-2">
+                            {[1, 2, 3].map((i) => (
+                                <div key={i} className="h-[58px] w-[140px] rounded-xl bg-white/5 border border-white/5 animate-pulse" />
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     if (sortedWallets.length === 0) {
         return (

@@ -229,42 +229,50 @@ export function Dashboard() {
 
       {/* Metric Cards Row */}
       <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-3">
-        <MetricCard
-          title="Monthly Leftover"
-          value={`${currency}${balance.toLocaleString()}`}
-          trend={`${trends.balance > 0 ? '+' : ''}${trends.balance}%`}
-          trendUp={trends.balance >= 0}
-          data={graphs.balance}
-          className="bg-gradient-to-br from-primary/25 via-emerald-500/15 to-primary/5 border-primary/40 shadow-lg shadow-primary/10 hover:shadow-primary/20 transition-shadow"
-          accentColor="primary"
-        />
-        <MetricCard
-          title="Income"
-          value={`${currency}${income.toLocaleString()}`}
-          trend={`${trends.income > 0 ? '+' : ''}${trends.income}%`}
-          trendUp={trends.income >= 0}
-          data={graphs.income}
-          className="bg-gradient-to-br from-cyan-500/25 via-blue-500/15 to-cyan-500/5 border-cyan-500/40 shadow-lg shadow-cyan-500/10 hover:shadow-cyan-500/20 transition-shadow"
-          accentColor="cyan"
-        />
-        <MetricCard
-          title="Expenses"
-          value={`${currency}${expenses.toLocaleString()}`}
-          trend={`${trends.expenses > 0 ? '+' : ''}${trends.expenses}%`}
-          trendUp={trends.expenses >= 0}
-          data={graphs.expenses}
-          className="bg-gradient-to-br from-rose-500/25 via-orange-500/15 to-rose-500/5 border-rose-500/40 shadow-lg shadow-rose-500/10 hover:shadow-rose-500/20 transition-shadow"
-          accentColor="rose"
-        />
-        <MetricCard
-          title="Total Savings"
-          value={`${currency}${savings.toLocaleString()}`}
-          trend={`${trends.savings > 0 ? '+' : ''}${trends.savings}%`}
-          trendUp={trends.savings >= 0}
-          data={graphs.savings}
-          className="bg-gradient-to-br from-violet-500/25 via-purple-500/15 to-violet-500/5 border-violet-500/40 shadow-lg shadow-violet-500/10 hover:shadow-violet-500/20 transition-shadow"
-          accentColor="violet"
-        />
+        {isLoading ? (
+          [1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-[140px] rounded-xl bg-zinc-900/50 border border-white/5 animate-pulse" />
+          ))
+        ) : (
+          <>
+            <MetricCard
+              title="Monthly Leftover"
+              value={`${currency}${balance.toLocaleString()}`}
+              trend={`${trends.balance > 0 ? '+' : ''}${trends.balance}%`}
+              trendUp={trends.balance >= 0}
+              data={graphs.balance}
+              className="bg-gradient-to-br from-primary/25 via-emerald-500/15 to-primary/5 border-primary/40 shadow-lg shadow-primary/10 hover:shadow-primary/20 transition-shadow"
+              accentColor="primary"
+            />
+            <MetricCard
+              title="Income"
+              value={`${currency}${income.toLocaleString()}`}
+              trend={`${trends.income > 0 ? '+' : ''}${trends.income}%`}
+              trendUp={trends.income >= 0}
+              data={graphs.income}
+              className="bg-gradient-to-br from-cyan-500/25 via-blue-500/15 to-cyan-500/5 border-cyan-500/40 shadow-lg shadow-cyan-500/10 hover:shadow-cyan-500/20 transition-shadow"
+              accentColor="cyan"
+            />
+            <MetricCard
+              title="Expenses"
+              value={`${currency}${expenses.toLocaleString()}`}
+              trend={`${trends.expenses > 0 ? '+' : ''}${trends.expenses}%`}
+              trendUp={trends.expenses >= 0}
+              data={graphs.expenses}
+              className="bg-gradient-to-br from-rose-500/25 via-orange-500/15 to-rose-500/5 border-rose-500/40 shadow-lg shadow-rose-500/10 hover:shadow-rose-500/20 transition-shadow"
+              accentColor="rose"
+            />
+            <MetricCard
+              title="Total Savings"
+              value={`${currency}${savings.toLocaleString()}`}
+              trend={`${trends.savings > 0 ? '+' : ''}${trends.savings}%`}
+              trendUp={trends.savings >= 0}
+              data={graphs.savings}
+              className="bg-gradient-to-br from-violet-500/25 via-purple-500/15 to-violet-500/5 border-violet-500/40 shadow-lg shadow-violet-500/10 hover:shadow-violet-500/20 transition-shadow"
+              accentColor="violet"
+            />
+          </>
+        )}
       </div>
 
       {/* Accounts Section */}
@@ -272,16 +280,32 @@ export function Dashboard() {
 
       {/* Lower Section - Both columns stretch to equal height */}
       <div className="relative z-10 grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-3 lg:gap-4 lg:items-stretch">
-        {/* Left Column (Budget + Goals) takes up 1/3 */}
-        <div className="lg:col-span-1 flex flex-col gap-2 md:gap-3 order-2 lg:order-1">
-          <BudgetStatus currency={currency} budget={budget} refreshBudget={refreshBudget} showAllCategories={showAllCategories} onToggleCategories={setShowAllCategories} />
-          <GoalsSection />
-        </div>
+        {isLoading ? (
+          <>
+            {/* Left Column Skeleton */}
+            <div className="lg:col-span-1 flex flex-col gap-2 md:gap-3 order-2 lg:order-1">
+              <div className="h-[400px] rounded-2xl bg-zinc-900/50 border border-white/5 animate-pulse" />
+              <div className="h-[200px] rounded-2xl bg-zinc-900/50 border border-white/5 animate-pulse" />
+            </div>
+            {/* Right Column Skeleton */}
+            <div className="lg:col-span-2 order-1 lg:order-2 h-full">
+              <div className="h-[600px] rounded-2xl bg-zinc-900/50 border border-white/5 animate-pulse" />
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Left Column (Budget + Goals) takes up 1/3 */}
+            <div className="lg:col-span-1 flex flex-col gap-2 md:gap-3 order-2 lg:order-1">
+              <BudgetStatus currency={currency} budget={budget} refreshBudget={refreshBudget} showAllCategories={showAllCategories} onToggleCategories={setShowAllCategories} />
+              <GoalsSection />
+            </div>
 
-        {/* Right Column - Transactions matches left column height */}
-        <div className="lg:col-span-2 order-1 lg:order-2 h-full">
-          <TransactionsList transactions={filteredTransactions} wallets={wallets} currency={currency} showMoreItems={showAllCategories} />
-        </div>
+            {/* Right Column - Transactions matches left column height */}
+            <div className="lg:col-span-2 order-1 lg:order-2 h-full">
+              <TransactionsList transactions={filteredTransactions} wallets={wallets} currency={currency} showMoreItems={showAllCategories} />
+            </div>
+          </>
+        )}
       </div>
 
       <TransactionDialog

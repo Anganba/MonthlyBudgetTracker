@@ -1,5 +1,6 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { BudgetMonth, Transaction } from "@shared/api";
 import { useAuth } from "@/lib/auth";
 import { useWallets } from "./use-wallets";
@@ -33,21 +34,48 @@ export function useBudget(selectedMonth?: string, selectedYear?: number) {
     const { user } = useAuth();
     const userId = user?.id;
 
+    // Helper for caching
+    const getCachedData = (key: string) => {
+        try {
+            const item = localStorage.getItem(key);
+            return item ? JSON.parse(item) : undefined;
+        } catch { return undefined; }
+    };
+    const setCachedData = (key: string, data: any) => {
+        try {
+            if (data) localStorage.setItem(key, JSON.stringify(data));
+        } catch { }
+    };
+
+    // Cache keys
+    const budgetKey = `budget-${month}-${year}-${userId}`;
+    const prevBudgetKey = `budget-${prevMonth}-${prevYear}-${userId}`;
+    const yearlyStatsKey = `yearlyStats-${year}-${userId}`;
+    const monthlyStatsKey = `monthlyStats-${month}-${year}-${userId}`;
+
     const { data: budget, isLoading: isLoadingCurrent } = useQuery({
         queryKey: ['budget', month, year, userId],
         queryFn: () => fetchBudget(month, year),
-        staleTime: 1000 * 60 * 5,
+        staleTime: 0, // Always fetch fresh data in background
+        initialData: () => getCachedData(budgetKey),
         enabled: !!userId, // Only fetch if user is logged in
     });
 
-
+    useEffect(() => {
+        if (budget) setCachedData(budgetKey, budget);
+    }, [budget, budgetKey]);
 
     const { data: prevBudget } = useQuery({
         queryKey: ['budget', prevMonth, prevYear, userId],
         queryFn: () => fetchBudget(prevMonth, prevYear),
-        staleTime: 1000 * 60 * 5,
+        staleTime: 0,
+        initialData: () => getCachedData(prevBudgetKey),
         enabled: !!userId,
     });
+
+    useEffect(() => {
+        if (prevBudget) setCachedData(prevBudgetKey, prevBudget);
+    }, [prevBudget, prevBudgetKey]);
 
     const calculateStats = (b: BudgetMonth | null | undefined) => {
         if (!b) return { income: 0, expenses: 0, savings: 0, balance: 0, transactions: [] };
@@ -221,9 +249,14 @@ export function useBudget(selectedMonth?: string, selectedYear?: number) {
             if (!result.success) return [];
             return result.data as { name: string; expense: number }[];
         },
-        staleTime: 1000 * 60 * 10,
+        staleTime: 0,
+        initialData: () => getCachedData(yearlyStatsKey),
         enabled: !!userId,
     });
+
+    useEffect(() => {
+        if (yearlyStats) setCachedData(yearlyStatsKey, yearlyStats);
+    }, [yearlyStats, yearlyStatsKey]);
 
     // New Monthly Stats Query (Optimized)
     const { data: monthlyStats, isLoading: isLoadingMonthlyStats } = useQuery({
@@ -234,9 +267,14 @@ export function useBudget(selectedMonth?: string, selectedYear?: number) {
             if (!result.success) return null;
             return result.data as { pieData: any[]; dailyData: any[]; startBalance: number };
         },
-        staleTime: 1000 * 60 * 5,
+        staleTime: 0,
+        initialData: () => getCachedData(monthlyStatsKey),
         enabled: !!userId,
     });
+
+    useEffect(() => {
+        if (monthlyStats) setCachedData(monthlyStatsKey, monthlyStats);
+    }, [monthlyStats, monthlyStatsKey]);
 
 
     return {
