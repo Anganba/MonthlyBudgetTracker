@@ -9,7 +9,14 @@ interface LayoutProps {
 }
 
 export function Layout({ children }: LayoutProps) {
-    const [isCollapsed, setIsCollapsed] = React.useState(false);
+    const [isCollapsed, setIsCollapsed] = React.useState(() => {
+        const saved = localStorage.getItem('sidebar_collapsed');
+        return saved ? JSON.parse(saved) : false;
+    });
+
+    React.useEffect(() => {
+        localStorage.setItem('sidebar_collapsed', JSON.stringify(isCollapsed));
+    }, [isCollapsed]);
     const { wallets } = useWallets();
 
     const netWorth = wallets.reduce((sum, w) => sum + w.balance, 0);

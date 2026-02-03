@@ -490,7 +490,7 @@ export const updateBudget: RequestHandler = async (req, res) => {
 export const addTransaction: RequestHandler = async (req, res) => {
   // Ignore query params for target budget, rely on transaction date
   // const { month, year } = req.query; 
-  const { name, planned, actual, category, date, goalId, walletId, type, toWalletId } = req.body;
+  let { name, planned, actual, category, date, goalId, walletId, type, toWalletId } = req.body;
   console.log('[API] addTransaction body:', { name, category, date, walletId, actual, type, toWalletId });
   const userId = req.session?.user?.id;
 
@@ -522,6 +522,16 @@ export const addTransaction: RequestHandler = async (req, res) => {
       const goal = await Goal.findOne({ _id: goalId, userId });
       if (!goal) {
         // Goal not found logic
+      }
+    }
+
+    // Auto-categorize as Savings if transferring to a Savings Wallet
+    if (type === 'transfer' && toWalletId) {
+      const { WalletModel } = await import("../models/Wallet");
+      const destWallet = await WalletModel.findById(toWalletId);
+      if (destWallet && destWallet.isSavingsWallet) {
+        console.log(`[API] Transfer to savings wallet detected (${destWallet.name}). Auto-setting category to 'Savings'.`);
+        category = 'Savings';
       }
     }
 

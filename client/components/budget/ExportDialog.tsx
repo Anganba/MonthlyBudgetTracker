@@ -137,6 +137,29 @@ export function ExportDialog({ open, onOpenChange }: ExportDialogProps) {
         return wallet ? wallet.name : 'Unknown Wallet';
     };
 
+    // Helper function to get Goal Name
+    const getGoalName = (goalId: string | undefined): string => {
+        if (!goalId) return '';
+        const goal = goals?.find(g => g.id === goalId);
+        return goal ? goal.name : '';
+    };
+
+    const formatTime = (dateStr: string, timeStr: string) => {
+        if (!timeStr) return '';
+        try {
+            // Check if timeStr is already a valid date string or just a time
+            if (timeStr.includes('T')) {
+                return new Date(timeStr).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+            }
+            // Combine date and time
+            const d = new Date(`${dateStr}T${timeStr}`);
+            if (isNaN(d.getTime())) return timeStr; // Fallback to raw string
+            return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+        } catch (e) {
+            return timeStr;
+        }
+    };
+
     const escapeCsvField = (field: any): string => {
         if (field === null || field === undefined) return '';
         const stringField = String(field);
@@ -151,21 +174,9 @@ export function ExportDialog({ open, onOpenChange }: ExportDialogProps) {
 
         // Transactions CSV
         if (includeTransactions && transactions.length > 0) {
-            const headers = ['Date', 'Time', 'Name', 'Category', 'Amount', 'Type', 'Wallet'];
+            const headers = ['Date', 'Time', 'Name', 'Category', 'Amount', 'Type', 'Wallet', 'Destination Wallet', 'Linked Goal'];
             const rows = transactions.map(t => {
-                const date = new Date(t.date);
-                // Try to extract time if available, otherwise default
-                let timeStr = '';
-                // Since our new logic adds timestamp separately or merges, let's assume `t.date` might handle it or we look at `t.timestamp` if it exists (but API merges them often)
-                // Actually `t.date` is likely just the date string YYYY-MM-DD from the `budget.ts` route if it comes from `budget.transactions` array which stores strings?
-                // Wait, recent changes added `timestamp` field.
-                // Let's check if we can parse time from `t`.
-                // If the new schema has `createdAt` or specific `timestamp`, we use that.
-                // Based on recent changes, we added `timestamp` to transaction object? No, we added it to the Mongo schema.
-                // Let's assume `t` has it if fetched via `/api/budget/all`.
-
-                // If t.timestamp is available (it should be since we updated schema + route)
-                const timestamp = t.timestamp ? new Date(t.timestamp).toLocaleTimeString() : '';
+                const timestamp = formatTime(t.date, t.timestamp);
 
                 return [
                     t.date,
@@ -174,7 +185,9 @@ export function ExportDialog({ open, onOpenChange }: ExportDialogProps) {
                     t.category,
                     Math.abs(t.actual).toString(),
                     categorizeTransaction(t),
-                    getWalletName(t.walletId)
+                    getWalletName(t.walletId),
+                    t.toWalletId ? getWalletName(t.toWalletId) : '',
+                    t.goalId ? getGoalName(t.goalId) : ''
                 ];
             });
             sections.push('TRANSACTIONS\n' + headers.join(',') + '\n' + rows.map(row => row.map(escapeCsvField).join(',')).join('\n'));
@@ -234,16 +247,18 @@ export function ExportDialog({ open, onOpenChange }: ExportDialogProps) {
         if (includeTransactions && transactions.length > 0) {
             const transactionData = transactions.map(t => ({
                 Date: t.date,
-                Time: t.timestamp ? new Date(t.timestamp).toLocaleTimeString() : '',
+                Time: formatTime(t.date, t.timestamp),
                 Name: t.name,
                 Category: t.category,
                 Amount: Math.abs(t.actual),
                 Type: categorizeTransaction(t),
-                Wallet: getWalletName(t.walletId)
+                Wallet: getWalletName(t.walletId),
+                'Destination Wallet': t.toWalletId ? getWalletName(t.toWalletId) : '',
+                'Linked Goal': t.goalId ? getGoalName(t.goalId) : ''
             }));
             const wsTransactions = XLSX.utils.json_to_sheet(transactionData);
             wsTransactions['!cols'] = [
-                { wch: 12 }, { wch: 10 }, { wch: 30 }, { wch: 15 }, { wch: 12 }, { wch: 12 }, { wch: 15 }
+                { wch: 12 }, { wch: 10 }, { wch: 30 }, { wch: 15 }, { wch: 12 }, { wch: 12 }, { wch: 15 }, { wch: 15 }, { wch: 20 }
             ];
             XLSX.utils.book_append_sheet(workbook, wsTransactions, 'Transactions');
         }

@@ -14,7 +14,7 @@ export function LoadingScreen({ size = 'lg', type = 'full' }: { size?: 'sm' | 'm
     };
 
     const containerClasses = type === 'full'
-        ? "min-h-screen flex items-center justify-center bg-background"
+        ? "fixed inset-0 z-[100] flex items-center justify-center bg-background"
         : "flex items-center justify-center p-8";
 
     return (
