@@ -43,6 +43,14 @@ import {
   logDataExport,
   reorderWallets
 } from "./routes/wallets";
+import {
+  getLoans,
+  createLoan,
+  updateLoan,
+  deleteLoan,
+  addLoanPayment,
+  removeLoanPayment
+} from "./routes/loans";
 
 import { connectDB } from "./db";
 
@@ -142,6 +150,14 @@ export function createServer() {
   app.get("/api/wallets/:id/audit-logs", requireAuth, getWalletAuditLogs);
   app.get("/api/audit-logs", requireAuth, getUserAuditLogs);
   app.post("/api/audit-logs/export", requireAuth, logDataExport);
+
+  // Loans API routes
+  app.get("/api/loans", requireAuth, getLoans);
+  app.post("/api/loans", requireAuth, createLoan);
+  app.put("/api/loans/:id", requireAuth, updateLoan);
+  app.delete("/api/loans/:id", requireAuth, deleteLoan);
+  app.post("/api/loans/:id/payments", requireAuth, addLoanPayment);
+  app.delete("/api/loans/:id/payments/:paymentId", requireAuth, removeLoanPayment);
 
   return app;
 }

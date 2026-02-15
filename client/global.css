@@ -35,9 +35,9 @@
     --muted-foreground: 260 20% 65%;
     /* Lighter purple text */
 
-    --accent: 48 100% 50%;
-    /* Golden accent */
-    --accent-foreground: 240 33% 12%;
+    --accent: 260 30% 35%;
+    /* Muted purple accent for hover states */
+    --accent-foreground: 220 20% 95%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;

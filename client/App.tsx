@@ -22,6 +22,7 @@ const StatisticsPage = lazy(() => import("./pages/StatisticsPage"));
 const AuditTrailPage = lazy(() => import("./pages/AuditTrailPage"));
 const ProfilePage = lazy(() => import("./pages/ProfilePage"));
 const WalletsPage = lazy(() => import("./pages/WalletsPage"));
+const LoansPage = lazy(() => import("./pages/LoansPage"));
 
 const queryClient = new QueryClient();
 
@@ -82,6 +83,14 @@ const App = () => (
                     element={
                       <ProtectedRoute>
                         <GoalsPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/loans"
+                    element={
+                      <ProtectedRoute>
+                        <LoansPage />
                       </ProtectedRoute>
                     }
                   />

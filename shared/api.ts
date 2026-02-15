@@ -110,7 +110,41 @@ export interface RecurringTransactionResponse {
   message?: string;
 }
 
-export type AuditEntityType = 'wallet' | 'goal' | 'recurring' | 'transaction' | 'profile';
+// ===== Loan Tracking =====
+
+export interface LoanPayment {
+  id: string;
+  amount: number;
+  date: string;
+  timestamp?: string;
+  walletId?: string;
+  note?: string;
+}
+
+export interface Loan {
+  id: string;
+  userId: string;
+  personName: string;
+  direction: 'given' | 'received';
+  totalAmount: number;
+  remainingAmount: number;
+  description?: string;
+  walletId?: string;
+  status: 'active' | 'settled';
+  date: string;
+  dueDate?: string;
+  payments: LoanPayment[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface LoanResponse {
+  success: boolean;
+  data?: Loan | Loan[];
+  message?: string;
+}
+
+export type AuditEntityType = 'wallet' | 'goal' | 'recurring' | 'transaction' | 'profile' | 'loan';
 
 export type AuditChangeType =
   // Wallet changes
@@ -132,6 +166,13 @@ export type AuditChangeType =
   | 'transaction_created'
   | 'transaction_updated'
   | 'transaction_deleted'
+  // Loan changes
+  | 'loan_created'
+  | 'loan_updated'
+  | 'loan_settled'
+  | 'loan_deleted'
+  | 'loan_payment_added'
+  | 'loan_payment_removed'
   // Profile changes
   | 'password_changed'
   | 'data_exported';

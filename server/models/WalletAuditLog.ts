@@ -3,7 +3,7 @@ import mongoose, { Schema, Document } from "mongoose";
 export interface IAuditLog extends Document {
     _id: mongoose.Types.ObjectId;
     userId: string;
-    entityType: 'wallet' | 'goal' | 'recurring' | 'transaction';
+    entityType: 'wallet' | 'goal' | 'recurring' | 'transaction' | 'loan';
     entityId: string;
     entityName: string;
     changeType:
@@ -23,6 +23,12 @@ export interface IAuditLog extends Document {
     | 'transaction_created'
     | 'transaction_updated'
     | 'transaction_deleted'
+    | 'loan_created'
+    | 'loan_updated'
+    | 'loan_settled'
+    | 'loan_deleted'
+    | 'loan_payment_added'
+    | 'loan_payment_removed'
     | 'password_changed'
     | 'data_exported';
     previousBalance?: number;
@@ -38,7 +44,7 @@ const AuditLogSchema = new Schema<IAuditLog>(
         userId: { type: String, required: true, index: true },
         entityType: {
             type: String,
-            enum: ['wallet', 'goal', 'recurring', 'transaction', 'profile'],
+            enum: ['wallet', 'goal', 'recurring', 'transaction', 'profile', 'loan'],
             required: true
         },
         entityId: { type: String, required: true, index: true },
@@ -62,6 +68,12 @@ const AuditLogSchema = new Schema<IAuditLog>(
                 'transaction_created',
                 'transaction_updated',
                 'transaction_deleted',
+                'loan_created',
+                'loan_updated',
+                'loan_settled',
+                'loan_deleted',
+                'loan_payment_added',
+                'loan_payment_removed',
                 'password_changed',
                 'data_exported'
             ],

@@ -615,7 +615,7 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
                                 <div className="flex-1">
                                     <Label className="text-gray-400 text-xs font-medium mb-1.5 block">From</Label>
                                     <Select value={walletId} onValueChange={setWalletId}>
-                                        <SelectTrigger className="bg-zinc-800/70 border-zinc-700/50 rounded-lg h-10">
+                                        <SelectTrigger className="bg-zinc-800/70 border-zinc-700/50 rounded-lg h-10 [&>span]:line-clamp-none [&>span]:block [&>span]:truncate">
                                             <SelectValue placeholder="Source" />
                                         </SelectTrigger>
                                         <SelectContent className="bg-zinc-800 border-zinc-700">
@@ -651,7 +651,7 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
                                 <div className="flex-1">
                                     <Label className="text-gray-400 text-xs font-medium mb-1.5 block">To</Label>
                                     <Select value={toWalletId} onValueChange={setToWalletId}>
-                                        <SelectTrigger className="bg-zinc-800/70 border-zinc-700/50 rounded-lg h-10">
+                                        <SelectTrigger className="bg-zinc-800/70 border-zinc-700/50 rounded-lg h-10 [&>span]:line-clamp-none [&>span]:block [&>span]:truncate">
                                             <SelectValue placeholder="Target" />
                                         </SelectTrigger>
                                         <SelectContent className="bg-zinc-800 border-zinc-700">
