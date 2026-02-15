@@ -84,7 +84,7 @@ export default function LoansPage() {
     const [expandedPersons, setExpandedPersons] = useState<Set<string>>(new Set(['__all__']));
 
     // Filter states
-    const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'settled'>('active');
+    const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'settled'>('all');
     const [directionFilter, setDirectionFilter] = useState<'all' | 'given' | 'received'>('all');
     const [searchQuery, setSearchQuery] = useState('');
     const [showPersonSuggestions, setShowPersonSuggestions] = useState(false);
@@ -419,7 +419,7 @@ export default function LoansPage() {
                                         const progress = loan.totalAmount > 0 ? ((loan.totalAmount - loan.remainingAmount) / loan.totalAmount) * 100 : 0;
 
                                         return (
-                                            <div key={loan.id}>
+                                            <div key={loan.id} className={cn(loan.status === 'settled' && "opacity-50")}>
                                                 {/* Loan Row */}
                                                 <div className="px-4 py-3 flex items-center gap-3 group hover:bg-white/[0.02] transition-colors">
                                                     {/* Direction Icon */}
