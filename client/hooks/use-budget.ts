@@ -279,12 +279,14 @@ export function useBudget(selectedMonth?: string, selectedYear?: number) {
 
     return {
         budget,
+        prevBudget,
         isLoading: isLoadingCurrent,
         isLoadingYearly,
         stats: {
             ...currentStats,
             startBalance: budget?.rolloverActual || 0
         },
+        prevStats,
         trends,
         graphs: {
             income: generateGraphData('income'),

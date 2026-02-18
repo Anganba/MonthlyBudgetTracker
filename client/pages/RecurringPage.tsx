@@ -23,6 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BudgetLimitsSection } from "@/components/budget/BudgetLimitsSection";
+import { CustomCategoriesSection } from "@/components/budget/CustomCategoriesSection";
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "@/lib/categories";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
 
@@ -355,6 +356,11 @@ export default function RecurringPage() {
                 {/* Budget Limits Section */}
                 <div className="mt-4 md:mt-8">
                     <BudgetLimitsSection month={month} year={year} />
+                </div>
+
+                {/* Custom Categories Section */}
+                <div className="mt-4 md:mt-8">
+                    <CustomCategoriesSection />
                 </div>
             </div>
 

@@ -64,17 +64,36 @@ export const createLoan: RequestHandler = async (req, res) => {
             const wallet = await WalletModel.findOne({ _id: walletId, userId });
             if (!wallet) return res.status(404).json({ success: false, message: "Wallet not found" });
 
+            const previousBalance = wallet.balance;
+            let changeAmount = 0;
+
             if (direction === 'given') {
                 // Lending money: decrease wallet balance
                 if (wallet.balance < totalAmount) {
                     return res.status(400).json({ success: false, message: "Insufficient wallet balance" });
                 }
                 wallet.balance -= totalAmount;
+                changeAmount = -totalAmount;
             } else {
                 // Borrowing money: increase wallet balance
                 wallet.balance += totalAmount;
+                changeAmount = totalAmount;
             }
             await wallet.save();
+
+            // Create audit log for wallet balance change
+            await AuditLogModel.create({
+                userId,
+                entityType: 'wallet',
+                entityId: walletId,
+                entityName: wallet.name,
+                changeType: 'balance_change',
+                previousBalance,
+                newBalance: wallet.balance,
+                changeAmount,
+                reason: `Loan ${direction === 'given' ? 'Creation (Lent)' : 'Creation (Borrowed)'}: ${personName}`,
+                details: JSON.stringify({ personName, direction, totalAmount })
+            });
         }
 
         const loan = await LoanModel.create({
@@ -169,14 +188,33 @@ export const deleteLoan: RequestHandler = async (req, res) => {
         if (loan.status === 'active' && loan.walletId) {
             const wallet = await WalletModel.findOne({ _id: loan.walletId, userId });
             if (wallet) {
+                const previousBalance = wallet.balance;
+                let changeAmount = 0;
+
                 if (loan.direction === 'given') {
                     // Return remaining amount back to wallet
                     wallet.balance += loan.remainingAmount;
+                    changeAmount = loan.remainingAmount;
                 } else {
                     // Remove remaining borrowed amount from wallet
                     wallet.balance -= loan.remainingAmount;
+                    changeAmount = -loan.remainingAmount;
                 }
                 await wallet.save();
+
+                // Create audit log for wallet balance reversal
+                await AuditLogModel.create({
+                    userId,
+                    entityType: 'wallet',
+                    entityId: loan.walletId,
+                    entityName: wallet.name,
+                    changeType: 'balance_change',
+                    previousBalance,
+                    newBalance: wallet.balance,
+                    changeAmount,
+                    reason: `Loan Deletion: ${loan.personName}`,
+                    details: JSON.stringify({ loanId: id, personName: loan.personName, remainingAmount: loan.remainingAmount })
+                });
             }
         }
 
@@ -225,17 +263,36 @@ export const addLoanPayment: RequestHandler = async (req, res) => {
             const wallet = await WalletModel.findOne({ _id: walletId, userId });
             if (!wallet) return res.status(404).json({ success: false, message: "Wallet not found" });
 
+            const previousBalance = wallet.balance;
+            let changeAmount = 0;
+
             if (loan.direction === 'given') {
                 // Someone is paying us back: increase wallet
                 wallet.balance += amount;
+                changeAmount = amount;
             } else {
                 // We are paying back: decrease wallet
                 if (wallet.balance < amount) {
                     return res.status(400).json({ success: false, message: "Insufficient wallet balance for repayment" });
                 }
                 wallet.balance -= amount;
+                changeAmount = -amount;
             }
             await wallet.save();
+
+            // Create audit log for wallet balance change
+            await AuditLogModel.create({
+                userId,
+                entityType: 'wallet',
+                entityId: walletId,
+                entityName: wallet.name,
+                changeType: 'balance_change',
+                previousBalance,
+                newBalance: wallet.balance,
+                changeAmount,
+                reason: `Loan Payment: ${loan.personName}`,
+                details: JSON.stringify({ loanId: id, personName: loan.personName, amount })
+            });
         }
 
         const payment = {
@@ -297,12 +354,31 @@ export const removeLoanPayment: RequestHandler = async (req, res) => {
         if (payment.walletId) {
             const wallet = await WalletModel.findOne({ _id: payment.walletId, userId });
             if (wallet) {
+                const previousBalance = wallet.balance;
+                let changeAmount = 0;
+
                 if (loan.direction === 'given') {
                     wallet.balance -= payment.amount;
+                    changeAmount = -payment.amount;
                 } else {
                     wallet.balance += payment.amount;
+                    changeAmount = payment.amount;
                 }
                 await wallet.save();
+
+                // Create audit log for wallet balance reversal
+                await AuditLogModel.create({
+                    userId,
+                    entityType: 'wallet',
+                    entityId: payment.walletId,
+                    entityName: wallet.name,
+                    changeType: 'balance_change',
+                    previousBalance,
+                    newBalance: wallet.balance,
+                    changeAmount,
+                    reason: `Loan Payment Removed: ${loan.personName}`,
+                    details: JSON.stringify({ loanId: id, personName: loan.personName, amount: payment.amount })
+                });
             }
         }
 

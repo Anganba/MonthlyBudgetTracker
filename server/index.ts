@@ -19,6 +19,9 @@ import {
   revertGoalFulfillment,
   getFrequentCategories,
   getAllUsedCategories,
+  getRangeStats,
+  getCustomCategories,
+  saveCustomCategories,
 } from "./routes/budget";
 import {
   getGoals,
@@ -115,8 +118,11 @@ export function createServer() {
 
   // Budget API routes - Protected
   app.get("/api/budget/all", requireAuth, getAllTransactions);
+  app.get("/api/budget/range", requireAuth, getRangeStats);
   app.get("/api/budget/frequent-categories", requireAuth, getFrequentCategories);
   app.get("/api/budget/used-categories", requireAuth, getAllUsedCategories);
+  app.get("/api/budget/custom-categories", requireAuth, getCustomCategories);
+  app.put("/api/budget/custom-categories", requireAuth, saveCustomCategories);
   app.get("/api/budget", requireAuth, getBudget);
   app.get("/api/budget/year", requireAuth, getYearlyStats);
   app.get("/api/budget/month-stats", requireAuth, getMonthlyStats);

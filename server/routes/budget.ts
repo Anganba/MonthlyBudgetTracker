@@ -2,6 +2,7 @@ import { RequestHandler } from "express";
 import { BudgetMonth, Transaction, TransactionCategory } from "@shared/api";
 import { Budget, IBudget } from "../models/Budget";
 import { AuditLogModel } from "../models/WalletAuditLog";
+import { User } from "../models/User";
 
 const generateId = () => Math.random().toString(36).substring(2, 9);
 
@@ -450,6 +451,71 @@ export const updateBudget: RequestHandler = async (req, res) => {
     if (rolloverActual !== undefined) budget.rolloverActual = rolloverActual;
     if (req.body.categoryLimits !== undefined) {
       console.log('Updating category limits:', req.body.categoryLimits);
+
+      // Capture old limits for audit comparison
+      const oldLimits: Record<string, number> = {};
+      if (budget.categoryLimits) {
+        if (budget.categoryLimits instanceof Map) {
+          budget.categoryLimits.forEach((v: number, k: string) => { oldLimits[k] = v; });
+        } else if (typeof budget.categoryLimits === 'object') {
+          Object.assign(oldLimits, budget.categoryLimits);
+        }
+      }
+      const newLimits: Record<string, number> = req.body.categoryLimits || {};
+
+      // Detect changes and create audit logs
+      const allCatIds = new Set([...Object.keys(oldLimits), ...Object.keys(newLimits)]);
+      const transactions = (budget as any)?.transactions || [];
+
+      for (const catId of allCatIds) {
+        const oldVal = oldLimits[catId];
+        const newVal = newLimits[catId];
+
+        // Calculate spent for this category
+        const spent = transactions
+          .filter((t: any) => t.category === catId && t.type === 'expense')
+          .reduce((sum: number, t: any) => sum + (t.amount || 0), 0);
+
+        if (oldVal === undefined && newVal !== undefined) {
+          // Category added to budget limits
+          await AuditLogModel.create({
+            userId,
+            entityType: 'budget_limit',
+            entityId: catId,
+            entityName: catId,
+            changeType: 'limit_updated',
+            details: JSON.stringify({ action: 'added', limit: newVal === 0 ? 'Unlimited' : newVal, spent, month, year }),
+          });
+        } else if (oldVal !== undefined && newVal === undefined) {
+          // Category removed from budget limits
+          await AuditLogModel.create({
+            userId,
+            entityType: 'budget_limit',
+            entityId: catId,
+            entityName: catId,
+            changeType: 'limit_updated',
+            details: JSON.stringify({ action: 'removed', previousLimit: oldVal === 0 ? 'Unlimited' : oldVal, spent, month, year }),
+          });
+        } else if (oldVal !== newVal) {
+          // Limit amount changed
+          await AuditLogModel.create({
+            userId,
+            entityType: 'budget_limit',
+            entityId: catId,
+            entityName: catId,
+            changeType: 'limit_updated',
+            details: JSON.stringify({
+              action: 'changed',
+              previousLimit: oldVal === 0 ? 'Unlimited' : oldVal,
+              newLimit: newVal === 0 ? 'Unlimited' : newVal,
+              spent,
+              month,
+              year,
+            }),
+          });
+        }
+      }
+
       budget.categoryLimits = req.body.categoryLimits;
       budget.markModified('categoryLimits');
 
@@ -1491,3 +1557,218 @@ export const getAllUsedCategories: RequestHandler = async (req, res) => {
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
+
+// Get budget data for a date range (Deep Dive Analysis)
+export const getRangeStats: RequestHandler = async (req, res) => {
+  const userId = req.session?.user?.id;
+
+  if (!userId) {
+    return res.status(401).json({ success: false, message: "Not authenticated" });
+  }
+
+  const { startMonth, startYear, endMonth, endYear } = req.query;
+
+  if (!startMonth || !startYear || !endMonth || !endYear) {
+    return res.status(400).json({ success: false, message: "Missing date range parameters" });
+  }
+
+  try {
+    const monthNames = ["January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
+    ];
+
+    const sYear = parseInt(startYear as string);
+    const eYear = parseInt(endYear as string);
+    const sMonthIdx = monthNames.indexOf(startMonth as string);
+    const eMonthIdx = monthNames.indexOf(endMonth as string);
+
+    if (sMonthIdx === -1 || eMonthIdx === -1) {
+      return res.status(400).json({ success: false, message: "Invalid month name" });
+    }
+
+    // Build list of month/year pairs in range
+    const monthYearPairs: { month: string; year: number }[] = [];
+    let curYear = sYear;
+    let curMonthIdx = sMonthIdx;
+
+    while (curYear < eYear || (curYear === eYear && curMonthIdx <= eMonthIdx)) {
+      monthYearPairs.push({ month: monthNames[curMonthIdx], year: curYear });
+      curMonthIdx++;
+      if (curMonthIdx > 11) {
+        curMonthIdx = 0;
+        curYear++;
+      }
+    }
+
+    // Query all matching budgets
+    const orConditions = monthYearPairs.map(p => ({ month: p.month, year: p.year, userId }));
+    const budgets = await Budget.find({ $or: orConditions }).lean();
+
+    // Build response
+    const months: any[] = [];
+    const allTransactions: any[] = [];
+
+    for (const pair of monthYearPairs) {
+      const budget = budgets.find(b => b.month === pair.month && b.year === pair.year);
+
+      const monthData: any = {
+        month: pair.month,
+        year: pair.year,
+        categoryLimits: {},
+        transactionCount: 0,
+      };
+
+      if (budget) {
+        // Handle categoryLimits (could be Map or object)
+        if (budget.categoryLimits) {
+          if (budget.categoryLimits instanceof Map) {
+            budget.categoryLimits.forEach((v: number, k: string) => {
+              monthData.categoryLimits[k] = v;
+            });
+          } else if (typeof budget.categoryLimits === 'object') {
+            monthData.categoryLimits = Object.assign({}, budget.categoryLimits as any);
+          }
+        }
+
+        // Flatten transactions with month/year metadata
+        if (budget.transactions) {
+          for (const t of budget.transactions) {
+            allTransactions.push({
+              ...(t as any),
+              _month: pair.month,
+              _year: pair.year,
+            });
+          }
+          monthData.transactionCount = budget.transactions.length;
+        }
+      }
+
+      months.push(monthData);
+    }
+
+    res.json({
+      success: true,
+      data: {
+        months,
+        transactions: allTransactions,
+        range: {
+          startMonth: startMonth as string,
+          startYear: sYear,
+          endMonth: endMonth as string,
+          endYear: eYear,
+        }
+      }
+    });
+  } catch (error) {
+    console.error("Error fetching range stats:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+// ===== Custom Categories =====
+
+export const getCustomCategories: RequestHandler = async (req, res) => {
+  try {
+    const userId = (req.session as any).user?.id;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Not authenticated" });
+    }
+    const user = await User.findById(userId).select('customCategories');
+    res.json({ success: true, data: user?.customCategories || [] });
+  } catch (error) {
+    console.error("Error fetching custom categories:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+export const saveCustomCategories: RequestHandler = async (req, res) => {
+  try {
+    const userId = (req.session as any).user?.id;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Not authenticated" });
+    }
+    const { categories } = req.body;
+
+
+    if (!Array.isArray(categories)) {
+      res.status(400).json({ success: false, message: "categories must be an array" });
+      return;
+    }
+
+    // Validate each category
+    for (const cat of categories) {
+      if (!cat.id || !cat.label || !cat.type) {
+        res.status(400).json({ success: false, message: "Each category must have id, label, and type" });
+        return;
+      }
+      if (!['expense', 'income'].includes(cat.type)) {
+        res.status(400).json({ success: false, message: "Category type must be 'expense' or 'income'" });
+        return;
+      }
+    }
+
+    // Get old categories for audit comparison
+    const user = await User.findById(userId).select('customCategories');
+    const oldCategories: any[] = user?.customCategories || [];
+    const oldIds = new Set(oldCategories.map((c: any) => c.id));
+    const newIds = new Set(categories.map((c: any) => c.id));
+
+    // Detect added categories
+    const added = categories.filter((c: any) => !oldIds.has(c.id));
+    // Detect deleted categories
+    const deleted = oldCategories.filter((c: any) => !newIds.has(c.id));
+
+    await User.findByIdAndUpdate(userId, { customCategories: categories });
+
+    // Create audit logs for additions
+    for (const cat of added) {
+      await AuditLogModel.create({
+        userId,
+        entityType: 'category',
+        entityId: cat.id,
+        entityName: cat.label,
+        changeType: 'category_created',
+        details: JSON.stringify({ type: cat.type, icon: cat.icon || 'CircleDollarSign' })
+      });
+    }
+
+    // Create audit logs for deletions (include budget limit & spent info)
+    if (deleted.length > 0) {
+      // Get current month's budget to include limit/spent data
+      const now = new Date();
+      const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+      const currentMonth = months[now.getMonth()];
+      const currentYear = now.getFullYear();
+      const currentBudget = await Budget.findOne({ userId, month: currentMonth, year: currentYear });
+      const categoryLimits = (currentBudget?.categoryLimits as unknown as Record<string, number>) || {};
+      const transactions = (currentBudget as any)?.transactions || [];
+
+      for (const cat of deleted) {
+        const limit = categoryLimits[cat.id];
+        const spent = transactions
+          .filter((t: any) => t.category === cat.id && t.type === 'expense')
+          .reduce((sum: number, t: any) => sum + (t.amount || 0), 0);
+
+        await AuditLogModel.create({
+          userId,
+          entityType: 'category',
+          entityId: cat.id,
+          entityName: cat.label,
+          changeType: 'category_deleted',
+          details: JSON.stringify({
+            type: cat.type,
+            icon: cat.icon || 'CircleDollarSign',
+            limit: limit !== undefined ? limit : 'None',
+            spent: spent,
+          })
+        });
+      }
+    }
+
+    res.json({ success: true, data: categories });
+  } catch (error) {
+    console.error("Error saving custom categories:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+

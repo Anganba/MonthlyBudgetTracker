@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
     Dialog,
     DialogContent,
@@ -14,8 +14,10 @@ import {
     TabsList,
     TabsTrigger,
 } from "@/components/ui/tabs";
-import { ArrowLeftRight, ArrowDown, Receipt, TrendingUp, ArrowRightLeft, Clock, Loader2 } from "lucide-react";
+import { ArrowLeftRight, ArrowDown, Receipt, TrendingUp, ArrowRightLeft, Clock, Loader2, Plus, Check } from "lucide-react";
 import { GoalDeductionSelector, GoalDeduction } from './GoalDeductionSelector';
+import { useCategories, CustomCategory } from '@/hooks/use-categories';
+import { ICON_PICKER_OPTIONS, getIconByName } from '@/lib/category-icons';
 
 import {
     Select,
@@ -33,7 +35,7 @@ import { Button } from '@/components/ui/button';
 import { useGoals } from '@/hooks/use-goals';
 import { useWallets } from '@/hooks/use-wallets';
 import { cn } from "@/lib/utils";
-import { TRANSACTION_CATEGORIES } from "@/lib/categories";
+import { TRANSACTION_CATEGORIES, EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "@/lib/categories";
 import { useToast } from "@/components/ui/use-toast";
 
 // Frequent categories tracking - now fetched from server
@@ -82,6 +84,12 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
     const { goals } = useGoals();
     const { wallets } = useWallets();
     const { toast } = useToast();
+    const { allCategories, customCategories, addCategory } = useCategories();
+
+    // New category creation state
+    const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+    const [newCatName, setNewCatName] = useState('');
+    const [newCatIcon, setNewCatIcon] = useState('CircleDollarSign');
 
     // Fetch frequent categories from server (calculated from transaction history)
     const { data: frequentCategoriesData = {} } = useQuery<CategoryUsage>({
@@ -168,11 +176,37 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
         }
     }, [open, mode, wallets, walletId]);
 
-    const filteredCategories = TRANSACTION_CATEGORIES.filter(cat => {
+    // Refresh categories when dialog opens
+    const queryClient = useQueryClient();
+    useEffect(() => {
+        if (open) {
+            queryClient.invalidateQueries({ queryKey: ['custom-categories'] });
+        }
+    }, [open, queryClient]);
+
+    const filteredCategories = allCategories.filter(cat => {
         if (type === 'income') return cat.type === 'income';
         if (type === 'expense') return cat.type === 'expense';
         return true;
     });
+
+    const handleCreateCategory = () => {
+        if (!newCatName.trim()) return;
+        const catId = newCatName.trim();
+        const newCat: CustomCategory = {
+            id: catId,
+            label: catId,
+            type: type === 'income' ? 'income' : 'expense',
+            icon: newCatIcon,
+        };
+        const success = addCategory(newCat);
+        if (success) {
+            setCategory(catId);
+            setNewCatName('');
+            setNewCatIcon('CircleDollarSign');
+            setIsCreatingCategory(false);
+        }
+    };
 
     // Get frequent categories sorted by usage count (from server data)
     const { frequentCats, remainingCats } = useMemo(() => {
@@ -551,40 +585,113 @@ export function TransactionDialog({ open, onOpenChange, onSubmit, initialData, m
                         <div className="grid grid-cols-2 gap-3">
                             <div>
                                 <Label className="text-gray-400 text-xs font-medium mb-1.5 block">Category</Label>
-                                <Select value={category} onValueChange={setCategory}>
-                                    <SelectTrigger className="bg-zinc-800/50 border-zinc-700/50 rounded-lg h-10">
-                                        <SelectValue placeholder="Select" />
-                                    </SelectTrigger>
-                                    <SelectContent className="bg-zinc-800 border-zinc-700 max-h-[260px]">
-                                        {frequentCats.length > 0 && (
-                                            <>
-                                                <SelectGroup>
-                                                    <SelectLabel className="text-xs text-gray-500 flex items-center gap-1.5">
-                                                        <Clock className="h-3 w-3" />
-                                                        Frequent
-                                                    </SelectLabel>
-                                                    {frequentCats.map((cat) => (
-                                                        <SelectItem key={`freq-${cat.id}`} value={cat.id}>
-                                                            {cat.label}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectGroup>
-                                                <SelectSeparator className="bg-white/10" />
-                                                <SelectGroup>
-                                                    <SelectLabel className="text-xs text-gray-500">All</SelectLabel>
-                                                    {remainingCats.map((cat) => (
-                                                        <SelectItem key={cat.id} value={cat.id}>{cat.label}</SelectItem>
-                                                    ))}
-                                                </SelectGroup>
-                                            </>
-                                        )}
-                                        {frequentCats.length === 0 && (
-                                            remainingCats.concat(frequentCats).sort((a, b) => a.label.localeCompare(b.label)).map((cat) => (
-                                                <SelectItem key={cat.id} value={cat.id}>{cat.label}</SelectItem>
-                                            ))
-                                        )}
-                                    </SelectContent>
-                                </Select>
+                                {!isCreatingCategory ? (
+                                    <Select value={category} onValueChange={(val) => {
+                                        if (val === '__new__') {
+                                            setIsCreatingCategory(true);
+                                        } else {
+                                            setCategory(val);
+                                        }
+                                    }}>
+                                        <SelectTrigger className="bg-zinc-800/50 border-zinc-700/50 rounded-lg h-10">
+                                            <SelectValue placeholder="Select" />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-zinc-800 border-zinc-700 max-h-[260px]">
+                                            <SelectItem value="__new__" className="text-emerald-400 font-medium">
+                                                <span className="flex items-center gap-1.5">
+                                                    <Plus className="h-3 w-3" />
+                                                    New Category
+                                                </span>
+                                            </SelectItem>
+                                            <SelectSeparator className="bg-white/10" />
+                                            {frequentCats.length > 0 && (
+                                                <>
+                                                    <SelectGroup>
+                                                        <SelectLabel className="text-xs text-gray-500 flex items-center gap-1.5">
+                                                            <Clock className="h-3 w-3" />
+                                                            Frequent
+                                                        </SelectLabel>
+                                                        {frequentCats.map((cat) => (
+                                                            <SelectItem key={`freq-${cat.id}`} value={cat.id}>
+                                                                {cat.label}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectGroup>
+                                                    <SelectSeparator className="bg-white/10" />
+                                                    <SelectGroup>
+                                                        <SelectLabel className="text-xs text-gray-500">All</SelectLabel>
+                                                        {remainingCats.map((cat) => (
+                                                            <SelectItem key={cat.id} value={cat.id}>{cat.label}</SelectItem>
+                                                        ))}
+                                                    </SelectGroup>
+                                                </>
+                                            )}
+                                            {frequentCats.length === 0 && (
+                                                remainingCats.concat(frequentCats).sort((a, b) => a.label.localeCompare(b.label)).map((cat) => (
+                                                    <SelectItem key={cat.id} value={cat.id}>{cat.label}</SelectItem>
+                                                ))
+                                            )}
+                                        </SelectContent>
+                                    </Select>
+                                ) : (
+                                    /* Inline New Category Creation */
+                                    <div className="space-y-2 p-3 rounded-xl bg-zinc-800/80 border border-white/10 animate-in fade-in slide-in-from-top-1 duration-200">
+                                        <Input
+                                            value={newCatName}
+                                            onChange={(e) => setNewCatName(e.target.value)}
+                                            placeholder="Category name"
+                                            autoFocus
+                                            className="bg-zinc-900/50 border-zinc-700/50 rounded-lg h-9 text-sm"
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') { e.preventDefault(); handleCreateCategory(); }
+                                                if (e.key === 'Escape') setIsCreatingCategory(false);
+                                            }}
+                                        />
+                                        {/* Icon Picker */}
+                                        <div>
+                                            <span className="text-[10px] text-gray-500 uppercase tracking-wider">Icon</span>
+                                            <div className="grid grid-cols-8 gap-1 mt-1 max-h-[100px] overflow-y-auto pr-1">
+                                                {ICON_PICKER_OPTIONS.map(({ name, icon: IconComp }) => (
+                                                    <button
+                                                        key={name}
+                                                        type="button"
+                                                        onClick={() => setNewCatIcon(name)}
+                                                        className={cn(
+                                                            "p-1.5 rounded-lg transition-all",
+                                                            newCatIcon === name
+                                                                ? "bg-emerald-500/30 border border-emerald-500/50 text-emerald-400 scale-110"
+                                                                : "bg-white/5 border border-transparent text-gray-500 hover:text-white hover:bg-white/10"
+                                                        )}
+                                                    >
+                                                        <IconComp className="h-3.5 w-3.5" />
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        {/* Actions */}
+                                        <div className="flex gap-1.5">
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => { setIsCreatingCategory(false); setNewCatName(''); setNewCatIcon('CircleDollarSign'); }}
+                                                className="flex-1 h-7 text-xs text-gray-400 hover:text-white"
+                                            >
+                                                Cancel
+                                            </Button>
+                                            <Button
+                                                type="button"
+                                                size="sm"
+                                                onClick={handleCreateCategory}
+                                                disabled={!newCatName.trim()}
+                                                className="flex-1 h-7 text-xs bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 border border-emerald-500/30 disabled:opacity-50"
+                                            >
+                                                <Check className="h-3 w-3 mr-1" />
+                                                Add
+                                            </Button>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                             <div>
                                 <Label className="text-gray-400 text-xs font-medium mb-1.5 block">

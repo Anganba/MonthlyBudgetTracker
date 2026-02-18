@@ -13,7 +13,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/components/ui/use-toast';
 import { useWallets } from '@/hooks/use-wallets';
 import { useGoals } from '@/hooks/use-goals';
-import { Download, FileSpreadsheet, FileText, FileJson, Calendar, Loader2, CheckCircle2, Package, Target, Repeat } from 'lucide-react';
+import { useLoans } from '@/hooks/use-loans';
+import { Download, FileSpreadsheet, FileText, FileJson, Calendar, Loader2, CheckCircle2, Package, Target, Repeat, Banknote } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 interface ExportDialogProps {
@@ -42,12 +43,14 @@ export function ExportDialog({ open, onOpenChange }: ExportDialogProps) {
     const { toast } = useToast();
     const { wallets } = useWallets();
     const { goals } = useGoals();
+    const { loans } = useLoans();
 
     const [format, setFormat] = useState<ExportFormat>('excel');
     const [dateRange, setDateRange] = useState<DateRange>('all');
     const [includeTransactions, setIncludeTransactions] = useState(true);
     const [includeWallets, setIncludeWallets] = useState(false);
     const [includeGoals, setIncludeGoals] = useState(false);
+    const [includeLoans, setIncludeLoans] = useState(false);
     const [includeRecurring, setIncludeRecurring] = useState(false);
     const [includeSummary, setIncludeSummary] = useState(false);
 
@@ -237,6 +240,27 @@ export function ExportDialog({ open, onOpenChange }: ExportDialogProps) {
             sections.push('RECURRING RULES\n' + headers.join(',') + '\n' + rows.map(row => row.map(escapeCsvField).join(',')).join('\n'));
         }
 
+        // Loans CSV
+        if (includeLoans && loans && loans.length > 0) {
+            const headers = ['Person', 'Type', 'Amount', 'Paid', 'Remaining', 'Description', 'Due Date', 'Status'];
+            const rows = loans.map(l => {
+                const paidAmount = l.payments?.reduce((sum, p) => sum + p.amount, 0) || 0;
+                const remaining = l.totalAmount - paidAmount;
+                const status = remaining <= 0 ? 'Completed' : 'Active';
+                return [
+                    l.personName,
+                    l.direction === 'given' ? 'Lent' : 'Borrowed',
+                    l.totalAmount.toString(),
+                    paidAmount.toString(),
+                    remaining.toString(),
+                    l.description || '',
+                    l.dueDate ? new Date(l.dueDate).toLocaleDateString() : '',
+                    status
+                ];
+            });
+            sections.push('LOANS\n' + headers.join(',') + '\n' + rows.map(row => row.map(escapeCsvField).join(',')).join('\n'));
+        }
+
         return sections.join('\n\n');
     };
 
@@ -315,6 +339,29 @@ export function ExportDialog({ open, onOpenChange }: ExportDialogProps) {
                 { wch: 20 }, { wch: 12 }, { wch: 10 }, { wch: 10 }, { wch: 15 }, { wch: 15 }, { wch: 8 }, { wch: 15 }
             ];
             XLSX.utils.book_append_sheet(workbook, wsRecurring, 'Recurring Rules');
+        }
+
+        // Loans Sheet
+        if (includeLoans && loans && loans.length > 0) {
+            const loanData = loans.map(l => {
+                const paidAmount = l.payments?.reduce((sum, p) => sum + p.amount, 0) || 0;
+                const remaining = l.totalAmount - paidAmount;
+                return {
+                    Person: l.personName,
+                    Type: l.direction === 'given' ? 'Lent' : 'Borrowed',
+                    Amount: l.totalAmount,
+                    Paid: paidAmount,
+                    Remaining: remaining,
+                    Description: l.description || '',
+                    'Due Date': l.dueDate ? new Date(l.dueDate).toLocaleDateString() : '',
+                    Status: remaining <= 0 ? 'Completed' : 'Active'
+                };
+            });
+            const wsLoans = XLSX.utils.json_to_sheet(loanData);
+            wsLoans['!cols'] = [
+                { wch: 20 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 30 }, { wch: 15 }, { wch: 10 }
+            ];
+            XLSX.utils.book_append_sheet(workbook, wsLoans, 'Loans');
         }
 
         // Summary Sheet
@@ -402,6 +449,22 @@ export function ExportDialog({ open, onOpenChange }: ExportDialogProps) {
             }));
         }
 
+        if (includeLoans) {
+            data.loans = loans?.map(l => {
+                const paidAmount = l.payments?.reduce((sum, p) => sum + p.amount, 0) || 0;
+                return {
+                    personName: l.personName,
+                    direction: l.direction,
+                    totalAmount: l.totalAmount,
+                    paidAmount,
+                    remainingAmount: l.totalAmount - paidAmount,
+                    description: l.description,
+                    dueDate: l.dueDate,
+                    payments: l.payments
+                };
+            }) || [];
+        }
+
         if (includeSummary) {
             const totalIncome = transactions.filter(t => categorizeTransaction(t) === 'Income').reduce((sum, t) => sum + Math.abs(t.actual), 0);
             const totalExpenses = transactions.filter(t => categorizeTransaction(t) === 'Expense').reduce((sum, t) => sum + Math.abs(t.actual), 0);
@@ -420,7 +483,7 @@ export function ExportDialog({ open, onOpenChange }: ExportDialogProps) {
     };
 
     const handleExport = async () => {
-        if (!includeTransactions && !includeWallets && !includeSummary && !includeGoals && !includeRecurring) {
+        if (!includeTransactions && !includeWallets && !includeSummary && !includeGoals && !includeRecurring && !includeLoans) {
             toast({
                 title: "Nothing to Export",
                 description: "Please select at least one data type to export.",
@@ -474,6 +537,7 @@ export function ExportDialog({ open, onOpenChange }: ExportDialogProps) {
             if (includeTransactions) includedDataTypes.push('transactions');
             if (includeWallets) includedDataTypes.push('wallets');
             if (includeGoals) includedDataTypes.push('goals');
+            if (includeLoans) includedDataTypes.push('loans');
             if (includeRecurring) includedDataTypes.push('recurring');
             if (includeSummary) includedDataTypes.push('summary');
 
@@ -639,6 +703,24 @@ export function ExportDialog({ open, onOpenChange }: ExportDialogProps) {
 
                             <label className="flex items-center gap-2.5 p-2.5 rounded-lg bg-zinc-800/30 border border-zinc-700/30 cursor-pointer hover:bg-zinc-800/50 transition-colors">
                                 <Checkbox
+                                    checked={includeLoans}
+                                    onCheckedChange={(checked) => setIncludeLoans(checked as boolean)}
+                                    className="border-zinc-600 data-[state=checked]:bg-orange-500 data-[state=checked]:border-orange-500 h-4 w-4"
+                                />
+                                <div className="flex-1 min-w-0 flex items-center gap-1.5">
+                                    <div>
+                                        <p className="text-sm text-white font-medium">Loans</p>
+                                        <p className="text-[10px] text-gray-500">Active loans & history</p>
+                                    </div>
+                                    <Banknote className="h-3.5 w-3.5 text-gray-500" />
+                                </div>
+                                <span className="text-[10px] text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded-full font-medium">
+                                    {loans?.length || 0}
+                                </span>
+                            </label>
+
+                            <label className="flex items-center gap-2.5 p-2.5 rounded-lg bg-zinc-800/30 border border-zinc-700/30 cursor-pointer hover:bg-zinc-800/50 transition-colors">
+                                <Checkbox
                                     checked={includeRecurring}
                                     onCheckedChange={(checked) => setIncludeRecurring(checked as boolean)}
                                     className="border-zinc-600 data-[state=checked]:bg-orange-500 data-[state=checked]:border-orange-500 h-4 w-4"
@@ -700,6 +782,6 @@ export function ExportDialog({ open, onOpenChange }: ExportDialogProps) {
                     </DialogFooter>
                 </div>
             </DialogContent>
-        </Dialog>
+        </Dialog >
     );
 }

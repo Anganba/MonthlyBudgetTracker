@@ -4,9 +4,10 @@ import { AuditLog } from '@shared/api';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, ArrowUpDown, History, Wallet, Target, Repeat, Receipt, Clock, ChevronLeft, ChevronRight, Calendar, User } from "lucide-react";
+import { Search, ArrowUpDown, History, Wallet, Target, Repeat, Receipt, Clock, ChevronLeft, ChevronRight, Calendar, User, Info, Tags, PieChart } from "lucide-react";
 import { format, addMonths, subMonths } from 'date-fns';
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const MONTHS = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -98,6 +99,8 @@ export function AuditTrailPage() {
             case 'recurring': return Repeat;
             case 'transaction': return Receipt;
             case 'profile': return User;
+            case 'category': return Tags;
+            case 'budget_limit': return PieChart;
             default: return History;
         }
     };
@@ -109,6 +112,8 @@ export function AuditTrailPage() {
             case 'recurring': return { color: 'text-cyan-400', bg: 'bg-cyan-500/20' };
             case 'transaction': return { color: 'text-amber-400', bg: 'bg-amber-500/20' };
             case 'profile': return { color: 'text-pink-400', bg: 'bg-pink-500/20' };
+            case 'category': return { color: 'text-rose-400', bg: 'bg-rose-500/20' };
+            case 'budget_limit': return { color: 'text-orange-400', bg: 'bg-orange-500/20' };
             default: return { color: 'text-gray-400', bg: 'bg-gray-500/20' };
         }
     };
@@ -176,6 +181,39 @@ export function AuditTrailPage() {
                 if (parsed.frequency) parts.push(`${parsed.frequency}`);
                 if (parsed.amount) parts.push(`$${parsed.amount}`);
                 if (parsed.type) parts.push(parsed.type);
+                return parts.length > 0 ? parts.join(' • ') : log.details;
+            }
+
+            if (log.entityType === 'budget_limit') {
+                const parts: string[] = [];
+                if (parsed.month && parsed.year) parts.push(`${parsed.month} ${parsed.year}`);
+
+                if (parsed.action === 'added') {
+                    parts.push(`Set to ${parsed.limit === 'Unlimited' ? 'Unlimited' : '$' + Number(parsed.limit).toLocaleString()}`);
+                } else if (parsed.action === 'removed') {
+                    parts.push(`Removed (was ${parsed.previousLimit === 'Unlimited' ? 'Unlimited' : '$' + Number(parsed.previousLimit).toLocaleString()})`);
+                } else if (parsed.action === 'changed') {
+                    const prev = parsed.previousLimit === 'Unlimited' ? 'Unlimited' : '$' + Number(parsed.previousLimit).toLocaleString();
+                    const next = parsed.newLimit === 'Unlimited' ? 'Unlimited' : '$' + Number(parsed.newLimit).toLocaleString();
+                    parts.push(`${prev} → ${next}`);
+                }
+
+                if (parsed.spent !== undefined) {
+                    parts.push(`Spent: $${Number(parsed.spent).toLocaleString()}`);
+                }
+
+                return parts.length > 0 ? parts.join(' • ') : log.details;
+            }
+
+            if (log.entityType === 'category') {
+                const parts: string[] = [];
+                if (parsed.type) parts.push(`Type: ${parsed.type.charAt(0).toUpperCase() + parsed.type.slice(1)}`);
+                if (parsed.icon) parts.push(`Icon: ${parsed.icon}`);
+                if (log.changeType === 'category_deleted') {
+                    if (parsed.limit !== undefined && parsed.limit !== 'None') parts.push(`Limit: $${Number(parsed.limit).toLocaleString()}`);
+                    else if (parsed.limit === 'None' || parsed.limit === undefined) parts.push('Limit: Unlimited');
+                    if (parsed.spent !== undefined) parts.push(`Spent: $${Number(parsed.spent).toLocaleString()}`);
+                }
                 return parts.length > 0 ? parts.join(' • ') : log.details;
             }
 
@@ -328,7 +366,19 @@ export function AuditTrailPage() {
                                 <History className="h-6 w-6 text-cyan-400" />
                             </div>
                             <div>
-                                <p className="text-sm text-cyan-300/70">Total Activities</p>
+                                <div className="flex items-center gap-1.5">
+                                    <p className="text-sm text-cyan-300/70">Total Activities</p>
+                                    <TooltipProvider>
+                                        <Tooltip delayDuration={300}>
+                                            <TooltipTrigger>
+                                                <Info className="h-3.5 w-3.5 text-cyan-300/50 hover:text-cyan-300 transition-colors" />
+                                            </TooltipTrigger>
+                                            <TooltipContent className="bg-zinc-900 border-cyan-500/30 text-cyan-100 max-w-[250px]">
+                                                <p>Total number of actions (Create, Update, Delete) recorded in this month.</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
+                                </div>
                                 <p className="text-2xl font-bold text-white">{monthStats.total}</p>
                             </div>
                         </div>
@@ -339,7 +389,19 @@ export function AuditTrailPage() {
                                 <Receipt className="h-6 w-6 text-green-400" />
                             </div>
                             <div>
-                                <p className="text-sm text-green-300/70">Transaction Events</p>
+                                <div className="flex items-center gap-1.5">
+                                    <p className="text-sm text-green-300/70">Transaction Events</p>
+                                    <TooltipProvider>
+                                        <Tooltip delayDuration={300}>
+                                            <TooltipTrigger>
+                                                <Info className="h-3.5 w-3.5 text-green-300/50 hover:text-green-300 transition-colors" />
+                                            </TooltipTrigger>
+                                            <TooltipContent className="bg-zinc-900 border-green-500/30 text-green-100 max-w-[250px]">
+                                                <p>Counts all transaction-related actions (Create, Change, Delete) performed in this month.</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
+                                </div>
                                 <p className="text-2xl font-bold text-green-400">{monthStats.transactions}</p>
                             </div>
                         </div>
@@ -350,7 +412,19 @@ export function AuditTrailPage() {
                                 <Wallet className="h-6 w-6 text-blue-400" />
                             </div>
                             <div>
-                                <p className="text-sm text-blue-300/70">Wallet Events</p>
+                                <div className="flex items-center gap-1.5">
+                                    <p className="text-sm text-blue-300/70">Wallet Events</p>
+                                    <TooltipProvider>
+                                        <Tooltip delayDuration={300}>
+                                            <TooltipTrigger>
+                                                <Info className="h-3.5 w-3.5 text-blue-300/50 hover:text-blue-300 transition-colors" />
+                                            </TooltipTrigger>
+                                            <TooltipContent className="bg-zinc-900 border-blue-500/30 text-blue-100 max-w-[250px]">
+                                                <p>Counts all wallet-related actions (Create, Update, Delete, Transfers).</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
+                                </div>
                                 <p className="text-2xl font-bold text-blue-400">{monthStats.wallets}</p>
                             </div>
                         </div>
@@ -361,7 +435,19 @@ export function AuditTrailPage() {
                                 <Target className="h-6 w-6 text-purple-400" />
                             </div>
                             <div>
-                                <p className="text-sm text-purple-300/70">Goal Events</p>
+                                <div className="flex items-center gap-1.5">
+                                    <p className="text-sm text-purple-300/70">Goal Events</p>
+                                    <TooltipProvider>
+                                        <Tooltip delayDuration={300}>
+                                            <TooltipTrigger>
+                                                <Info className="h-3.5 w-3.5 text-purple-300/50 hover:text-purple-300 transition-colors" />
+                                            </TooltipTrigger>
+                                            <TooltipContent className="bg-zinc-900 border-purple-500/30 text-purple-100 max-w-[250px]">
+                                                <p>Counts all goal-related actions (Create, Update, Delete).</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
+                                </div>
                                 <p className="text-2xl font-bold text-purple-400">{monthStats.goals}</p>
                             </div>
                         </div>
@@ -391,6 +477,8 @@ export function AuditTrailPage() {
                                 <SelectItem value="goal">Goals</SelectItem>
                                 <SelectItem value="recurring">Recurring</SelectItem>
                                 <SelectItem value="profile">Profile</SelectItem>
+                                <SelectItem value="category">Categories</SelectItem>
+                                <SelectItem value="budget_limit">Budget Limits</SelectItem>
                             </SelectContent>
                         </Select>
 

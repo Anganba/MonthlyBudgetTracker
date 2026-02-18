@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
     User, LogOut, Shield, Mail, Loader2, Edit,
     ChevronRight, Linkedin, Github, Briefcase, Sparkles, Crown, Key, UserCircle,
-    Zap, Heart, Download, BarChart3, Target, TrendingUp, Clock, CheckCircle
+    Zap, Heart, Download, BarChart3, Target, TrendingUp, Clock, CheckCircle, Plus, Trash2, Check
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -17,12 +17,15 @@ import { useGoals } from "@/hooks/use-goals";
 import { ExportDialog } from "@/components/budget/ExportDialog";
 import { AvatarUpload } from "@/components/ui/AvatarUpload";
 
+import { cn } from "@/lib/utils";
+
 export default function ProfilePage() {
     const { user, logout, updateProfile, updatePassword } = useAuth();
     const { toast } = useToast();
     const { stats, budget } = useBudget();
     const { wallets } = useWallets();
     const { goals } = useGoals();
+
 
     // Dialog States
     const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
@@ -213,7 +216,7 @@ export default function ProfilePage() {
                                 <BarChart3 className="h-5 w-5 text-cyan-400" />
                             </div>
                             <div>
-                                <p className="text-xs text-cyan-300/70">This Month</p>
+                                <p className="text-xs text-cyan-300/70">This Month's Expense</p>
                                 <p className="text-xl font-bold text-white">${thisMonthSpent.toLocaleString()}</p>
                             </div>
                         </div>
@@ -345,6 +348,7 @@ export default function ProfilePage() {
                         </div>
                     </div>
                 </div>
+
 
                 {/* Data Management - Full Width */}
                 <div className="rounded-2xl bg-gradient-to-br from-orange-500/10 via-zinc-900/80 to-zinc-900/50 border border-orange-500/30 p-6 space-y-4 shadow-lg shadow-orange-500/5">

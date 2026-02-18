@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useToast } from "@/components/ui/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface User {
     id: string;
@@ -37,6 +38,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // The fetch check will happen in background and redirect if actually invalid
     const [isLoading, setIsLoading] = useState(!user);
     const { toast } = useToast();
+    const queryClient = useQueryClient();
 
     useEffect(() => {
         const checkSession = async () => {
@@ -102,6 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
 
             localStorage.removeItem("user_session");
+            queryClient.clear();
             setUser(null);
         } catch (error) {
             console.error("Logout failed", error);

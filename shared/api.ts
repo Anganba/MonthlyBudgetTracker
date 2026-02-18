@@ -144,7 +144,7 @@ export interface LoanResponse {
   message?: string;
 }
 
-export type AuditEntityType = 'wallet' | 'goal' | 'recurring' | 'transaction' | 'profile' | 'loan';
+export type AuditEntityType = 'wallet' | 'goal' | 'recurring' | 'transaction' | 'profile' | 'loan' | 'category' | 'budget_limit';
 
 export type AuditChangeType =
   // Wallet changes
@@ -173,9 +173,13 @@ export type AuditChangeType =
   | 'loan_deleted'
   | 'loan_payment_added'
   | 'loan_payment_removed'
-  // Profile changes
   | 'password_changed'
-  | 'data_exported';
+  | 'data_exported'
+  // Category changes
+  | 'category_created'
+  | 'category_deleted'
+  // Budget limit changes
+  | 'limit_updated';
 
 export interface AuditLog {
   id: string;

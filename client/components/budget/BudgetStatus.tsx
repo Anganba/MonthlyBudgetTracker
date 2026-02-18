@@ -207,7 +207,7 @@ export function BudgetStatus({ currency = '$', budget, refreshBudget, showAllCat
                 ) : (
                     (() => {
                         const percent = Math.round((totalSpent / totalBudget) * 100);
-                        const isOverBudget = percent > 100;
+                        const isOverBudget = totalSpent > totalBudget;
                         const isLimitReached = percent === 100;
                         const isWarning = percent > 85 && percent < 100;
                         const progressColor = (isOverBudget || isLimitReached) ? "bg-red-500" : isWarning ? "bg-yellow-500" : "bg-primary";
@@ -313,7 +313,7 @@ export function BudgetStatus({ currency = '$', budget, refreshBudget, showAllCat
                                     <div className="grid grid-cols-2 gap-1.5 md:gap-2">
                                         {displayedCategories.map((cat) => {
                                             const catPercent = cat.total > 0 ? Math.round((cat.spent / cat.total) * 100) : 0;
-                                            const isCatOver = catPercent > 100;
+                                            const isCatOver = cat.spent > cat.total;
                                             const isCatWarning = catPercent >= 80 && catPercent <= 100;
                                             const Icon = getCategoryIcon(cat.name);
 
