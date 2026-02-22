@@ -2,10 +2,11 @@ import React, { useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/components/ui/use-toast";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Wallet, TrendingUp, PiggyBank, BarChart3, Shield, Sparkles } from "lucide-react";
+import { ArrowRight, Wallet, TrendingUp, PiggyBank, BarChart3, Shield, Sparkles, Coins, CreditCard, Banknote, CircleDollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { motion } from "framer-motion";
 
 export default function Login() {
     const [username, setUsername] = useState("");
@@ -44,8 +45,28 @@ export default function Login() {
         { icon: Shield, text: "Secure & private" },
     ];
 
+    const containerVariants = {
+        hidden: { opacity: 0 },
+        visible: {
+            opacity: 1,
+            transition: {
+                staggerChildren: 0.05,
+                delayChildren: 0.1,
+            },
+        },
+    };
+
+    const itemVariants = {
+        hidden: { opacity: 0, y: 15 },
+        visible: {
+            opacity: 1,
+            y: 0,
+            transition: { type: "spring" as const, stiffness: 350, damping: 25 },
+        },
+    };
+
     return (
-        <div className="min-h-screen w-full bg-background">
+        <div className="min-h-screen w-full bg-background overflow-hidden relative">
             {/* Desktop Layout */}
             <div className="hidden lg:grid lg:grid-cols-2 min-h-screen">
                 {/* Left Panel - Premium Branding */}
@@ -53,81 +74,188 @@ export default function Login() {
                     {/* Animated gradient background */}
                     <div className="absolute inset-0 bg-gradient-to-br from-black via-zinc-900 to-black" />
 
-                    {/* Decorative circles */}
-                    <div className="absolute top-20 -left-20 w-96 h-96 bg-primary/20 rounded-full blur-3xl animate-pulse" />
-                    <div className="absolute bottom-20 right-10 w-72 h-72 bg-primary/10 rounded-full blur-3xl animate-pulse delay-1000" />
+                    {/* Decorative moving shapes */}
+                    <motion.div
+                        animate={{
+                            scale: [1, 1.2, 1],
+                            opacity: [0.3, 0.5, 0.3],
+                            rotate: [0, 90, 0]
+                        }}
+                        transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+                        className="absolute top-20 -left-20 w-[600px] h-[600px] bg-primary/20 rounded-full blur-[100px]"
+                    />
+                    <motion.div
+                        animate={{
+                            scale: [1, 1.5, 1],
+                            opacity: [0.2, 0.4, 0.2],
+                            y: [0, -50, 0]
+                        }}
+                        transition={{ duration: 20, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+                        className="absolute bottom-20 right-10 w-[500px] h-[500px] bg-primary/10 rounded-full blur-[100px]"
+                    />
 
                     {/* Grid pattern overlay */}
-                    <div className="absolute inset-0 bg-[linear-gradient(rgba(190,242,100,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(190,242,100,0.03)_1px,transparent_1px)] bg-[size:50px_50px]" />
+                    <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:50px_50px]" />
 
-                    {/* Large decorative ring */}
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] border-2 border-primary/20 rounded-full" />
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] border border-primary/10 rounded-full" />
+                    {/* Floating Money Icons */}
+                    <motion.div
+                        animate={{ y: [0, -20, 0], rotate: [0, 10, 0] }}
+                        transition={{ duration: 12, repeat: Infinity, ease: "linear" }}
+                        className="absolute top-32 right-32 text-primary/20 pointer-events-none"
+                    >
+                        <Coins className="w-16 h-16" />
+                    </motion.div>
+                    <motion.div
+                        animate={{ y: [0, 30, 0], x: [0, 15, 0], rotate: [0, -15, 0] }}
+                        transition={{ duration: 15, repeat: Infinity, ease: "linear", delay: 1 }}
+                        className="absolute bottom-40 left-20 text-primary/20 pointer-events-none"
+                    >
+                        <CircleDollarSign className="w-20 h-20" />
+                    </motion.div>
+                    <motion.div
+                        animate={{ y: [0, -25, 0], rotate: [0, 20, 0] }}
+                        transition={{ duration: 18, repeat: Infinity, ease: "linear", delay: 2 }}
+                        className="absolute top-1/3 left-1/4 text-primary/10 pointer-events-none"
+                    >
+                        <Banknote className="w-24 h-24" />
+                    </motion.div>
+                    <motion.div
+                        animate={{ y: [0, 20, 0], x: [0, -20, 0], rotate: [0, -20, 0] }}
+                        transition={{ duration: 20, repeat: Infinity, ease: "linear", delay: 3 }}
+                        className="absolute bottom-1/4 right-1/4 text-primary/15 pointer-events-none"
+                    >
+                        <CreditCard className="w-16 h-16" />
+                    </motion.div>
+
+                    {/* Large decorative rings */}
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 1.5, ease: "easeOut" }}
+                        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] border border-primary/10 rounded-full"
+                    />
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.5 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 1.5, ease: "easeOut", delay: 0.2 }}
+                        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[450px] h-[450px] border border-primary/20 rounded-full"
+                    />
 
                     {/* Logo */}
-                    <div className="z-10">
+                    <motion.div
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.8, ease: "easeOut" }}
+                        className="z-10"
+                    >
                         <div className="flex items-center gap-3">
-                            <img src="/logo.png" alt="Amar Taka Koi" className="w-12 h-12 object-contain" />
-                            <span className="text-2xl font-bold font-serif text-white">Amar Taka Koi</span>
+                            <div className="relative">
+                                <motion.div
+                                    animate={{ rotate: 360 }}
+                                    transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                                    className="absolute inset-0 bg-primary/20 rounded-full blur-md"
+                                />
+                                <img src="/logo.png" alt="Amar Taka Koi" className="w-12 h-12 object-contain relative z-10" />
+                            </div>
+                            <span className="text-2xl font-bold font-serif text-white tracking-wide">Amar Taka Koi</span>
                         </div>
-                    </div>
+                    </motion.div>
 
                     {/* Main content */}
-                    <div className="z-10 space-y-8">
-                        <div>
-                            <h1 className="text-5xl font-bold font-serif tracking-tight text-white leading-tight mb-4">
+                    <motion.div
+                        variants={containerVariants}
+                        initial="hidden"
+                        animate="visible"
+                        className="z-10 space-y-10 mt-12"
+                    >
+                        <motion.div variants={itemVariants}>
+                            <h1 className="text-5xl lg:text-6xl font-bold font-serif tracking-tight text-white leading-[1.1] mb-6">
                                 Master Your Money,
                                 <br />
-                                <span className="text-primary">Amplify Your Future.</span>
+                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-primary/60">
+                                    Amplify Your Future.
+                                </span>
                             </h1>
-                            <p className="text-gray-400 text-lg max-w-md leading-relaxed">
+                            <p className="text-zinc-400 text-xl max-w-md leading-relaxed font-light">
                                 Take control of your finances with powerful tracking, smart goals, and beautiful insights.
                             </p>
-                        </div>
+                        </motion.div>
 
                         {/* Feature list */}
-                        <div className="grid grid-cols-2 gap-4 max-w-md">
+                        <motion.div variants={containerVariants} className="grid grid-cols-2 gap-5 max-w-lg">
                             {features.map((feature, index) => (
-                                <div
-                                    key={index}
-                                    className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/10 backdrop-blur-sm"
-                                >
-                                    <div className="p-2 rounded-lg bg-primary/20">
-                                        <feature.icon className="w-4 h-4 text-primary" />
+                                <motion.div key={index} variants={itemVariants}>
+                                    <div className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md shadow-xl transition-all duration-150 ease-out hover:-translate-y-1 hover:scale-[1.02] hover:bg-white/10 hover:shadow-2xl hover:border-white/20">
+                                        <div className="p-2.5 rounded-xl bg-primary/20 text-primary transition-transform group-hover:scale-110">
+                                            <feature.icon className="w-5 h-5" />
+                                        </div>
+                                        <span className="text-sm font-medium text-zinc-200">{feature.text}</span>
                                     </div>
-                                    <span className="text-sm text-gray-300">{feature.text}</span>
-                                </div>
+                                </motion.div>
                             ))}
-                        </div>
-                    </div>
+                        </motion.div>
+                    </motion.div>
 
                     {/* Footer */}
-                    <div className="z-10 flex items-center gap-2 text-sm text-gray-500">
-                        <Sparkles className="w-4 h-4 text-primary" />
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 1, duration: 1 }}
+                        className="z-10 flex items-center gap-2 text-sm text-zinc-500 font-medium"
+                    >
+                        <Sparkles className="w-4 h-4 text-primary animate-pulse" />
                         <span>&copy; {new Date().getFullYear()} Anganba Singha</span>
-                    </div>
+                    </motion.div>
                 </div>
 
                 {/* Right Panel - Login Form */}
-                <div className="flex items-center justify-center p-8 bg-zinc-950 relative">
-                    {/* Subtle glow */}
-                    <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
+                <div className="flex items-center justify-center p-8 bg-zinc-950 relative overflow-hidden">
+                    {/* Subtle glow behind form */}
+                    <motion.div
+                        animate={{
+                            opacity: [0.1, 0.15, 0.1],
+                            scale: [1, 1.1, 1]
+                        }}
+                        transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+                        className="absolute top-1/2 right-0 -translate-y-1/2 w-[800px] h-[800px] bg-primary/5 rounded-full blur-[120px] pointer-events-none"
+                    />
 
-                    <div className="mx-auto w-full max-w-[400px] space-y-8 relative z-10">
+                    <motion.div
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ type: "spring", stiffness: 300, damping: 30, delay: 0.1 }}
+                        className="mx-auto w-full max-w-[420px] space-y-8 relative z-10"
+                    >
                         {/* Header */}
-                        <div className="text-left space-y-2">
-                            <h1 className="text-3xl font-bold font-serif tracking-tight text-white">
-                                Welcome back
-                            </h1>
-                            <p className="text-gray-400">
+                        <div className="text-left space-y-3">
+                            <motion.h2
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.15 }}
+                                className="text-4xl font-bold font-serif tracking-tight text-white inline-flex items-center gap-3"
+                            >
+                                Welcome
+                            </motion.h2>
+                            <motion.p
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ delay: 0.2 }}
+                                className="text-zinc-400 text-lg"
+                            >
                                 Enter your credentials to access your account
-                            </p>
+                            </motion.p>
                         </div>
 
                         {/* Form */}
-                        <form onSubmit={handleSubmit} className="space-y-5">
-                            <div className="space-y-2">
-                                <Label htmlFor="username" className="text-gray-300">Username</Label>
+                        <motion.form
+                            initial={{ opacity: 0, y: 15 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.25, type: "spring", stiffness: 350, damping: 25 }}
+                            onSubmit={handleSubmit}
+                            className="space-y-6 bg-zinc-900/40 p-8 rounded-3xl border border-white/5 backdrop-blur-xl shadow-2xl"
+                        >
+                            <div className="space-y-2.5">
+                                <Label htmlFor="username" className="text-zinc-300 font-medium ml-1">Username</Label>
                                 <Input
                                     id="username"
                                     type="text"
@@ -135,11 +263,11 @@ export default function Login() {
                                     value={username}
                                     onChange={(e) => setUsername(e.target.value)}
                                     required
-                                    className="h-12 bg-zinc-900 border-zinc-800 focus:border-primary focus:ring-primary/20 placeholder:text-gray-600"
+                                    className="h-14 bg-black/40 border-white/10 focus:border-primary focus:ring-primary/20 placeholder:text-zinc-600 rounded-xl text-base focus:bg-black/60"
                                 />
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="password" className="text-gray-300">Password</Label>
+                            <div className="space-y-2.5">
+                                <Label htmlFor="password" className="text-zinc-300 font-medium ml-1">Password</Label>
                                 <Input
                                     id="password"
                                     type="password"
@@ -147,108 +275,120 @@ export default function Login() {
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     required
-                                    className="h-12 bg-zinc-900 border-zinc-800 focus:border-primary focus:ring-primary/20 placeholder:text-gray-600"
+                                    className="h-14 bg-black/40 border-white/10 focus:border-primary focus:ring-primary/20 placeholder:text-zinc-600 rounded-xl text-base focus:bg-black/60"
                                 />
                             </div>
 
                             <Button
                                 type="submit"
-                                className="w-full h-12 font-bold text-base group bg-primary hover:bg-primary/90 text-black shadow-lg shadow-primary/20"
+                                className="w-full h-14 font-bold text-lg group bg-primary hover:bg-primary/90 text-black shadow-[0_0_20px_rgba(190,242,100,0.3)] hover:shadow-[0_0_30px_rgba(190,242,100,0.5)] rounded-xl transition-all duration-300 ease-out relative overflow-hidden"
                                 disabled={isLoading}
                             >
-                                {isLoading ? "Signing in..." : "Sign in"}
-                                {!isLoading && <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />}
+                                <span className="relative z-10 flex items-center justify-center">
+                                    {isLoading ? "Signing in..." : "Sign in"}
+                                    {!isLoading && <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1.5 transition-transform duration-300 ease-out" />}
+                                </span>
+                                {/* Button shine effect */}
+                                <div className="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
                             </Button>
-                        </form>
+                        </motion.form>
 
                         {/* Divider */}
-                        <div className="relative">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: 0.35 }}
+                            className="relative"
+                        >
                             <div className="absolute inset-0 flex items-center">
-                                <div className="w-full border-t border-zinc-800" />
+                                <div className="w-full border-t border-zinc-800/80" />
                             </div>
-                            <div className="relative flex justify-center text-xs uppercase">
-                                <span className="bg-zinc-950 px-2 text-gray-500">New here?</span>
+                            <div className="relative flex justify-center text-xs uppercase font-medium tracking-wider">
+                                <span className="bg-zinc-950 px-3 text-zinc-500 rounded-full">New here?</span>
                             </div>
-                        </div>
+                        </motion.div>
 
                         {/* Sign up link */}
-                        <div className="text-center">
+                        <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.45, type: "spring", stiffness: 300, damping: 25 }}
+                            className="text-center"
+                        >
                             <button
                                 type="button"
                                 onClick={() => navigate('/register')}
-                                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-zinc-800 text-gray-300 hover:text-primary hover:border-primary/50 transition-all duration-200"
+                                className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl border-2 border-zinc-800/80 text-zinc-300 hover:text-primary hover:border-primary/50 hover:bg-primary/5 transition-all duration-300 ease-out font-medium"
                             >
                                 Create an account
                                 <ArrowRight className="w-4 h-4" />
                             </button>
-                        </div>
-                    </div>
+                        </motion.div>
+                    </motion.div>
                 </div>
             </div>
 
             {/* Mobile Layout */}
-            <div className="lg:hidden h-screen flex flex-col overflow-hidden">
+            <div className="lg:hidden min-h-screen flex flex-col overflow-hidden bg-black relative">
+                {/* Mobile Background Elements */}
+                <motion.div
+                    animate={{
+                        scale: [1, 1.2, 1],
+                        opacity: [0.3, 0.4, 0.3],
+                    }}
+                    transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+                    className="absolute top-0 right-0 w-[400px] h-[400px] bg-primary/20 rounded-full blur-[80px] pointer-events-none"
+                />
+                <motion.div
+                    animate={{
+                        scale: [1, 1.5, 1],
+                        opacity: [0.2, 0.3, 0.2],
+                    }}
+                    transition={{ duration: 15, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+                    className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-primary/10 rounded-full blur-[80px] pointer-events-none"
+                />
+
                 {/* Mobile Hero Section - Compact */}
-                <div className="relative px-6 pt-6 pb-4 overflow-hidden shrink-0">
-                    {/* Background elements */}
-                    <div className="absolute inset-0 bg-gradient-to-b from-black via-zinc-900/50 to-zinc-950" />
-                    <div className="absolute top-10 right-0 w-48 h-48 bg-primary/20 rounded-full blur-3xl" />
-                    <div className="absolute top-5 left-0 w-32 h-32 bg-primary/10 rounded-full blur-3xl" />
+                <motion.div
+                    initial={{ opacity: 0, y: -15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ type: "spring", stiffness: 350, damping: 25, delay: 0.05 }}
+                    className="relative px-6 pt-10 pb-6 shrink-0 z-10"
+                >
+                    <div className="flex flex-col items-center justify-center gap-4 text-center">
+                        <motion.div
+                            initial={{ scale: 0.5, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            transition={{ delay: 0.2, type: "spring" }}
+                            className="relative"
+                        >
+                            <div className="absolute inset-0 bg-primary/30 rounded-full blur-md animate-pulse" />
+                            <img src="/logo.png" alt="Amar Taka Koi" className="w-14 h-14 object-contain relative z-10" />
+                        </motion.div>
 
-                    {/* Decorative ring */}
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-56 h-56 border border-primary/20 rounded-full" />
-
-                    <div className="relative z-10">
-                        {/* Logo */}
-                        <div className="flex items-center justify-center gap-2 mb-4">
-                            <img src="/logo.png" alt="Amar Taka Koi" className="w-8 h-8 object-contain" />
-                            <span className="text-lg font-bold font-serif text-white">Amar Taka Koi</span>
-                        </div>
-
-                        {/* Heading */}
-                        <div className="text-center mb-4">
-                            <h1 className="text-2xl font-bold font-serif tracking-tight text-white leading-tight mb-1">
-                                Master Your <span className="text-primary">Money</span>
+                        <div>
+                            <h1 className="text-3xl font-bold font-serif tracking-tight text-white leading-tight mb-2">
+                                Welcome
                             </h1>
-                            <p className="text-gray-400 text-xs">
-                                Take control of your finances with powerful insights
+                            <p className="text-zinc-400 text-sm max-w-[250px] mx-auto">
+                                Enter your credentials to access your account
                             </p>
-                        </div>
-
-                        {/* Features - Horizontal scroll on mobile */}
-                        <div className="flex gap-2 overflow-x-auto pb-1 -mx-6 px-6 scrollbar-hide">
-                            {features.map((feature, index) => (
-                                <div
-                                    key={index}
-                                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-zinc-800/50 border border-zinc-700 whitespace-nowrap shrink-0"
-                                >
-                                    <div className="p-1 rounded-md bg-primary/20 shrink-0">
-                                        <feature.icon className="w-3 h-3 text-primary" />
-                                    </div>
-                                    <span className="text-[11px] text-gray-300">{feature.text}</span>
-                                </div>
-                            ))}
                         </div>
                     </div>
-                </div>
+                </motion.div>
 
-                {/* Mobile Form Section - Scrollable if needed */}
-                <div className="flex-1 px-6 pb-4 pt-3 bg-zinc-950 overflow-y-auto">
-                    <div className="max-w-md mx-auto space-y-4">
-                        {/* Header */}
-                        <div className="text-center space-y-0.5">
-                            <h2 className="text-xl font-bold font-serif text-white">
-                                Welcome back
-                            </h2>
-                            <p className="text-gray-400 text-xs">
-                                Enter your credentials to continue
-                            </p>
-                        </div>
-
+                {/* Mobile Form Section - Scrollable */}
+                <motion.div
+                    initial={{ opacity: 0, y: 30 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 30, delay: 0.15 }}
+                    className="flex-1 px-6 pb-8 pt-6 bg-zinc-950/80 backdrop-blur-2xl rounded-t-[40px] border-t border-white/10 z-10 overflow-y-auto"
+                >
+                    <div className="max-w-md mx-auto space-y-6">
                         {/* Form */}
-                        <form onSubmit={handleSubmit} className="space-y-3">
-                            <div className="space-y-1">
-                                <Label htmlFor="username-mobile" className="text-gray-300 text-sm">Username</Label>
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <div className="space-y-1.5">
+                                <Label htmlFor="username-mobile" className="text-zinc-300 text-sm font-medium ml-1">Username</Label>
                                 <Input
                                     id="username-mobile"
                                     type="text"
@@ -256,11 +396,11 @@ export default function Login() {
                                     value={username}
                                     onChange={(e) => setUsername(e.target.value)}
                                     required
-                                    className="h-10 bg-zinc-900 border-zinc-800 focus:border-primary focus:ring-primary/20 placeholder:text-gray-600"
+                                    className="h-12 bg-black/50 border-white/10 focus:border-primary focus:ring-primary/20 placeholder:text-zinc-600 rounded-xl transition-all"
                                 />
                             </div>
-                            <div className="space-y-1">
-                                <Label htmlFor="password-mobile" className="text-gray-300 text-sm">Password</Label>
+                            <div className="space-y-1.5">
+                                <Label htmlFor="password-mobile" className="text-zinc-300 text-sm font-medium ml-1">Password</Label>
                                 <Input
                                     id="password-mobile"
                                     type="password"
@@ -268,13 +408,13 @@ export default function Login() {
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     required
-                                    className="h-10 bg-zinc-900 border-zinc-800 focus:border-primary focus:ring-primary/20 placeholder:text-gray-600"
+                                    className="h-12 bg-black/50 border-white/10 focus:border-primary focus:ring-primary/20 placeholder:text-zinc-600 rounded-xl transition-all"
                                 />
                             </div>
 
                             <Button
                                 type="submit"
-                                className="w-full h-10 font-bold text-sm group bg-primary hover:bg-primary/90 text-black shadow-lg shadow-primary/20"
+                                className="w-full h-12 mt-2 font-bold text-base group bg-primary hover:bg-primary/90 text-black shadow-[0_0_15px_rgba(190,242,100,0.3)] rounded-xl transition-all"
                                 disabled={isLoading}
                             >
                                 {isLoading ? "Signing in..." : "Sign in"}
@@ -283,37 +423,29 @@ export default function Login() {
                         </form>
 
                         {/* Divider */}
-                        <div className="relative py-2">
+                        <div className="relative py-3">
                             <div className="absolute inset-0 flex items-center">
                                 <div className="w-full border-t border-zinc-800" />
                             </div>
-                            <div className="relative flex justify-center text-xs uppercase">
-                                <span className="bg-zinc-950 px-2 text-gray-500">New here?</span>
+                            <div className="relative flex justify-center text-xs uppercase font-medium">
+                                <span className="bg-zinc-950 px-3 text-zinc-500">New here?</span>
                             </div>
                         </div>
 
                         {/* Sign up link */}
-                        <div className="text-center">
+                        <div className="text-center pb-6">
                             <button
                                 type="button"
                                 onClick={() => navigate('/register')}
-                                className="inline-flex items-center gap-2 px-5 py-2 rounded-xl border border-zinc-800 text-gray-300 hover:text-primary hover:border-primary/50 transition-all duration-200 text-sm"
+                                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl border border-zinc-800 text-zinc-300 hover:text-primary transition-colors text-sm font-medium"
                             >
                                 Create an account
                                 <ArrowRight className="w-3.5 h-3.5" />
                             </button>
                         </div>
-
-                        {/* Footer */}
-                        <div className="flex items-center justify-center gap-2 text-xs text-gray-500 pt-2">
-                            <Sparkles className="w-3 h-3 text-primary" />
-                            <span>&copy; {new Date().getFullYear()} Anganba Singha</span>
-                        </div>
                     </div>
-                </div>
+                </motion.div>
             </div>
         </div>
     );
 }
-
-

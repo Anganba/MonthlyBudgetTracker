@@ -417,6 +417,10 @@ export default function LoansPage() {
                                         const isExpanded = expandedLoans.has(loan.id);
                                         const dueStatus = getDueStatus(loan);
                                         const progress = loan.totalAmount > 0 ? ((loan.totalAmount - loan.remainingAmount) / loan.totalAmount) * 100 : 0;
+                                        const historyItems = [
+                                            ...(loan.payments || []).map(p => ({ ...p, type: 'payment' as const })),
+                                            ...(loan.topUps || []).map(t => ({ ...t, type: 'topup' as const, note: t.description }))
+                                        ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
                                         return (
                                             <div key={loan.id} className={cn(loan.status === 'settled' && "opacity-50")}>
@@ -539,28 +543,40 @@ export default function LoansPage() {
                                                 {isExpanded && (
                                                     <div className="px-4 pb-3 bg-zinc-800/20">
                                                         <div className="ml-10 border-l-2 border-zinc-700/50 pl-4 space-y-2 py-2">
-                                                            {loan.payments.length === 0 ? (
-                                                                <p className="text-xs text-gray-500 italic">No payments recorded yet</p>
+                                                            {historyItems.length === 0 ? (
+                                                                <p className="text-xs text-gray-500 italic">No history recorded yet</p>
                                                             ) : (
-                                                                loan.payments.map(payment => (
-                                                                    <div key={payment.id} className="flex items-center justify-between group/payment">
+                                                                historyItems.map(item => (
+                                                                    <div key={item.id} className="flex items-center justify-between group/payment">
                                                                         <div className="flex items-center gap-2">
-                                                                            <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                                                                            <span className="text-xs text-gray-300">${payment.amount.toLocaleString()}</span>
-                                                                            <span className="text-[10px] text-gray-500">{new Date(payment.date).toLocaleDateString()}</span>
-                                                                            {payment.note && <span className="text-[10px] text-gray-500">— {payment.note}</span>}
-                                                                            {payment.walletId && walletName(payment.walletId) && (
-                                                                                <span className="text-[10px] text-gray-600">via {walletName(payment.walletId)}</span>
+                                                                            <div className={cn(
+                                                                                "w-2 h-2 rounded-full shrink-0",
+                                                                                item.type === 'topup'
+                                                                                    ? (loan.direction === 'given' ? 'bg-rose-500' : 'bg-blue-500')
+                                                                                    : "bg-emerald-500"
+                                                                            )} />
+                                                                            <span className="text-xs text-gray-300">
+                                                                                <span className={item.type === 'topup' ? (loan.direction === 'given' ? 'text-rose-400' : 'text-blue-400') : 'text-emerald-400'}>
+                                                                                    {item.type === 'topup' ? '+' : '-'}
+                                                                                </span>
+                                                                                ${item.amount.toLocaleString()}
+                                                                            </span>
+                                                                            <span className="text-[10px] text-gray-500">{new Date(item.date).toLocaleDateString()}</span>
+                                                                            {item.note && <span className="text-[10px] text-gray-500">— {item.note}</span>}
+                                                                            {item.walletId && walletName(item.walletId) && (
+                                                                                <span className="text-[10px] text-gray-600 bg-white/5 px-1.5 py-0.5 rounded border border-white/5">via {walletName(item.walletId)}</span>
                                                                             )}
                                                                         </div>
-                                                                        <Button
-                                                                            variant="ghost"
-                                                                            size="sm"
-                                                                            onClick={() => removePayment.mutate({ loanId: loan.id, paymentId: payment.id })}
-                                                                            className="h-6 w-6 p-0 opacity-0 group-hover/payment:opacity-100 text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-opacity"
-                                                                        >
-                                                                            <Trash2 className="h-3 w-3" />
-                                                                        </Button>
+                                                                        {item.type === 'payment' && (
+                                                                            <Button
+                                                                                variant="ghost"
+                                                                                size="sm"
+                                                                                onClick={() => removePayment.mutate({ loanId: loan.id, paymentId: item.id })}
+                                                                                className="h-6 w-6 p-0 opacity-0 group-hover/payment:opacity-100 text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-opacity"
+                                                                            >
+                                                                                <Trash2 className="h-3 w-3" />
+                                                                            </Button>
+                                                                        )}
                                                                     </div>
                                                                 ))
                                                             )}

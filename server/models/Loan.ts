@@ -1,9 +1,10 @@
 import mongoose, { Schema, Document } from "mongoose";
 import { Loan, LoanPayment } from "@shared/api";
 
-export interface ILoan extends Document, Omit<Loan, 'id' | 'payments'> {
+export interface ILoan extends Document, Omit<Loan, 'id' | 'payments' | 'topUps'> {
     _id: mongoose.Types.ObjectId;
     payments: (LoanPayment & { _id?: mongoose.Types.ObjectId })[];
+    topUps?: (import('@shared/api').LoanTopUp & { _id?: mongoose.Types.ObjectId })[];
 }
 
 const LoanPaymentSchema = new Schema<LoanPayment>({
@@ -13,6 +14,15 @@ const LoanPaymentSchema = new Schema<LoanPayment>({
     timestamp: { type: String, required: false },
     walletId: { type: String, required: false },
     note: { type: String, required: false },
+});
+
+const LoanTopUpSchema = new Schema<import('@shared/api').LoanTopUp>({
+    id: { type: String, required: true },
+    amount: { type: Number, required: true },
+    date: { type: String, required: true },
+    timestamp: { type: String, required: false },
+    description: { type: String, required: false },
+    walletId: { type: String, required: false },
 });
 
 const LoanSchema = new Schema<ILoan>(
@@ -28,6 +38,7 @@ const LoanSchema = new Schema<ILoan>(
         date: { type: String, required: true },
         dueDate: { type: String, required: false },
         payments: [LoanPaymentSchema],
+        topUps: [LoanTopUpSchema],
     },
     { timestamps: true }
 );

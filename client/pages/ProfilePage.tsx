@@ -5,7 +5,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
     User, LogOut, Shield, Mail, Loader2, Edit,
     ChevronRight, Linkedin, Github, Briefcase, Sparkles, Crown, Key, UserCircle,
-    Zap, Heart, Download, BarChart3, Target, TrendingUp, Clock, CheckCircle, Plus, Trash2, Check
+    Zap, Heart, Download, BarChart3, Target, TrendingUp, Clock, CheckCircle, Plus, Trash2, Check,
+    LineChart, Lock, Save, Activity, CreditCard, Settings, Calendar, Wallet, Repeat, Landmark, History, Receipt
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -16,6 +17,7 @@ import { useWallets } from "@/hooks/use-wallets";
 import { useGoals } from "@/hooks/use-goals";
 import { ExportDialog } from "@/components/budget/ExportDialog";
 import { AvatarUpload } from "@/components/ui/AvatarUpload";
+import { motion } from "framer-motion";
 
 import { cn } from "@/lib/utils";
 
@@ -124,6 +126,23 @@ export default function ProfilePage() {
         "Priority support",
     ];
 
+    const containerVariants = {
+        hidden: { opacity: 0 },
+        visible: {
+            opacity: 1,
+            transition: { staggerChildren: 0.05, delayChildren: 0.1 }
+        }
+    };
+
+    const itemVariants = {
+        hidden: { opacity: 0, y: 15 },
+        visible: {
+            opacity: 1,
+            y: 0,
+            transition: { type: "spring" as const, stiffness: 350, damping: 25 }
+        }
+    };
+
     return (
         <div className="min-h-screen bg-background text-white p-6 md:p-8 relative overflow-hidden">
             {/* Animated Background Orbs */}
@@ -133,14 +152,19 @@ export default function ProfilePage() {
             <div className="hidden md:block absolute bottom-1/3 right-1/4 w-[350px] h-[350px] bg-gradient-to-br from-amber-500/10 via-yellow-500/5 to-transparent rounded-full blur-3xl pointer-events-none animate-pulse" style={{ animationDuration: '7s' }} />
 
             {/* Header */}
-            <div className="relative z-10 mb-8">
+            <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                className="relative z-10 mb-8 max-w-[1600px] w-full mx-auto"
+            >
                 <h1 className="text-4xl font-bold font-serif text-white">Profile</h1>
                 <p className="text-gray-400 mt-1">Manage your account settings and preferences</p>
-            </div>
+            </motion.div>
 
-            <div className="max-w-5xl mx-auto space-y-8 relative z-10">
+            <motion.div variants={containerVariants} initial="hidden" animate="visible" className="w-full max-w-[1600px] mx-auto space-y-8 relative z-10">
                 {/* Profile Header Card */}
-                <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-violet-500/15 via-zinc-900/90 to-zinc-900/80 border border-violet-500/30 p-8 shadow-lg shadow-violet-500/5">
+                <motion.div variants={itemVariants} className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-violet-500/15 via-zinc-900/90 to-zinc-900/80 border border-violet-500/30 p-8 shadow-lg shadow-violet-500/5">
                     {/* Decorative elements */}
                     <div className="absolute top-0 right-0 w-64 h-64 bg-violet-500/20 rounded-full blur-3xl" />
                     <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-cyan-500/10 rounded-full blur-2xl" />
@@ -196,20 +220,20 @@ export default function ProfilePage() {
                             </div>
                         </div>
 
-                        {/* Logout Button */}
+                        {/* Sign Out Button */}
                         <Button
                             variant="outline"
                             className="border-red-500/30 text-red-400 hover:bg-red-500/10 hover:border-red-500/50 hover:text-red-300"
                             onClick={handleLogout}
                         >
                             <LogOut className="mr-2 h-4 w-4" />
-                            Logout
+                            Sign out
                         </Button>
                     </div>
-                </div>
+                </motion.div>
 
                 {/* Quick Stats */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <motion.div variants={itemVariants} className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-4 gap-4 lg:gap-6">
                     <div className="group rounded-xl bg-gradient-to-br from-cyan-500/20 via-cyan-500/10 to-transparent border border-cyan-500/30 p-4 shadow-lg shadow-cyan-500/5 hover:shadow-cyan-500/10 hover:scale-[1.02] transition-all">
                         <div className="flex items-center gap-3">
                             <div className="p-2 rounded-lg bg-gradient-to-br from-cyan-500/30 to-blue-500/20 shadow-inner">
@@ -254,10 +278,10 @@ export default function ProfilePage() {
                             </div>
                         </div>
                     </div>
-                </div>
+                </motion.div>
 
                 {/* Account Statistics */}
-                <div className="rounded-2xl bg-gradient-to-br from-emerald-500/10 via-zinc-900/80 to-zinc-900/50 border border-emerald-500/30 p-6 shadow-lg shadow-emerald-500/5">
+                <motion.div variants={itemVariants} className="rounded-2xl bg-gradient-to-br from-emerald-500/10 via-zinc-900/80 to-zinc-900/50 border border-emerald-500/30 p-6 shadow-lg shadow-emerald-500/5">
                     <div className="flex items-center gap-3 mb-6">
                         <div className="p-3 rounded-xl bg-gradient-to-br from-emerald-500/30 to-green-500/20 shadow-inner">
                             <BarChart3 className="h-6 w-6 text-emerald-400" />
@@ -286,10 +310,10 @@ export default function ProfilePage() {
                             <p className="text-sm text-gray-400">Goals Achieved</p>
                         </div>
                     </div>
-                </div>
+                </motion.div>
 
                 {/* Settings Grid */}
-                <div className="grid gap-6 md:grid-cols-2">
+                <motion.div variants={itemVariants} className="grid gap-6 md:grid-cols-2 xl:gap-8">
                     {/* Account Settings */}
                     <div className="rounded-2xl bg-gradient-to-br from-cyan-500/10 via-zinc-900/80 to-zinc-900/50 border border-cyan-500/30 p-6 space-y-4 shadow-lg shadow-cyan-500/5 hover:shadow-cyan-500/10 transition-shadow">
                         <div className="flex items-center gap-3">
@@ -347,11 +371,10 @@ export default function ProfilePage() {
                             </button>
                         </div>
                     </div>
-                </div>
-
+                </motion.div>
 
                 {/* Data Management - Full Width */}
-                <div className="rounded-2xl bg-gradient-to-br from-orange-500/10 via-zinc-900/80 to-zinc-900/50 border border-orange-500/30 p-6 space-y-4 shadow-lg shadow-orange-500/5">
+                <motion.div variants={itemVariants} className="rounded-2xl bg-gradient-to-br from-orange-500/10 via-zinc-900/80 to-zinc-900/50 border border-orange-500/30 p-6 space-y-4 shadow-lg shadow-orange-500/5">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                             <div className="p-3 rounded-xl bg-gradient-to-br from-orange-500/30 to-amber-500/20 shadow-inner">
@@ -370,10 +393,10 @@ export default function ProfilePage() {
                             Export Data
                         </Button>
                     </div>
-                </div>
+                </motion.div>
 
                 {/* Community Edition Card */}
-                <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-zinc-900 via-zinc-900/95 to-zinc-800 border border-white/10 shadow-2xl">
+                <motion.div variants={itemVariants} className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-zinc-900 via-zinc-900/95 to-zinc-800 border border-white/10 shadow-2xl">
                     {/* Animated gradient border effect */}
                     <div className="absolute inset-0 bg-gradient-to-r from-violet-500/20 via-emerald-500/20 to-cyan-500/20 opacity-50 blur-xl" />
                     <div className="absolute inset-[1px] bg-zinc-900 rounded-3xl" />
@@ -422,32 +445,27 @@ export default function ProfilePage() {
                                             </div>
                                         </div>
 
-                                        <ul className="space-y-3 mb-6">
-                                            <li className="flex items-center gap-3 text-gray-300">
-                                                <div className="p-1 rounded-full bg-emerald-500/20">
-                                                    <CheckCircle className="h-4 w-4 text-emerald-400" />
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-3 gap-x-4 mb-6">
+                                            {[
+                                                { icon: Wallet, text: "Unlimited Wallets" },
+                                                { icon: Receipt, text: "Income & Expenses" },
+                                                { icon: Shield, text: "Smart Budget Limits" },
+                                                { icon: Repeat, text: "Recurring Bills" },
+                                                { icon: BarChart3, text: "Advanced Analytics" },
+                                                { icon: Landmark, text: "Loan Management" },
+                                                { icon: Target, text: "Savings Goals" },
+                                                { icon: Lock, text: "Complete Privacy" },
+                                                { icon: Download, text: "Data Export (JSON/CSV)" },
+                                                { icon: History, text: "Full Audit Trail" },
+                                            ].map((feature, idx) => (
+                                                <div key={idx} className="flex items-center gap-3 text-sm text-gray-300 group">
+                                                    <div className="p-1.5 rounded-full bg-emerald-500/10 group-hover:bg-emerald-500/20 transition-colors">
+                                                        <feature.icon className="h-4 w-4 text-emerald-400" />
+                                                    </div>
+                                                    <span className="font-medium">{feature.text}</span>
                                                 </div>
-                                                Unlimited wallets & transactions
-                                            </li>
-                                            <li className="flex items-center gap-3 text-gray-300">
-                                                <div className="p-1 rounded-full bg-emerald-500/20">
-                                                    <CheckCircle className="h-4 w-4 text-emerald-400" />
-                                                </div>
-                                                Full analytics & statistics
-                                            </li>
-                                            <li className="flex items-center gap-3 text-gray-300">
-                                                <div className="p-1 rounded-full bg-emerald-500/20">
-                                                    <CheckCircle className="h-4 w-4 text-emerald-400" />
-                                                </div>
-                                                Goal tracking & audit trail
-                                            </li>
-                                            <li className="flex items-center gap-3 text-gray-300">
-                                                <div className="p-1 rounded-full bg-emerald-500/20">
-                                                    <CheckCircle className="h-4 w-4 text-emerald-400" />
-                                                </div>
-                                                Data export (JSON, CSV)
-                                            </li>
-                                        </ul>
+                                            ))}
+                                        </div>
 
                                         <Button
                                             variant="outline"
@@ -531,10 +549,10 @@ export default function ProfilePage() {
                             Built with love for the community. Open source & free forever.
                         </p>
                     </div>
-                </div>
+                </motion.div>
 
                 {/* Footer */}
-                <div className="text-center pt-8 border-t border-white/5 space-y-4">
+                <motion.div variants={itemVariants} className="text-center pt-8 border-t border-white/5 space-y-4">
                     <p className="text-sm text-gray-400 font-medium">Connect with me</p>
                     <div className="flex justify-center gap-4">
                         <a
@@ -570,8 +588,8 @@ export default function ProfilePage() {
                     >
                         &copy; {new Date().getFullYear()} Anganba Singha. All rights reserved.
                     </p>
-                </div>
-            </div>
+                </motion.div>
+            </motion.div>
 
             {/* Edit Profile Dialog */}
             <Dialog open={isEditProfileOpen} onOpenChange={setIsEditProfileOpen}>

@@ -121,6 +121,15 @@ export interface LoanPayment {
   note?: string;
 }
 
+export interface LoanTopUp {
+  id: string;
+  amount: number;
+  date: string;
+  timestamp?: string;
+  description?: string;
+  walletId?: string;
+}
+
 export interface Loan {
   id: string;
   userId: string;
@@ -134,6 +143,7 @@ export interface Loan {
   date: string;
   dueDate?: string;
   payments: LoanPayment[];
+  topUps?: LoanTopUp[];
   createdAt?: string;
   updatedAt?: string;
 }

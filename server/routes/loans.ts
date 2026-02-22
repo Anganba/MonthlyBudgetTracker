@@ -25,6 +25,14 @@ const mapToLoan = (doc: any): Loan => ({
         walletId: p.walletId,
         note: p.note,
     })),
+    topUps: (doc.topUps || []).map((t: any) => ({
+        id: t.id,
+        amount: t.amount,
+        date: t.date,
+        timestamp: t.timestamp,
+        description: t.description,
+        walletId: t.walletId,
+    })),
     createdAt: doc.createdAt?.toISOString?.() || doc.createdAt,
     updatedAt: doc.updatedAt?.toISOString?.() || doc.updatedAt,
 });
@@ -96,6 +104,46 @@ export const createLoan: RequestHandler = async (req, res) => {
             });
         }
 
+        // Check if an active loan already exists with the same person and direction
+        const existingLoan = await LoanModel.findOne({
+            userId,
+            personName: personName.trim(),
+            direction,
+            status: 'active'
+        });
+
+        const initialTopUp = {
+            id: crypto.randomUUID(),
+            amount: totalAmount,
+            date: date || new Date().toISOString().split('T')[0],
+            description: description || undefined,
+            walletId: walletId || undefined
+        };
+
+        if (existingLoan) {
+            existingLoan.topUps.push(initialTopUp);
+            existingLoan.totalAmount += totalAmount;
+            existingLoan.remainingAmount += totalAmount;
+            if (dueDate) {
+                existingLoan.dueDate = dueDate;
+            }
+
+            await existingLoan.save();
+
+            // Create audit log for loan consolidation
+            await AuditLogModel.create({
+                userId,
+                entityType: 'loan',
+                entityId: existingLoan._id.toString(),
+                entityName: `${personName} (${direction === 'given' ? 'Lent' : 'Borrowed'})`,
+                changeType: 'loan_updated',
+                changeAmount: totalAmount,
+                details: `Added new $${totalAmount} to existing loan. New Total: $${existingLoan.totalAmount} | Remaining: $${existingLoan.remainingAmount}${description ? ` | +${description}` : ''}`,
+            });
+
+            return res.json({ success: true, data: mapToLoan(existingLoan) });
+        }
+
         const loan = await LoanModel.create({
             userId,
             personName: personName.trim(),
@@ -108,6 +156,7 @@ export const createLoan: RequestHandler = async (req, res) => {
             date: date || new Date().toISOString().split('T')[0],
             dueDate: dueDate || undefined,
             payments: [],
+            topUps: [initialTopUp],
         });
 
         // Create audit log
